@@ -1,0 +1,21 @@
+@if (room(); as currentRoom) {
+  <div class="room">
+    <header class="room__header">
+      <div>
+        <h1>Sala {{ currentRoom.roomId }}</h1>
+        <p class="room__share">Compartí este link: <code>{{ shareLink }}</code></p>
+      </div>
+      <div class="room__stats">
+        <span>Historias estimadas: {{ currentRoom.storiesEstimatedCount }}</span>
+        <span>Total: {{ currentRoom.accumulatedScore }} pts</span>
+      </div>
+    </header>
+
+    <section class="room__participants">
+      <h2>Participantes</h2>
+      <app-participant-list [participants]="currentRoom.participants" />
+    </section>
+  </div>
+} @else {
+  <p class="room__loading">Conectando a la sala...</p>
+}

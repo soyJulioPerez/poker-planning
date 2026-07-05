@@ -1,0 +1,13 @@
+<ul class="participant-list">
+  @for (participant of participants(); track participant.name) {
+    <li class="participant-list__item" [class.participant-list__item--disconnected]="!participant.connected">
+      <span class="participant-list__name">{{ participant.name }}</span>
+      @if (participant.isModerator) {
+        <app-moderator-badge />
+      }
+      @if (!participant.connected) {
+        <span class="participant-list__status">desconectado</span>
+      }
+    </li>
+  }
+</ul>

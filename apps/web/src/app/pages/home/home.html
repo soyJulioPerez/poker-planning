@@ -1,0 +1,58 @@
+<div class="home">
+  <h1>Planning Poker</h1>
+
+  <div class="home__tabs">
+    <button type="button" [class.home__tab--active]="mode() === 'create'" (click)="setMode('create')">
+      Crear sala
+    </button>
+    <button type="button" [class.home__tab--active]="mode() === 'join'" (click)="setMode('join')">
+      Unirse a sala
+    </button>
+  </div>
+
+  @if (mode() === 'create') {
+    <form class="home__form" (ngSubmit)="createRoom()">
+      <label>
+        Tu nombre
+        <input type="text" name="moderatorName" [(ngModel)]="moderatorName" required />
+      </label>
+
+      <label>
+        Mazo de estimación
+        <select name="deckId" [(ngModel)]="deckId">
+          @for (deck of decks; track deck.id) {
+            <option [value]="deck.id">{{ deck.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="home__checkbox">
+        <input type="checkbox" name="moderatorIsVoter" [(ngModel)]="moderatorIsVoter" />
+        Quiero votar como moderador
+      </label>
+
+      <button type="submit">Crear sala</button>
+    </form>
+  } @else {
+    <form class="home__form" (ngSubmit)="joinRoom()">
+      <label>
+        Código de sala
+        <input type="text" name="joinRoomId" [(ngModel)]="joinRoomId" required />
+      </label>
+
+      <label>
+        Tu nombre
+        <input type="text" name="joinName" [(ngModel)]="joinName" required />
+      </label>
+
+      @if (joinRejectedReason() === 'name-taken') {
+        <p class="home__error">Ese nombre ya está en uso en esta sala.</p>
+      }
+      @if (joinRejectedReason() === 'room-not-found') {
+        <p class="home__error">No se encontró una sala con ese código.</p>
+      }
+
+      <button type="submit">Unirse</button>
+    </form>
+  }
+</div>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes create-nx-workspace@latest _nx_tmp --preset=apps --name=poker-planning --nxCloud=skip --interactive=false --packageManager=npm)",
+      "Bash(npx nx *)",
+      "Bash(sam build *)"
+    ]
+  }
+}
