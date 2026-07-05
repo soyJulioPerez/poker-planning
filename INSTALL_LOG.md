@@ -273,3 +273,53 @@ Se usó un script Node puntual (`chromium.launch()`, dos `page`/contexto simulan
 3. Prueba en navegador real con Playwright: mismo flujo, verificado visualmente vía DOM (`.participant-list__item`).
 
 Ambas verificaciones confirmaron el comportamiento esperado.
+
+## 6. Primer despliegue real a AWS
+
+### Verificación de credenciales
+
+```bash
+aws sts get-caller-identity
+```
+Resultado: credenciales del usuario **root** de la cuenta (no un usuario IAM). Se avisó al usuario del riesgo (AWS desaconseja usar root para operaciones); decidió proceder igual con root para esta prueba. Ver advertencia completa en [docs/aws-deployment.md](docs/aws-deployment.md).
+
+### Build y despliegue
+
+```bash
+cd infra
+rm -rf .aws-sam
+sam build
+sam deploy \
+  --stack-name poker-planning-dev \
+  --region us-east-2 \
+  --resolve-s3 \
+  --capabilities CAPABILITY_IAM \
+  --no-confirm-changeset \
+  --no-fail-on-empty-changeset
+```
+
+`--guided` no se pudo usar (requiere modo interactivo, no disponible en este entorno de ejecución); se pasaron los parámetros explícitos en su lugar.
+
+Resultado: stack `poker-planning-dev` creado exitosamente en `us-east-2`. Outputs:
+- `WebSocketUrl`: `wss://1wfuif29r2.execute-api.us-east-2.amazonaws.com/dev`
+- `TableName`: `poker-planning-rooms`
+
+### samconfig.toml manual
+
+Como no se usó `--guided`, no se generó automáticamente `infra/samconfig.toml`. Se creó manualmente con los mismos parámetros, para que despliegues futuros solo requieran `sam deploy` sin repetir todos los flags. Verificado con `sam deploy` (sin argumentos) → `No changes to deploy`.
+
+### Verificación end-to-end contra AWS real
+
+1. Script Node puntual con `ws` conectando directo a la URL `wss://...` real: `createRoom` respondió correctamente con `roomState`, y el ítem quedó persistido en la tabla DynamoDB real (verificado con `aws dynamodb scan`).
+2. Frontend Angular (`apps/web/src/app/core/room-socket.service.ts`): se cambió temporalmente la constante `WEBSOCKET_URL` a la URL real de AWS, se corrió `npm start`, y se verificó con el mismo patrón de script Playwright (dos páginas, crear sala + unirse) que el broadcast en tiempo real funciona correctamente contra la Management API real de API Gateway (a diferencia del entorno local, que usa un transporte simulado vía `registerLocalTransport`).
+3. Se revirtió la constante a `ws://localhost:3001` para que el flujo de desarrollo diario siga usando el entorno local por defecto.
+
+Guía completa de despliegue, verificación y cómo eliminar el stack: [docs/aws-deployment.md](docs/aws-deployment.md).
+
+### Eliminación del stack tras la prueba
+
+```bash
+sam delete --stack-name poker-planning-dev --region us-east-2 --no-prompts
+```
+
+El usuario eliminó el stack `poker-planning-dev` una vez finalizada la prueba, para evitar dejar recursos activos en la cuenta de AWS generando costos innecesarios. Verificado con `aws cloudformation describe-stacks --stack-name poker-planning-dev --region us-east-2` → `Stack with id poker-planning-dev does not exist`. Actualmente no hay ningún stack desplegado; para volver a probar contra AWS real hay que repetir el paso de `sam deploy` descrito en [docs/aws-deployment.md](docs/aws-deployment.md).
