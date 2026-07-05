@@ -1,0 +1,17 @@
+<div class="reveal-panel">
+  <h3>Votos revelados</h3>
+
+  <ul class="reveal-panel__votes">
+    @for (entry of result().votes | keyvalue; track entry.key) {
+      <li>
+        <span class="reveal-panel__name">{{ entry.key }}</span>
+        <span class="reveal-panel__value">{{ entry.value }}</span>
+      </li>
+    }
+  </ul>
+
+  <div class="reveal-panel__stats">
+    <span>Promedio: {{ result().average ?? '—' }}</span>
+    <span>Moda: {{ result().mode.join(', ') || '—' }}</span>
+  </div>
+</div>

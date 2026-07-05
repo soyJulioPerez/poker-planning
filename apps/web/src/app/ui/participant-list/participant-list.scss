@@ -28,3 +28,14 @@
   font-size: 0.75rem;
   color: #888;
 }
+
+.participant-list__vote-status {
+  font-size: 0.75rem;
+  color: #999;
+  margin-left: auto;
+}
+
+.participant-list__vote-status--voted {
+  color: #2e7d32;
+  font-weight: 600;
+}

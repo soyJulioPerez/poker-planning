@@ -5,7 +5,7 @@ import {
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME } from './dynamo-client';
-import { ServerMessage } from 'shared-contracts';
+import { Room, ServerMessage } from 'shared-contracts';
 
 const LOCAL_ENDPOINT_PREFIX = 'local://';
 
@@ -27,6 +27,13 @@ function getManagementClient(endpoint: string): ApiGatewayManagementApiClient {
 }
 
 export async function getRoomConnectionIds(roomId: string): Promise<string[]> {
+  const participants = await getRoomConnections(roomId);
+  return participants.map((p) => p.connectionId);
+}
+
+export async function getRoomConnections(
+  roomId: string
+): Promise<{ connectionId: string; name: string }[]> {
   const result = await ddb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -39,8 +46,11 @@ export async function getRoomConnectionIds(roomId: string): Promise<string[]> {
   );
 
   return (result.Items ?? [])
-    .map((item) => item['connectionId'] as string | undefined)
-    .filter((id): id is string => Boolean(id));
+    .filter((item) => item['connectionId'])
+    .map((item) => ({
+      connectionId: item['connectionId'] as string,
+      name: item['name'] as string,
+    }));
 }
 
 async function postToConnection(
@@ -86,6 +96,22 @@ export async function broadcastToRoom(
   const connectionIds = await getRoomConnectionIds(roomId);
   await Promise.all(
     connectionIds.map((connectionId) => postToConnection(apiEndpoint, connectionId, message))
+  );
+}
+
+export async function broadcastRoomState(
+  apiEndpoint: string,
+  room: Room,
+  maskForViewer: (room: Room, viewerName: string) => Room
+): Promise<void> {
+  const participants = await getRoomConnections(room.roomId);
+  await Promise.all(
+    participants.map((p) =>
+      postToConnection(apiEndpoint, p.connectionId, {
+        type: 'roomState',
+        room: maskForViewer(room, p.name),
+      })
+    )
   );
 }
 

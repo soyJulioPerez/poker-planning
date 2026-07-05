@@ -1,0 +1,36 @@
+.reveal-panel__votes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.4rem;
+    background: rgba(0, 0, 0, 0.03);
+    min-width: 3rem;
+  }
+}
+
+.reveal-panel__name {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.reveal-panel__value {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.reveal-panel__stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  font-weight: 500;
+}

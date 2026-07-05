@@ -81,3 +81,16 @@ export async function buildRoomState(roomId: string): Promise<Room | undefined> 
     revealResult: meta.revealResult,
   };
 }
+
+export function maskRoomForViewer(room: Room, viewerName: string): Room {
+  if (room.roundPhase === 'revealed') return room;
+
+  return {
+    ...room,
+    participants: room.participants.map((participant) =>
+      participant.name === viewerName
+        ? participant
+        : { ...participant, vote: participant.vote !== null ? 'hidden' : null }
+    ),
+  };
+}

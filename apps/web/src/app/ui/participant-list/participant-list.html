@@ -7,6 +7,12 @@
       }
       @if (!participant.connected) {
         <span class="participant-list__status">desconectado</span>
+      } @else if (participant.isVoter) {
+        @if (participant.vote !== null) {
+          <span class="participant-list__vote-status participant-list__vote-status--voted">✓ votó</span>
+        } @else {
+          <span class="participant-list__vote-status">esperando voto</span>
+        }
       }
     </li>
   }

@@ -1,0 +1,10 @@
+<div class="voting-board">
+  @for (value of deckValues(); track value) {
+    <app-card
+      [value]="value"
+      [selected]="myVote() === value"
+      [disabled]="disabled()"
+      (pick)="vote.emit($event)"
+    />
+  }
+</div>

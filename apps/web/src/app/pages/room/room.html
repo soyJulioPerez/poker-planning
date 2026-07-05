@@ -1,19 +1,100 @@
-@if (room(); as currentRoom) {
+@if (roomSummary(); as summary) {
+  <div class="room room__summary">
+    <h1>Resumen de la sesión</h1>
+    <ul class="room__summary-list">
+      @for (story of summary.stories; track story.title) {
+        <li>
+          <span>{{ story.title }}</span>
+          <span>{{ story.finalScore ?? '—' }} pts</span>
+        </li>
+      }
+    </ul>
+    <p class="room__summary-total">Total: {{ summary.totalScore }} pts</p>
+  </div>
+} @else if (room(); as currentRoom) {
   <div class="room">
     <header class="room__header">
       <div>
         <h1>Sala {{ currentRoom.roomId }}</h1>
         <p class="room__share">Compartí este link: <code>{{ shareLink }}</code></p>
+        @if (currentRoom.currentStoryTitle) {
+          <p class="room__story">Historia actual: <strong>{{ currentRoom.currentStoryTitle }}</strong></p>
+        }
       </div>
       <div class="room__stats">
         <span>Historias estimadas: {{ currentRoom.storiesEstimatedCount }}</span>
         <span>Total: {{ currentRoom.accumulatedScore }} pts</span>
+        @if (isModerator()) {
+          <button type="button" class="room__close-btn" (click)="closeRoom()">Cerrar sala</button>
+        }
       </div>
     </header>
 
     <section class="room__participants">
       <h2>Participantes</h2>
       <app-participant-list [participants]="currentRoom.participants" />
+
+      @if (isModerator()) {
+        <label class="room__moderator-toggle">
+          <input
+            type="checkbox"
+            [ngModel]="myParticipant()?.isVoter ?? false"
+            [disabled]="currentRoom.roundPhase !== 'idle'"
+            (ngModelChange)="setModeratorIsVoter($event)"
+          />
+          Quiero votar como moderador
+        </label>
+      }
+    </section>
+
+    <section class="room__voting">
+      @if (currentRoom.roundPhase === 'revealed' && currentRoom.revealResult) {
+        <app-reveal-panel [result]="currentRoom.revealResult" />
+
+        @if (isModerator()) {
+          <div class="room__resolution">
+            @if (currentRoom.revealResult.average !== null) {
+              <button type="button" (click)="resolveWith(currentRoom.revealResult.average)">
+                Aceptar promedio ({{ currentRoom.revealResult.average }})
+              </button>
+            }
+            @if (currentRoom.revealResult.mode.length === 1) {
+              <button type="button" (click)="resolveWith(+currentRoom.revealResult.mode[0])">
+                Aceptar moda ({{ currentRoom.revealResult.mode[0] }})
+              </button>
+            }
+            <div class="room__manual-score">
+              <input type="number" [(ngModel)]="manualScore" placeholder="Valor manual" />
+              <button type="button" (click)="resolveWithManualScore()">Usar valor manual</button>
+            </div>
+            <button type="button" (click)="newRound()">Nueva ronda</button>
+          </div>
+
+          <div class="room__next-story">
+            <input type="text" [(ngModel)]="nextStoryTitle" placeholder="Título de la próxima historia" />
+            <button type="button" (click)="nextStory()">Siguiente historia</button>
+          </div>
+        }
+      } @else {
+        <h2>Votá tu estimación</h2>
+        <app-voting-board
+          [deckValues]="deckValues()"
+          [myVote]="myParticipant()?.vote ?? null"
+          [disabled]="myParticipant() ? !myParticipant()!.isVoter : true"
+          (vote)="vote($event)"
+        />
+        @if (isModerator()) {
+          <p class="room__vote-progress">{{ voteProgress().voted }} de {{ voteProgress().total }} votaron</p>
+          <button type="button" (click)="reveal()">Revelar votos</button>
+
+          <div class="room__next-story">
+            <input type="text" [(ngModel)]="nextStoryTitle" placeholder="Título de la próxima historia" />
+            <button type="button" (click)="nextStory()">
+              {{ currentRoom.currentStoryTitle ? 'Cambiar historia' : 'Definir historia' }}
+            </button>
+          </div>
+        }
+      }
     </section>
   </div>
 } @else {

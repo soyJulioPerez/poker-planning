@@ -1,0 +1,27 @@
+.card {
+  width: 3.2rem;
+  height: 4.6rem;
+  border-radius: 0.5rem;
+  border: 2px solid #ccc;
+  background: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-4px);
+    border-color: #888;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.card--selected {
+  border-color: #1a1a1a;
+  background: #1a1a1a;
+  color: white;
+}

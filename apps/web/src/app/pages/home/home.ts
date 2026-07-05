@@ -31,7 +31,9 @@ export class Home {
   constructor() {
     effect(() => {
       const room = this.socketService.room();
-      if (room) {
+      const name = this.socketService.myName();
+      if (room && name) {
+        this.socketService.saveSession(room.roomId, name);
         this.router.navigate(['/room', room.roomId]);
       }
     });
@@ -43,6 +45,7 @@ export class Home {
 
   createRoom(): void {
     if (!this.moderatorName.trim()) return;
+    this.socketService.myName.set(this.moderatorName.trim());
     this.socketService.connect();
     this.socketService.send({
       action: 'createRoom',
@@ -54,6 +57,7 @@ export class Home {
 
   joinRoom(): void {
     if (!this.joinRoomId.trim() || !this.joinName.trim()) return;
+    this.socketService.myName.set(this.joinName.trim());
     this.socketService.connect();
     this.socketService.send({
       action: 'joinRoom',

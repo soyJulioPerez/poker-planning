@@ -1,7 +1,7 @@
 import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME, participantKey, connectionKey, nowPlusTtl } from '../lib/dynamo-client';
-import { getRoomMeta, getRoomParticipants, buildRoomState } from '../lib/room-repository';
-import { broadcastToRoom, sendToConnection } from '../lib/broadcast';
+import { getRoomMeta, getRoomParticipants, buildRoomState, maskRoomForViewer } from '../lib/room-repository';
+import { broadcastRoomState, sendToConnection } from '../lib/broadcast';
 import { JoinRoomRequest } from 'shared-contracts';
 
 export async function handleJoinRoom(
@@ -59,6 +59,6 @@ export async function handleJoinRoom(
 
   const room = await buildRoomState(request.roomId);
   if (room) {
-    await broadcastToRoom(apiEndpoint, request.roomId, { type: 'roomState', room });
+    await broadcastRoomState(apiEndpoint, room, maskRoomForViewer);
   }
 }

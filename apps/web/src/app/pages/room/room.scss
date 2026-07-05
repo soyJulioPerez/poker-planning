@@ -30,3 +30,113 @@
   margin-top: 3rem;
   color: #888;
 }
+
+.room__voting {
+  margin-top: 2rem;
+
+  button {
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.4rem;
+    border: none;
+    background: #1a1a1a;
+    color: white;
+    cursor: pointer;
+  }
+}
+
+.room__vote-progress {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.room__story {
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+.room__moderator-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.room__resolution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+
+  button {
+    margin-top: 0;
+  }
+}
+
+.room__manual-score {
+  display: flex;
+  gap: 0.4rem;
+
+  input {
+    width: 6rem;
+    padding: 0.4rem;
+    border-radius: 0.4rem;
+    border: 1px solid #ccc;
+  }
+}
+
+.room__next-story {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 1rem;
+
+  input {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 0.4rem;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    margin-top: 0;
+  }
+}
+
+.room__close-btn {
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.4rem;
+  border: 1px solid #c0392b;
+  background: transparent;
+  color: #c0392b;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.room__summary {
+  text-align: center;
+}
+
+.room__summary-list {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-radius: 0.4rem;
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.room__summary-total {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
