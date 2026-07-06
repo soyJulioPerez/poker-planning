@@ -14,7 +14,7 @@ El sistema SHALL permitir a cualquier usuario crear una sala de Planning Poker s
 - **THEN** el sistema genera un `roomId` único, asigna a ese usuario como moderador, y muestra un link/código compartible
 
 ### Requirement: Unión a sala vía link o código
-El sistema SHALL permitir que cualquier persona con el link o código de una sala existente se una indicando únicamente su nombre, sin autenticación.
+El sistema SHALL permitir que cualquier persona con el link o código de una sala existente se una indicando únicamente su nombre, sin autenticación. La pantalla inicial SHALL mostrar la opción "Unirse a sala" seleccionada por defecto y posicionada primero (a la izquierda) entre las tabs, y el texto de la tab seleccionada (ya sea "Crear sala" o "Unirse a sala") SHALL mantener contraste suficiente para ser legible.
 
 #### Scenario: Participante se une con nombre disponible
 - **WHEN** un usuario abre el link/código de una sala activa e ingresa un nombre no utilizado por otro participante conectado en esa sala
@@ -23,6 +23,14 @@ El sistema SHALL permitir que cualquier persona con el link o código de una sal
 #### Scenario: Nombre ya en uso por un participante conectado
 - **WHEN** un usuario intenta unirse a una sala con un nombre que ya pertenece a otro participante actualmente conectado en esa sala
 - **THEN** el sistema rechaza la unión e indica que el nombre ya está en uso en esa sala
+
+#### Scenario: Pantalla inicial muestra "Unirse a sala" por defecto
+- **WHEN** un usuario abre la pantalla inicial de la aplicación
+- **THEN** el sistema muestra la tab "Unirse a sala" seleccionada por defecto, con su formulario visible, y ubicada a la izquierda de "Crear sala"
+
+#### Scenario: Texto de la tab seleccionada es legible
+- **WHEN** un usuario visualiza la pantalla inicial con cualquiera de las dos tabs ("Crear sala" o "Unirse a sala") seleccionada
+- **THEN** el texto de la tab seleccionada se distingue claramente de su fondo
 
 ### Requirement: Rol de moderador único
 El sistema SHALL asignar el rol de moderador exclusivamente a quien creó la sala, sin permitir transferencia ni co-moderación, y SHALL mostrar una indicación visual (badge) de dicho rol a todos los participantes.
@@ -47,11 +55,15 @@ El sistema SHALL permitir que el moderador decida si participa como votante o no
 - **THEN** el sistema rechaza el cambio y mantiene la condición vigente para la ronda actual
 
 ### Requirement: Lista de participantes en vivo
-El sistema SHALL mantener y actualizar en tiempo real, para todos los miembros de la sala, la lista de participantes conectados.
+El sistema SHALL mantener y actualizar en tiempo real, para todos los miembros de la sala, la lista de participantes conectados. Para cada participante habilitado como votante, la lista SHALL indicar visualmente si ya emitió su voto (ícono ✓ junto al texto) o si está pendiente de votar (ícono ⏳ junto al texto).
 
 #### Scenario: Nuevo participante se une
 - **WHEN** un participante se une exitosamente a la sala
 - **THEN** todos los demás participantes ven su nombre agregado a la lista sin necesidad de recargar la página
+
+#### Scenario: Participante aún no ha votado
+- **WHEN** un participante habilitado como votante todavía no emitió su voto en la ronda actual
+- **THEN** el sistema muestra junto a su nombre el ícono ⏳ acompañado del texto "esperando voto"
 
 ### Requirement: Reconexión automática
 El sistema SHALL identificar a un participante que se reconecta mediante la combinación de nombre y sala, restaurando su estado (voto actual y posición en la sala) sin requerir que vuelva a unirse manualmente.

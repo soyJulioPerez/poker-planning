@@ -22,7 +22,6 @@ export class RoomPage {
   readonly roomSummary = this.socketService.roomSummary;
   readonly roomIdFromUrl = this.route.snapshot.paramMap.get('roomId');
 
-  manualScore: number | null = null;
   nextStoryTitle = '';
 
   constructor() {
@@ -76,12 +75,6 @@ export class RoomPage {
     const room = this.room();
     if (!room) return;
     this.socketService.send({ action: 'resolveStory', roomId: room.roomId, finalScore: score });
-    this.manualScore = null;
-  }
-
-  resolveWithManualScore(): void {
-    if (this.manualScore === null) return;
-    this.resolveWith(this.manualScore);
   }
 
   newRound(): void {

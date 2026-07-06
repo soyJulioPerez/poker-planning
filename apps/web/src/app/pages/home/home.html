@@ -2,15 +2,36 @@
   <h1>Planning Poker</h1>
 
   <div class="home__tabs">
-    <button type="button" [class.home__tab--active]="mode() === 'create'" (click)="setMode('create')">
-      Crear sala
-    </button>
     <button type="button" [class.home__tab--active]="mode() === 'join'" (click)="setMode('join')">
       Unirse a sala
     </button>
+    <button type="button" [class.home__tab--active]="mode() === 'create'" (click)="setMode('create')">
+      Crear sala
+    </button>
   </div>
 
-  @if (mode() === 'create') {
+  @if (mode() === 'join') {
+    <form class="home__form" (ngSubmit)="joinRoom()">
+      <label>
+        Código de sala
+        <input type="text" name="joinRoomId" [(ngModel)]="joinRoomId" required />
+      </label>
+
+      <label>
+        Tu nombre
+        <input type="text" name="joinName" [(ngModel)]="joinName" required />
+      </label>
+
+      @if (joinRejectedReason() === 'name-taken') {
+        <p class="home__error">Ese nombre ya está en uso en esta sala.</p>
+      }
+      @if (joinRejectedReason() === 'room-not-found') {
+        <p class="home__error">No se encontró una sala con ese código.</p>
+      }
+
+      <button type="submit">Unirse</button>
+    </form>
+  } @else {
     <form class="home__form" (ngSubmit)="createRoom()">
       <label>
         Tu nombre
@@ -32,27 +53,6 @@
       </label>
 
       <button type="submit">Crear sala</button>
-    </form>
-  } @else {
-    <form class="home__form" (ngSubmit)="joinRoom()">
-      <label>
-        Código de sala
-        <input type="text" name="joinRoomId" [(ngModel)]="joinRoomId" required />
-      </label>
-
-      <label>
-        Tu nombre
-        <input type="text" name="joinName" [(ngModel)]="joinName" required />
-      </label>
-
-      @if (joinRejectedReason() === 'name-taken') {
-        <p class="home__error">Ese nombre ya está en uso en esta sala.</p>
-      }
-      @if (joinRejectedReason() === 'room-not-found') {
-        <p class="home__error">No se encontró una sala con ese código.</p>
-      }
-
-      <button type="submit">Unirse</button>
     </form>
   }
 </div>

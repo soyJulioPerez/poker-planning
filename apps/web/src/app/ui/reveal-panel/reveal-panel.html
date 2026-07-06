@@ -1,17 +1,34 @@
 <div class="reveal-panel">
   <h3>Votos revelados</h3>
 
+  @if (isModerator()) {
+    <p class="reveal-panel__hint">Click en un voto para usarlo como puntuación final</p>
+  }
+
   <ul class="reveal-panel__votes">
+    <li>
+      <button type="button" class="reveal-panel__new-round" (click)="newRound.emit()" title="Nueva ronda">
+        ↻
+      </button>
+    </li>
     @for (entry of result().votes | keyvalue; track entry.key) {
-      <li>
-        <span class="reveal-panel__name">{{ entry.key }}</span>
-        <span class="reveal-panel__value">{{ entry.value }}</span>
-      </li>
+      @if (isModerator() && voteAsNumber(entry.value); as numericVote) {
+        <li class="reveal-panel__vote--clickable" (click)="resolveVote.emit(numericVote)">
+          <span class="reveal-panel__name">{{ entry.key }}</span>
+          <span class="reveal-panel__value">{{ entry.value }}</span>
+        </li>
+      } @else {
+        <li>
+          <span class="reveal-panel__name">{{ entry.key }}</span>
+          <span class="reveal-panel__value">{{ entry.value }}</span>
+        </li>
+      }
     }
   </ul>
 
-  <div class="reveal-panel__stats">
-    <span>Promedio: {{ result().average ?? '—' }}</span>
-    <span>Moda: {{ result().mode.join(', ') || '—' }}</span>
-  </div>
+  @if (result().mode.length > 1) {
+    <div class="reveal-panel__stats">
+      <span>Moda: {{ result().mode.join(', ') }}</span>
+    </div>
+  }
 </div>

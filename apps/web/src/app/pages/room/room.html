@@ -17,9 +17,6 @@
       <div>
         <h1>Sala {{ currentRoom.roomId }}</h1>
         <p class="room__share">Compartí este link: <code>{{ shareLink }}</code></p>
-        @if (currentRoom.currentStoryTitle) {
-          <p class="room__story">Historia actual: <strong>{{ currentRoom.currentStoryTitle }}</strong></p>
-        }
       </div>
       <div class="room__stats">
         <span>Historias estimadas: {{ currentRoom.storiesEstimatedCount }}</span>
@@ -29,6 +26,57 @@
         }
       </div>
     </header>
+
+    <section class="room__current-story">
+      @if (currentRoom.currentStoryTitle) {
+        <p>Historia actual: <strong>{{ currentRoom.currentStoryTitle }}</strong></p>
+      }
+
+      @if (isModerator() && currentRoom.roundPhase !== 'revealed') {
+        <div class="room__next-story">
+          <input type="text" [(ngModel)]="nextStoryTitle" placeholder="Título de la próxima historia" />
+          <button type="button" (click)="nextStory()">
+            {{ currentRoom.currentStoryTitle ? 'Cambiar historia' : 'Definir historia' }}
+          </button>
+        </div>
+      }
+    </section>
+
+    <section class="room__voting">
+      @if (currentRoom.roundPhase === 'revealed' && currentRoom.revealResult) {
+        <app-reveal-panel
+          [result]="currentRoom.revealResult"
+          [isModerator]="isModerator()"
+          (resolveVote)="resolveWith($event)"
+          (newRound)="newRound()"
+        />
+
+        @if (isModerator()) {
+          <div class="room__resolution">
+            @if (currentRoom.revealResult.average !== null) {
+              <button type="button" (click)="resolveWith(currentRoom.revealResult.average)">
+                Aceptar promedio ({{ currentRoom.revealResult.average }})
+              </button>
+            }
+            @if (currentRoom.revealResult.mode.length === 1) {
+              <button type="button" (click)="resolveWith(+currentRoom.revealResult.mode[0])">
+                Aceptar moda ({{ currentRoom.revealResult.mode[0] }})
+              </button>
+            }
+          </div>
+        }
+      } @else if (currentRoom.currentStoryTitle) {
+        <h2>Votá tu estimación</h2>
+        <app-voting-board
+          [deckValues]="deckValues()"
+          [myVote]="myParticipant()?.vote ?? null"
+          [disabled]="myParticipant() ? !myParticipant()!.isVoter : true"
+          (vote)="vote($event)"
+        />
+      } @else {
+        <p class="room__no-story">Esperando a que el moderador defina la historia a estimar.</p>
+      }
+    </section>
 
     <section class="room__participants">
       <h2>Participantes</h2>
@@ -45,55 +93,12 @@
           Quiero votar como moderador
         </label>
       }
-    </section>
 
-    <section class="room__voting">
-      @if (currentRoom.roundPhase === 'revealed' && currentRoom.revealResult) {
-        <app-reveal-panel [result]="currentRoom.revealResult" />
-
-        @if (isModerator()) {
-          <div class="room__resolution">
-            @if (currentRoom.revealResult.average !== null) {
-              <button type="button" (click)="resolveWith(currentRoom.revealResult.average)">
-                Aceptar promedio ({{ currentRoom.revealResult.average }})
-              </button>
-            }
-            @if (currentRoom.revealResult.mode.length === 1) {
-              <button type="button" (click)="resolveWith(+currentRoom.revealResult.mode[0])">
-                Aceptar moda ({{ currentRoom.revealResult.mode[0] }})
-              </button>
-            }
-            <div class="room__manual-score">
-              <input type="number" [(ngModel)]="manualScore" placeholder="Valor manual" />
-              <button type="button" (click)="resolveWithManualScore()">Usar valor manual</button>
-            </div>
-            <button type="button" (click)="newRound()">Nueva ronda</button>
-          </div>
-
-          <div class="room__next-story">
-            <input type="text" [(ngModel)]="nextStoryTitle" placeholder="Título de la próxima historia" />
-            <button type="button" (click)="nextStory()">Siguiente historia</button>
-          </div>
-        }
-      } @else {
-        <h2>Votá tu estimación</h2>
-        <app-voting-board
-          [deckValues]="deckValues()"
-          [myVote]="myParticipant()?.vote ?? null"
-          [disabled]="myParticipant() ? !myParticipant()!.isVoter : true"
-          (vote)="vote($event)"
-        />
-        @if (isModerator()) {
+      @if (isModerator() && currentRoom.roundPhase !== 'revealed') {
+        <div class="room__reveal-row">
           <p class="room__vote-progress">{{ voteProgress().voted }} de {{ voteProgress().total }} votaron</p>
           <button type="button" (click)="reveal()">Revelar votos</button>
-
-          <div class="room__next-story">
-            <input type="text" [(ngModel)]="nextStoryTitle" placeholder="Título de la próxima historia" />
-            <button type="button" (click)="nextStory()">
-              {{ currentRoom.currentStoryTitle ? 'Cambiar historia' : 'Definir historia' }}
-            </button>
-          </div>
-        }
+        </div>
       }
     </section>
   </div>

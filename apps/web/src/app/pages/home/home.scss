@@ -14,14 +14,15 @@
     padding: 0.5rem;
     border: 1px solid #ccc;
     background: transparent;
+    color: #1a1a1a;
     cursor: pointer;
     border-radius: 0.4rem;
-  }
-}
 
-.home__tab--active {
-  background: #1a1a1a;
-  color: white;
+    &.home__tab--active {
+      background: #1a1a1a;
+      color: white;
+    }
+  }
 }
 
 .home__form {

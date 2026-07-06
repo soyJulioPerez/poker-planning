@@ -17,7 +17,7 @@ export class Home {
   private readonly router = inject(Router);
 
   readonly decks = AVAILABLE_DECKS;
-  readonly mode = signal<Mode>('create');
+  readonly mode = signal<Mode>('join');
 
   moderatorName = '';
   deckId = AVAILABLE_DECKS[0].id;

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RevealResult } from 'shared-contracts';
 
@@ -10,4 +10,13 @@ import { RevealResult } from 'shared-contracts';
 })
 export class RevealPanel {
   readonly result = input.required<RevealResult>();
+  readonly isModerator = input(false);
+
+  readonly resolveVote = output<number>();
+  readonly newRound = output<void>();
+
+  voteAsNumber(vote: string): number | null {
+    const value = Number(vote);
+    return Number.isFinite(value) ? value : null;
+  }
 }

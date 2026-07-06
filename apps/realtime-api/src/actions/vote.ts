@@ -30,6 +30,14 @@ export async function handleVote(
     return;
   }
 
+  if (!meta.currentStoryTitle) {
+    await sendToConnection(apiEndpoint, connectionId, {
+      type: 'error',
+      message: 'No story assigned yet',
+    });
+    return;
+  }
+
   await ddb.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
