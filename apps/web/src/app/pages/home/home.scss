@@ -8,19 +8,21 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ccc;
 
   button {
     flex: 1;
     padding: 0.5rem;
-    border: 1px solid #ccc;
+    border: none;
+    border-bottom: 2px solid transparent;
     background: transparent;
-    color: #1a1a1a;
+    color: #666;
     cursor: pointer;
-    border-radius: 0.4rem;
 
     &.home__tab--active {
-      background: #1a1a1a;
-      color: white;
+      color: #1a1a1a;
+      font-weight: 600;
+      border-bottom-color: #1a1a1a;
     }
   }
 }

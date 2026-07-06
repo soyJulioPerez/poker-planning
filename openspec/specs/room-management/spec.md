@@ -14,7 +14,7 @@ El sistema SHALL permitir a cualquier usuario crear una sala de Planning Poker s
 - **THEN** el sistema genera un `roomId` único, asigna a ese usuario como moderador, y muestra un link/código compartible
 
 ### Requirement: Unión a sala vía link o código
-El sistema SHALL permitir que cualquier persona con el link o código de una sala existente se una indicando únicamente su nombre, sin autenticación. La pantalla inicial SHALL mostrar la opción "Unirse a sala" seleccionada por defecto y posicionada primero (a la izquierda) entre las tabs, y el texto de la tab seleccionada (ya sea "Crear sala" o "Unirse a sala") SHALL mantener contraste suficiente para ser legible.
+El sistema SHALL permitir que cualquier persona con el link o código de una sala existente se una indicando únicamente su nombre, sin autenticación. La pantalla inicial SHALL mostrar la opción "Unirse a sala" seleccionada por defecto y posicionada primero (a la izquierda) entre las tabs. La tab seleccionada SHALL indicarse mediante un estilo visualmente distinguible de un botón de acción (por ejemplo, una línea inferior de color en vez de un fondo sólido invertido), manteniendo en todo momento contraste suficiente para ser legible.
 
 #### Scenario: Participante se une con nombre disponible
 - **WHEN** un usuario abre el link/código de una sala activa e ingresa un nombre no utilizado por otro participante conectado en esa sala
@@ -31,6 +31,10 @@ El sistema SHALL permitir que cualquier persona con el link o código de una sal
 #### Scenario: Texto de la tab seleccionada es legible
 - **WHEN** un usuario visualiza la pantalla inicial con cualquiera de las dos tabs ("Crear sala" o "Unirse a sala") seleccionada
 - **THEN** el texto de la tab seleccionada se distingue claramente de su fondo
+
+#### Scenario: Tab seleccionada no se confunde con un botón de acción
+- **WHEN** un usuario visualiza la pantalla inicial con una tab seleccionada
+- **THEN** el estilo de la tab activa se distingue del estilo usado por los botones de acción del formulario (por ejemplo, "Crear sala" o "Unirse")
 
 ### Requirement: Rol de moderador único
 El sistema SHALL asignar el rol de moderador exclusivamente a quien creó la sala, sin permitir transferencia ni co-moderación, y SHALL mostrar una indicación visual (badge) de dicho rol a todos los participantes.
