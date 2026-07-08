@@ -62,6 +62,14 @@ export async function handleReveal(
     return;
   }
 
+  if (!meta.currentStoryTitle) {
+    await sendToConnection(apiEndpoint, connectionId, {
+      type: 'error',
+      message: 'No story assigned yet',
+    });
+    return;
+  }
+
   const room = await buildRoomState(request.roomId);
   if (!room) return;
 

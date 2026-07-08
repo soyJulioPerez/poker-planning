@@ -74,6 +74,7 @@ export async function handleCreateRoom(
     storiesEstimatedCount: 0,
     accumulatedScore: 0,
     revealResult: null,
+    lastResolvedStory: null,
   };
 
   await sendToConnection(apiEndpoint, connectionId, { type: 'roomState', room });

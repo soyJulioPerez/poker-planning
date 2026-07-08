@@ -21,11 +21,15 @@ El sistema SHALL permitir que cada participante habilitado para votar emita un v
 - **THEN** el sistema registra su voto y muestra al resto de los participantes únicamente que ese participante ya votó, sin revelar el valor
 
 ### Requirement: Revelado simultáneo
-El sistema SHALL permitir únicamente al moderador revelar los votos de la ronda actual, mostrando todos los votos a todos los participantes al mismo tiempo.
+El sistema SHALL permitir únicamente al moderador revelar los votos de la ronda actual, mostrando todos los votos a todos los participantes al mismo tiempo. El sistema SHALL rechazar el intento de revelar si la sala no tiene una historia actual con título asignado.
 
 #### Scenario: Moderador revela los votos
 - **WHEN** el moderador ejecuta la acción de revelar con al menos un voto emitido
 - **THEN** el sistema muestra a todos los participantes el valor votado por cada uno, de forma simultánea
+
+#### Scenario: Intento de revelar sin historia asignada
+- **WHEN** el moderador intenta revelar los votos mientras `currentStoryTitle` de la sala es nulo
+- **THEN** el sistema rechaza la acción y no cambia el estado de la ronda
 
 ### Requirement: Cálculo de promedio y moda
 El sistema SHALL calcular y mostrar, tras el revelado, el promedio y la moda de los votos numéricos emitidos en la ronda.
@@ -57,11 +61,19 @@ El sistema SHALL permitir únicamente al moderador reiniciar la votación de la 
 - **THEN** el sistema descarta los votos anteriores de esa historia y habilita a los participantes a votar nuevamente
 
 ### Requirement: Avance a la siguiente historia
-El sistema SHALL permitir al moderador, una vez resuelta la historia actual, avanzar a una nueva historia reiniciando el estado de votación.
+El sistema SHALL permitir al moderador, una vez resuelta la historia actual, avanzar a una nueva historia reiniciando el estado de votación. Mientras no haya una nueva historia con título asignado, el sistema SHALL mostrar a todos los participantes el resultado de la última historia resuelta (título y puntaje final), si existe.
 
 #### Scenario: Moderador avanza tras resolver la historia
 - **WHEN** el moderador confirma la puntuación final de la historia actual y avanza a la siguiente
 - **THEN** el sistema registra la historia resuelta y habilita una nueva ronda de votación en estado limpio
+
+#### Scenario: Resultado de la última historia visible mientras se espera la siguiente
+- **WHEN** una historia fue resuelta y todavía no se asignó título a la siguiente historia
+- **THEN** el sistema muestra el título y puntaje final de la última historia resuelta junto con la indicación de que se espera al moderador
+
+#### Scenario: Sin historial previo, no se muestra resultado
+- **WHEN** ninguna historia fue resuelta todavía en la sesión y no hay una historia con título asignado
+- **THEN** el sistema no muestra ningún resultado previo, solo la indicación de que se espera al moderador
 
 ### Requirement: Historia con título como precondición para votar
 El sistema SHALL exigir que la sala tenga una historia actual con título asignado antes de permitir que un participante emita un voto. Si no hay historia asignada, el sistema SHALL rechazar el intento de voto, tanto en la interfaz (ocultando o deshabilitando el mazo de votación) como en el servidor.

@@ -81,6 +81,12 @@
   font-style: italic;
 }
 
+.room__last-resolved {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: #1a1a1a;
+}
+
 .room__moderator-toggle {
   display: flex;
   align-items: center;

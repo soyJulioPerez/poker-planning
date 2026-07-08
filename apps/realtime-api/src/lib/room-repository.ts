@@ -79,6 +79,7 @@ export async function buildRoomState(roomId: string): Promise<Room | undefined> 
     storiesEstimatedCount: meta.resolvedStories.length,
     accumulatedScore,
     revealResult: meta.revealResult,
+    lastResolvedStory: meta.resolvedStories.at(-1) ?? null,
   };
 }
 

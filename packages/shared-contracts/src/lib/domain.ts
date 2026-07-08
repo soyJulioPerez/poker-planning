@@ -46,4 +46,5 @@ export interface Room {
   storiesEstimatedCount: number;
   accumulatedScore: number;
   revealResult: RevealResult | null;
+  lastResolvedStory: ResolvedStory | null;
 }

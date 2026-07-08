@@ -30,6 +30,10 @@
     <section class="room__current-story">
       @if (currentRoom.currentStoryTitle) {
         <p>Historia actual: <strong>{{ currentRoom.currentStoryTitle }}</strong></p>
+      } @else if (currentRoom.lastResolvedStory) {
+        <p class="room__last-resolved">
+          Historia "{{ currentRoom.lastResolvedStory.title }}" resuelta con {{ currentRoom.lastResolvedStory.finalScore ?? '—' }} pts
+        </p>
       }
 
       @if (isModerator() && currentRoom.roundPhase !== 'revealed') {
@@ -94,7 +98,7 @@
         </label>
       }
 
-      @if (isModerator() && currentRoom.roundPhase !== 'revealed') {
+      @if (isModerator() && currentRoom.roundPhase !== 'revealed' && currentRoom.currentStoryTitle) {
         <div class="room__reveal-row">
           <p class="room__vote-progress">{{ voteProgress().voted }} de {{ voteProgress().total }} votaron</p>
           <button type="button" (click)="reveal()">Revelar votos</button>

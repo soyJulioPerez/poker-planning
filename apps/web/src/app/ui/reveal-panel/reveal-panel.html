@@ -6,11 +6,13 @@
   }
 
   <ul class="reveal-panel__votes">
-    <li>
-      <button type="button" class="reveal-panel__new-round" (click)="newRound.emit()" title="Nueva ronda">
-        ↻
-      </button>
-    </li>
+    @if (isModerator()) {
+      <li>
+        <button type="button" class="reveal-panel__new-round" (click)="newRound.emit()" title="Nueva ronda">
+          ↻
+        </button>
+      </li>
+    }
     @for (entry of result().votes | keyvalue; track entry.key) {
       @if (isModerator() && voteAsNumber(entry.value); as numericVote) {
         <li class="reveal-panel__vote--clickable" (click)="resolveVote.emit(numericVote)">
