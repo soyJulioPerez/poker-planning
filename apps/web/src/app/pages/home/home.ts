@@ -6,6 +6,8 @@ import { RoomSocketService } from '../../core/room-socket.service';
 
 type Mode = 'create' | 'join';
 
+const SUBMIT_TIMEOUT_MS = 10000;
+
 @Component({
   selector: 'app-home',
   imports: [FormsModule],
@@ -15,6 +17,7 @@ type Mode = 'create' | 'join';
 export class Home {
   private readonly socketService = inject(RoomSocketService);
   private readonly router = inject(Router);
+  private submitTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   readonly decks = AVAILABLE_DECKS;
   readonly mode = signal<Mode>('join');
@@ -25,6 +28,9 @@ export class Home {
 
   joinRoomId = '';
   joinName = '';
+
+  readonly isSubmitting = signal(false);
+  readonly submitTimedOut = signal(false);
 
   readonly joinRejectedReason = this.socketService.joinRejectedReason;
 
@@ -37,6 +43,29 @@ export class Home {
         this.router.navigate(['/room', room.roomId]);
       }
     });
+
+    effect(() => {
+      if (this.joinRejectedReason() !== null) {
+        this.stopSubmitting();
+      }
+    });
+  }
+
+  private startSubmitting(): void {
+    this.submitTimedOut.set(false);
+    this.isSubmitting.set(true);
+    this.submitTimeoutId = setTimeout(() => {
+      this.isSubmitting.set(false);
+      this.submitTimedOut.set(true);
+    }, SUBMIT_TIMEOUT_MS);
+  }
+
+  private stopSubmitting(): void {
+    if (this.submitTimeoutId !== null) {
+      clearTimeout(this.submitTimeoutId);
+      this.submitTimeoutId = null;
+    }
+    this.isSubmitting.set(false);
   }
 
   setMode(mode: Mode): void {
@@ -45,6 +74,7 @@ export class Home {
 
   createRoom(): void {
     if (!this.moderatorName.trim()) return;
+    this.startSubmitting();
     this.socketService.myName.set(this.moderatorName.trim());
     this.socketService.connect();
     this.socketService.send({
@@ -57,6 +87,7 @@ export class Home {
 
   joinRoom(): void {
     if (!this.joinRoomId.trim() || !this.joinName.trim()) return;
+    this.startSubmitting();
     this.socketService.myName.set(this.joinName.trim());
     this.socketService.connect();
     this.socketService.send({

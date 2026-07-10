@@ -28,8 +28,17 @@
       @if (joinRejectedReason() === 'room-not-found') {
         <p class="home__error">No se encontró una sala con ese código.</p>
       }
+      @if (submitTimedOut()) {
+        <p class="home__error">No se pudo conectar. Intentá de nuevo.</p>
+      }
 
-      <button type="submit">Unirse</button>
+      <button type="submit" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {
+          <span class="home__spinner"></span> Uniéndose...
+        } @else {
+          Unirse
+        }
+      </button>
     </form>
   } @else {
     <form class="home__form" (ngSubmit)="createRoom()">
@@ -52,7 +61,17 @@
         Quiero votar como moderador
       </label>
 
-      <button type="submit">Crear sala</button>
+      @if (submitTimedOut()) {
+        <p class="home__error">No se pudo conectar. Intentá de nuevo.</p>
+      }
+
+      <button type="submit" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {
+          <span class="home__spinner"></span> Creando...
+        } @else {
+          Crear sala
+        }
+      </button>
     </form>
   }
 </div>
