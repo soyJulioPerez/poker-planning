@@ -1,9 +1,25 @@
 <ul class="participant-list">
   @for (participant of participants(); track participant.name) {
     <li class="participant-list__item" [class.participant-list__item--disconnected]="!participant.connected">
-      <span class="participant-list__name">{{ participant.name }}</span>
       @if (participant.isModerator) {
         <app-moderator-badge />
+      }
+      <span class="participant-list__name">{{ participant.name }}</span>
+      @if (participant.isModerator) {
+        <label
+          class="participant-list__voter-switch"
+          [class.participant-list__voter-switch--disabled]="!isModerator() || !canChangeVoterStatus()"
+          [title]="!isModerator() ? 'Solo el moderador puede cambiar esto' : ''"
+        >
+          <input
+            type="checkbox"
+            [ngModel]="participant.isVoter"
+            [disabled]="!isModerator() || !canChangeVoterStatus()"
+            (ngModelChange)="moderatorIsVoterChange.emit($event)"
+          />
+          <span class="participant-list__voter-switch-track"></span>
+          <span class="participant-list__voter-switch-label">{{ participant.isVoter ? 'Vota' : 'No vota' }}</span>
+        </label>
       }
       @if (!participant.connected) {
         <span class="participant-list__status">desconectado</span>

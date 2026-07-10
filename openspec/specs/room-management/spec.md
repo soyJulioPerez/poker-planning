@@ -57,18 +57,18 @@ El sistema SHALL permitir que cualquier persona con el link o código de una sal
 - **THEN** el sistema oculta el indicador de carga, muestra un mensaje de error, y permite reintentar el envío
 
 ### Requirement: Rol de moderador único
-El sistema SHALL asignar el rol de moderador exclusivamente a quien creó la sala, sin permitir transferencia ni co-moderación, y SHALL mostrar una indicación visual (badge) de dicho rol a todos los participantes.
+El sistema SHALL asignar el rol de moderador exclusivamente a quien creó la sala, sin permitir transferencia ni co-moderación, y SHALL mostrar una indicación visual (ícono) de dicho rol a todos los participantes.
 
-#### Scenario: Badge de moderador visible
+#### Scenario: Ícono de moderador visible
 - **WHEN** un participante visualiza la lista de personas en la sala
-- **THEN** el sistema muestra un badge distintivo junto al nombre del moderador
+- **THEN** el sistema muestra un ícono distintivo junto al nombre del moderador
 
 #### Scenario: Un participante no moderador intenta ejecutar una acción de moderación
 - **WHEN** un participante que no es el moderador intenta revelar votos, resolver la historia o iniciar una nueva ronda
 - **THEN** el sistema rechaza la acción
 
 ### Requirement: Moderador como votante opcional
-El sistema SHALL permitir que el moderador decida si participa como votante o no, y SHALL permitir cambiar esa decisión únicamente cuando no haya una ronda de votación activa.
+El sistema SHALL permitir que el moderador decida si participa como votante o no, y SHALL permitir cambiar esa decisión únicamente cuando no haya una ronda de votación activa. El control para cambiar esta condición SHALL ubicarse junto al nombre del moderador en la lista de participantes, visible para todos los participantes, pero interactivo únicamente para el propio moderador.
 
 #### Scenario: Moderador activa su participación como votante entre rondas
 - **WHEN** el moderador cambia la opción de "votar" estando la ronda en estado inactivo (sin votación en curso)
@@ -77,6 +77,14 @@ El sistema SHALL permitir que el moderador decida si participa como votante o no
 #### Scenario: Intento de cambio durante ronda activa
 - **WHEN** el moderador intenta cambiar su condición de votante mientras hay una votación en curso
 - **THEN** el sistema rechaza el cambio y mantiene la condición vigente para la ronda actual
+
+#### Scenario: Otros participantes ven el estado sin poder modificarlo
+- **WHEN** un participante que no es el moderador visualiza la lista de participantes
+- **THEN** el sistema muestra el control de "el moderador vota" junto al nombre del moderador, en estado deshabilitado para ese participante
+
+#### Scenario: Moderador ve el control deshabilitado durante una ronda activa
+- **WHEN** el propio moderador visualiza la lista de participantes mientras hay una votación en curso
+- **THEN** el sistema muestra el control deshabilitado, impidiendo su interacción hasta que la ronda finalice
 
 ### Requirement: Lista de participantes en vivo
 El sistema SHALL mantener y actualizar en tiempo real, para todos los miembros de la sala, la lista de participantes conectados. Para cada participante habilitado como votante, la lista SHALL indicar visualmente si ya emitió su voto (ícono ✓ junto al texto) o si está pendiente de votar (ícono ⏳ junto al texto).

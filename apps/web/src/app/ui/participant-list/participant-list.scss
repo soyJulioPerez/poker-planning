@@ -39,3 +39,60 @@
   color: #2e7d32;
   font-weight: 600;
 }
+
+.participant-list__voter-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.participant-list__voter-switch-label {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.participant-list__voter-switch-track {
+  display: inline-block;
+  width: 2rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #ccc;
+  transition: background 0.15s ease;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 0.9rem;
+    height: 0.9rem;
+    margin: 0.1rem;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.15s ease;
+  }
+}
+
+.participant-list__voter-switch input:checked + .participant-list__voter-switch-track {
+  background: #2e7d32;
+
+  &::before {
+    transform: translateX(0.9rem);
+  }
+}
+
+.participant-list__voter-switch--disabled {
+  cursor: not-allowed;
+
+  .participant-list__voter-switch-track {
+    opacity: 0.5;
+  }
+}

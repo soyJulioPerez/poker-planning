@@ -84,19 +84,12 @@
 
     <section class="room__participants">
       <h2>Participantes</h2>
-      <app-participant-list [participants]="currentRoom.participants" />
-
-      @if (isModerator()) {
-        <label class="room__moderator-toggle">
-          <input
-            type="checkbox"
-            [ngModel]="myParticipant()?.isVoter ?? false"
-            [disabled]="currentRoom.roundPhase !== 'idle'"
-            (ngModelChange)="setModeratorIsVoter($event)"
-          />
-          Quiero votar como moderador
-        </label>
-      }
+      <app-participant-list
+        [participants]="currentRoom.participants"
+        [isModerator]="isModerator()"
+        [canChangeVoterStatus]="currentRoom.roundPhase === 'idle'"
+        (moderatorIsVoterChange)="setModeratorIsVoter($event)"
+      />
 
       @if (isModerator() && currentRoom.roundPhase !== 'revealed' && currentRoom.currentStoryTitle) {
         <div class="room__reveal-row">
