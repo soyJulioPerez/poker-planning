@@ -6,6 +6,7 @@ import { buildRoomState, maskRoomForViewer } from './lib/room-repository';
 import { registerLocalTransport, broadcastRoomState } from './lib/broadcast';
 import { handleCreateRoom } from './actions/create-room';
 import { handleJoinRoom } from './actions/join-room';
+import { handleGetRoomInfo } from './actions/get-room-info';
 import { handleVote } from './actions/vote';
 import { handleReveal } from './actions/reveal';
 import { handleResolveStory } from './actions/resolve-story';
@@ -96,6 +97,9 @@ wss.on('connection', (socket) => {
           break;
         case 'joinRoom':
           await handleJoinRoom(LOCAL_API_ENDPOINT, connectionId, request);
+          break;
+        case 'getRoomInfo':
+          await handleGetRoomInfo(LOCAL_API_ENDPOINT, connectionId, request);
           break;
         case 'vote':
           await handleVote(LOCAL_API_ENDPOINT, connectionId, request);

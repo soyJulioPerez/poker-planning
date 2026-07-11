@@ -14,13 +14,33 @@
     <form class="home__form" (ngSubmit)="joinRoom()">
       <label>
         Código de sala
-        <input type="text" name="joinRoomId" [(ngModel)]="joinRoomId" required />
+        <input
+          type="text"
+          name="joinRoomId"
+          [(ngModel)]="joinRoomId"
+          (blur)="onJoinRoomIdBlur()"
+          required
+        />
       </label>
 
       <label>
         Tu nombre
         <input type="text" name="joinName" [(ngModel)]="joinName" required />
       </label>
+
+      @if (joinIconGroup) {
+        <div class="home__icon-picker">
+          <p>Elegí tu ícono</p>
+          <app-icon-picker
+            [iconGroup]="joinIconGroup"
+            [selectedIcon]="joinIcon"
+            (iconSelected)="selectJoinIcon($event)"
+          />
+          @if (joinIconMissing()) {
+            <p class="home__error">Elegí un ícono para unirte a la sala.</p>
+          }
+        </div>
+      }
 
       @if (joinRejectedReason() === 'name-taken') {
         <p class="home__error">Ese nombre ya está en uso en esta sala.</p>
@@ -60,6 +80,34 @@
         <input type="checkbox" name="moderatorIsVoter" [(ngModel)]="moderatorIsVoter" />
         Quiero votar como moderador
       </label>
+
+      <label>
+        Grupo de íconos
+        <select
+          name="moderatorIconGroupId"
+          [(ngModel)]="moderatorIconGroupId"
+          (ngModelChange)="onModeratorIconGroupChange()"
+        >
+          <option [value]="noneIconGroupId">Ninguno</option>
+          @for (group of iconGroups; track group.id) {
+            <option [value]="group.id">{{ group.label }}</option>
+          }
+        </select>
+      </label>
+
+      @if (selectedModeratorIconGroup) {
+        <div class="home__icon-picker">
+          <p>Elegí tu ícono</p>
+          <app-icon-picker
+            [iconGroup]="selectedModeratorIconGroup"
+            [selectedIcon]="moderatorIcon"
+            (iconSelected)="selectModeratorIcon($event)"
+          />
+          @if (moderatorIconMissing()) {
+            <p class="home__error">Elegí un ícono para crear la sala.</p>
+          }
+        </div>
+      }
 
       @if (submitTimedOut()) {
         <p class="home__error">No se pudo conectar. Intentá de nuevo.</p>

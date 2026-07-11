@@ -1,0 +1,12 @@
+<div class="icon-picker">
+  @for (icon of iconGroup().icons; track icon) {
+    <button
+      type="button"
+      class="icon-picker__item"
+      [class.icon-picker__item--selected]="icon === selectedIcon()"
+      (click)="iconSelected.emit(icon)"
+    >
+      {{ icon }}
+    </button>
+  }
+</div>

@@ -1,0 +1,24 @@
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.4rem;
+}
+
+.icon-picker__item {
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+}
+
+.icon-picker__item--selected {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+}

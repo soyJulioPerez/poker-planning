@@ -2,6 +2,7 @@ import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { apiEndpointFromEvent, sendToConnection } from '../lib/broadcast';
 import { handleCreateRoom } from '../actions/create-room';
 import { handleJoinRoom } from '../actions/join-room';
+import { handleGetRoomInfo } from '../actions/get-room-info';
 import { handleVote } from '../actions/vote';
 import { handleReveal } from '../actions/reveal';
 import { handleResolveStory } from '../actions/resolve-story';
@@ -33,6 +34,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         break;
       case 'joinRoom':
         await handleJoinRoom(apiEndpoint, connectionId, request);
+        break;
+      case 'getRoomInfo':
+        await handleGetRoomInfo(apiEndpoint, connectionId, request);
         break;
       case 'vote':
         await handleVote(apiEndpoint, connectionId, request);

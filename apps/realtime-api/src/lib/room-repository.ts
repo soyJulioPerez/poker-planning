@@ -7,6 +7,7 @@ interface RoomMetaItem {
   SK: 'META';
   roomId: string;
   deckId: string;
+  iconGroupId: string | null;
   moderatorName: string;
   moderatorIsVoter: boolean;
   roundPhase: RoundPhase;
@@ -25,6 +26,7 @@ interface ParticipantItem {
   isVoter: boolean;
   connected: boolean;
   vote: string | null;
+  icon: string | null;
 }
 
 export async function getRoomMeta(roomId: string): Promise<RoomMetaItem | undefined> {
@@ -55,6 +57,7 @@ export function toParticipant(item: ParticipantItem): Participant {
     isVoter: item.isVoter,
     connected: item.connected,
     vote: item.vote,
+    icon: item.icon ?? null,
   };
 }
 
@@ -72,6 +75,7 @@ export async function buildRoomState(roomId: string): Promise<Room | undefined> 
   return {
     roomId: meta.roomId,
     deckId: meta.deckId,
+    iconGroupId: meta.iconGroupId ?? null,
     moderatorName: meta.moderatorName,
     roundPhase: meta.roundPhase,
     currentStoryTitle: meta.currentStoryTitle,

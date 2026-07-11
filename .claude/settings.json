@@ -3,7 +3,15 @@
     "allow": [
       "Bash(npx --yes create-nx-workspace@latest _nx_tmp --preset=apps --name=poker-planning --nxCloud=skip --interactive=false --packageManager=npm)",
       "Bash(npx nx *)",
-      "Bash(sam build *)"
+      "Bash(npm exec nx -- run web:build)",
+      "Bash(npm exec nx -- run web:build *)",
+      "Bash(sam build *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(dir *)",
+      "Bash(dir)",
+      "Bash(mkdir *)",
+      "Bash(mkdir)"
     ]
   }
 }

@@ -4,6 +4,9 @@
       @if (participant.isModerator) {
         <app-moderator-badge />
       }
+      @if (participant.icon) {
+        <span class="participant-list__icon">{{ participant.icon }}</span>
+      }
       <span class="participant-list__name">{{ participant.name }}</span>
       @if (participant.isModerator) {
         <label

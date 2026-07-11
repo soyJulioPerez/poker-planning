@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { ClientRequest, Room, RoomSummary, ServerMessage } from 'shared-contracts';
+import { ClientRequest, Room, RoomInfoMessage, RoomSummary, ServerMessage } from 'shared-contracts';
 
 //const WEBSOCKET_URL = 'ws://localhost:3001';
 const WEBSOCKET_URL = 'wss://imzlnpyshh.execute-api.us-east-2.amazonaws.com/dev';
@@ -17,6 +17,7 @@ export class RoomSocketService {
   private pendingMessages: ClientRequest[] = [];
 
   readonly room = signal<Room | null>(null);
+  readonly roomInfo = signal<RoomInfoMessage | null>(null);
   readonly joinRejectedReason = signal<'name-taken' | 'room-not-found' | null>(null);
   readonly roomSummary = signal<RoomSummary | null>(null);
   readonly errorMessage = signal<string | null>(null);
@@ -50,6 +51,10 @@ export class RoomSocketService {
     switch (message.type) {
       case 'roomState':
         this.room.set(message.room);
+        this.joinRejectedReason.set(null);
+        break;
+      case 'roomInfo':
+        this.roomInfo.set(message);
         this.joinRejectedReason.set(null);
         break;
       case 'joinRejected':

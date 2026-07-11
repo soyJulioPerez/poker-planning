@@ -6,12 +6,19 @@ export interface DeckOption {
   values: string[];
 }
 
+export interface IconGroup {
+  id: string;
+  label: string;
+  icons: string[];
+}
+
 export interface Participant {
   name: string;
   isModerator: boolean;
   isVoter: boolean;
   connected: boolean;
   vote: string | null;
+  icon: string | null;
 }
 
 export interface ResolvedStory {
@@ -39,6 +46,7 @@ export interface RoomSummary {
 export interface Room {
   roomId: string;
   deckId: string;
+  iconGroupId: string | null;
   moderatorName: string;
   roundPhase: RoundPhase;
   currentStoryTitle: string | null;

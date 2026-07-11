@@ -2,7 +2,7 @@ import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME, roomKey, participantKey, connectionKey, nowPlusTtl } from '../lib/dynamo-client';
 import { generateRoomId } from '../lib/room-id';
 import { sendToConnection } from '../lib/broadcast';
-import { CreateRoomRequest, Room } from 'shared-contracts';
+import { AVAILABLE_ICON_GROUPS, CreateRoomRequest, Room } from 'shared-contracts';
 
 export async function handleCreateRoom(
   apiEndpoint: string,
@@ -12,6 +12,13 @@ export async function handleCreateRoom(
   const roomId = generateRoomId();
   const ttl = nowPlusTtl();
 
+  const iconGroupId = request.iconGroupId ?? null;
+  const iconGroup = iconGroupId
+    ? AVAILABLE_ICON_GROUPS.find((group) => group.id === iconGroupId)
+    : undefined;
+  const moderatorIcon =
+    iconGroup && request.icon && iconGroup.icons.includes(request.icon) ? request.icon : null;
+
   await ddb.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -19,6 +26,7 @@ export async function handleCreateRoom(
         ...roomKey(roomId),
         roomId,
         deckId: request.deckId,
+        iconGroupId: iconGroup ? iconGroupId : null,
         moderatorName: request.moderatorName,
         moderatorIsVoter: request.moderatorIsVoter,
         roundPhase: 'idle',
@@ -41,6 +49,7 @@ export async function handleCreateRoom(
         isVoter: request.moderatorIsVoter,
         connected: true,
         vote: null,
+        icon: moderatorIcon,
         ttl,
       },
     })
@@ -59,6 +68,7 @@ export async function handleCreateRoom(
   const room: Room = {
     roomId,
     deckId: request.deckId,
+    iconGroupId: iconGroup ? iconGroupId : null,
     moderatorName: request.moderatorName,
     roundPhase: 'idle',
     currentStoryTitle: null,
@@ -69,6 +79,7 @@ export async function handleCreateRoom(
         isVoter: request.moderatorIsVoter,
         connected: true,
         vote: null,
+        icon: moderatorIcon,
       },
     ],
     storiesEstimatedCount: 0,

@@ -5,12 +5,20 @@ export interface CreateRoomRequest {
   moderatorName: string;
   deckId: string;
   moderatorIsVoter: boolean;
+  iconGroupId?: string;
+  icon?: string;
 }
 
 export interface JoinRoomRequest {
   action: 'joinRoom';
   roomId: string;
   name: string;
+  icon?: string;
+}
+
+export interface GetRoomInfoRequest {
+  action: 'getRoomInfo';
+  roomId: string;
 }
 
 export interface VoteRequest {
@@ -55,6 +63,7 @@ export interface CloseRoomRequest {
 export type ClientRequest =
   | CreateRoomRequest
   | JoinRoomRequest
+  | GetRoomInfoRequest
   | VoteRequest
   | RevealRequest
   | ResolveStoryRequest
@@ -66,6 +75,13 @@ export type ClientRequest =
 export interface RoomStateMessage {
   type: 'roomState';
   room: Room;
+}
+
+export interface RoomInfoMessage {
+  type: 'roomInfo';
+  roomId: string;
+  deckId: string;
+  iconGroupId: string | null;
 }
 
 export interface JoinRejectedMessage {
@@ -85,6 +101,7 @@ export interface ErrorMessage {
 
 export type ServerMessage =
   | RoomStateMessage
+  | RoomInfoMessage
   | JoinRejectedMessage
   | RoomClosedMessage
   | ErrorMessage;

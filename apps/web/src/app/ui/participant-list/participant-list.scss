@@ -20,7 +20,13 @@
   opacity: 0.5;
 }
 
+.participant-list__icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 .participant-list__name {
+  font-size: 1.05rem;
   font-weight: 500;
 }
 
@@ -30,7 +36,7 @@
 }
 
 .participant-list__vote-status {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   color: #999;
   margin-left: auto;
 }

@@ -2,7 +2,7 @@ import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME, participantKey, connectionKey, nowPlusTtl } from '../lib/dynamo-client';
 import { getRoomMeta, getRoomParticipants, buildRoomState, maskRoomForViewer } from '../lib/room-repository';
 import { broadcastRoomState, sendToConnection } from '../lib/broadcast';
-import { JoinRoomRequest } from 'shared-contracts';
+import { AVAILABLE_ICON_GROUPS, JoinRoomRequest } from 'shared-contracts';
 
 export async function handleJoinRoom(
   apiEndpoint: string,
@@ -31,6 +31,13 @@ export async function handleJoinRoom(
 
   const ttl = nowPlusTtl();
 
+  const iconGroup = meta.iconGroupId
+    ? AVAILABLE_ICON_GROUPS.find((group) => group.id === meta.iconGroupId)
+    : undefined;
+  const icon =
+    existing?.icon ??
+    (iconGroup && request.icon && iconGroup.icons.includes(request.icon) ? request.icon : null);
+
   await ddb.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -42,6 +49,7 @@ export async function handleJoinRoom(
         isVoter: existing?.isVoter ?? true,
         connected: true,
         vote: existing?.vote ?? null,
+        icon,
         ttl,
       },
     })
