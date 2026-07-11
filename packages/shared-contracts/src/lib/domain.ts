@@ -4,6 +4,7 @@ export interface DeckOption {
   id: string;
   label: string;
   values: string[];
+  displayValues?: string[];
 }
 
 export interface IconGroup {

@@ -9,7 +9,12 @@ import { Card } from '../card/card';
 })
 export class VotingBoard {
   readonly deckValues = input.required<string[]>();
+  readonly displayValues = input<string[] | null>(null);
   readonly myVote = input<string | null>(null);
   readonly disabled = input(false);
   readonly vote = output<string>();
+
+  displayValueFor(index: number): string | null {
+    return this.displayValues()?.[index] ?? null;
+  }
 }

@@ -32,6 +32,14 @@ export async function handleResolveStory(
     return;
   }
 
+  if (!Number.isFinite(request.finalScore)) {
+    await sendToConnection(apiEndpoint, connectionId, {
+      type: 'error',
+      message: 'finalScore must be a finite number',
+    });
+    return;
+  }
+
   const resolvedStory: ResolvedStory = {
     title: meta.currentStoryTitle ?? 'Historia sin título',
     finalScore: request.finalScore,

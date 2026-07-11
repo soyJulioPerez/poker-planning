@@ -47,6 +47,12 @@ export class RoomPage {
     return AVAILABLE_DECKS.find((deck) => deck.id === room.deckId)?.values ?? [];
   });
 
+  readonly deckDisplayValues = computed(() => {
+    const room = this.room();
+    if (!room) return null;
+    return AVAILABLE_DECKS.find((deck) => deck.id === room.deckId)?.displayValues ?? null;
+  });
+
   readonly voteProgress = computed(() => {
     const room = this.room();
     if (!room) return { voted: 0, total: 0 };
@@ -57,6 +63,12 @@ export class RoomPage {
 
   get shareLink(): string {
     return `${window.location.origin}/room/${this.roomIdFromUrl}`;
+  }
+
+  modeAsNumber(mode: string[]): number | null {
+    if (mode.length !== 1) return null;
+    const value = Number(mode[0]);
+    return Number.isFinite(value) ? value : null;
   }
 
   vote(value: string): void {

@@ -7,11 +7,19 @@ TBD
 ## Requirements
 
 ### Requirement: Selección de mazo de estimación
-El sistema SHALL permitir al moderador elegir, al crear la sala, entre un conjunto de mazos predefinidos (por ejemplo Fibonacci y variantes) que se usarán durante toda la sesión.
+El sistema SHALL permitir al moderador elegir, al crear la sala, entre un conjunto de mazos predefinidos (por ejemplo Fibonacci y variantes) que se usarán durante toda la sesión. El catálogo de mazos predefinidos SHALL incluir variantes con emojis decorativos junto al valor numérico o sigla (por ejemplo "Fibonacci con manos" y "T-Shirt con iconos"), donde el valor de voto real SHALL seguir siendo el número o sigla, independientemente del texto decorativo mostrado en la carta. Todos los mazos predefinidos SHALL incluir los mismos símbolos de pausa: "?" (no sé estimar), "☕" (pausa/café) y "🧉" (pausa/mate).
 
 #### Scenario: Moderador selecciona un mazo al crear la sala
 - **WHEN** el moderador crea una sala y selecciona uno de los mazos predefinidos disponibles
 - **THEN** el sistema asocia ese mazo a la sala y lo utiliza para todas las rondas de votación de la sesión
+
+#### Scenario: Mazo con variante visual conserva el valor de voto real
+- **WHEN** un participante selecciona una carta de un mazo con texto decorativo (por ejemplo "✋☝ 6" en "Fibonacci con manos")
+- **THEN** el sistema registra como voto el valor real asociado a esa carta (por ejemplo "6"), no el texto decorativo mostrado
+
+#### Scenario: Símbolos de pausa disponibles en todos los mazos
+- **WHEN** un participante visualiza el mazo de votación de cualquiera de los mazos predefinidos
+- **THEN** el sistema ofrece tanto "☕" como "🧉" como cartas de pausa, además de "?"
 
 ### Requirement: Votación oculta
 El sistema SHALL permitir que cada participante habilitado para votar emita un voto sobre la historia actual, manteniendo dicho voto oculto para el resto hasta el revelado.
@@ -39,15 +47,23 @@ El sistema SHALL calcular y mostrar, tras el revelado, el promedio y la moda de 
 - **THEN** el sistema muestra el promedio calculado y el valor (o valores, en caso de empate) que constituyen la moda
 
 ### Requirement: Resolución manual de la historia
-El sistema SHALL permitir únicamente al moderador definir el valor final de estimación de la historia actual tras el revelado, ya sea aceptando el promedio, aceptando la moda (solo cuando existe un único valor de moda), o seleccionando el voto numérico de un participante puntual como puntuación definitiva. Cuando la moda tiene más de un valor empatado, el sistema SHALL mostrar dichos valores como texto informativo, sin ofrecer un botón para aceptarlos directamente.
+El sistema SHALL permitir únicamente al moderador definir el valor final de estimación de la historia actual tras el revelado, ya sea aceptando el promedio, aceptando la moda (solo cuando existe un único valor de moda y ese valor es numérico), o seleccionando el voto numérico de un participante puntual como puntuación definitiva. Cuando la moda tiene más de un valor empatado, o cuando su único valor no es numérico (por ejemplo "?", "☕" o "🧉"), el sistema SHALL mostrar dichos valores como texto informativo, sin ofrecer un botón para aceptarlos directamente. El sistema SHALL rechazar, tanto en la interfaz como en el servidor, cualquier intento de resolver la historia con un valor final no numérico.
 
 #### Scenario: Moderador acepta la moda como valor final
-- **WHEN** el moderador, tras el revelado, la moda tiene un único valor y el moderador elige aceptarlo
+- **WHEN** el moderador, tras el revelado, la moda tiene un único valor numérico y el moderador elige aceptarlo
 - **THEN** el sistema asigna ese valor como la puntuación definitiva de la historia actual
 
 #### Scenario: Moda empatada se muestra solo como texto informativo
 - **WHEN** el moderador visualiza el revelado y la moda tiene más de un valor empatado
 - **THEN** el sistema muestra los valores empatados como texto, sin un botón para aceptar la moda directamente
+
+#### Scenario: Moda con único valor no numérico no se puede aceptar
+- **WHEN** el moderador visualiza el revelado y la moda tiene un único valor no numérico (por ejemplo "☕" o "🧉")
+- **THEN** el sistema muestra ese valor como texto informativo, sin ofrecer un botón para aceptarlo como puntuación final
+
+#### Scenario: Servidor rechaza una resolución con valor no numérico
+- **WHEN** el servidor recibe una solicitud de resolución de historia cuyo valor final no es un número finito
+- **THEN** el sistema rechaza la acción y no registra la historia como resuelta
 
 #### Scenario: Moderador selecciona el voto de un participante como valor final
 - **WHEN** el moderador, tras el revelado, selecciona el voto numérico de un participante puntual

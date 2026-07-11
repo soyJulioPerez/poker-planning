@@ -11,7 +11,16 @@
       "Bash(dir *)",
       "Bash(dir)",
       "Bash(mkdir *)",
-      "Bash(mkdir)"
+      "Bash(mkdir)",
+      "Bash(cp *)",
+      "Bash(rm *)",
+      "Bash(npm exec nx -- run shared-contracts:build)",
+      "Bash(npm exec nx -- run shared-contracts:build *)",
+      "Bash(npm exec nx -- run shared-contracts:test)",
+      "Bash(npm exec nx -- run shared-contracts:test *)",
+      "Bash(npm exec nx -- run realtime-api:build)",
+      "Bash(npm exec nx -- run realtime-api:build *)",
+      "Bash(openspec *)"
     ]
   }
 }

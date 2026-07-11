@@ -62,8 +62,8 @@
                 Aceptar promedio ({{ currentRoom.revealResult.average }})
               </button>
             }
-            @if (currentRoom.revealResult.mode.length === 1) {
-              <button type="button" (click)="resolveWith(+currentRoom.revealResult.mode[0])">
+            @if (modeAsNumber(currentRoom.revealResult.mode); as numericMode) {
+              <button type="button" (click)="resolveWith(numericMode)">
                 Aceptar moda ({{ currentRoom.revealResult.mode[0] }})
               </button>
             }
@@ -73,6 +73,7 @@
         <h2>Votá tu estimación</h2>
         <app-voting-board
           [deckValues]="deckValues()"
+          [displayValues]="deckDisplayValues()"
           [myVote]="myParticipant()?.vote ?? null"
           [disabled]="myParticipant() ? !myParticipant()!.isVoter : true"
           (vote)="vote($event)"
