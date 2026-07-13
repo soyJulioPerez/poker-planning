@@ -1,1 +1,7 @@
 <router-outlet></router-outlet>
+
+<app-help-button (opened)="helpOpen.set(true)" />
+
+@if (helpOpen()) {
+  <app-help-modal (closed)="helpOpen.set(false)" />
+}

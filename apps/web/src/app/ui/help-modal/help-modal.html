@@ -1,0 +1,72 @@
+<div
+  class="help-modal__overlay"
+  role="presentation"
+  (click)="$event.target === $event.currentTarget && closed.emit()"
+>
+  <div class="help-modal__panel" role="dialog" aria-modal="true" aria-label="Guía de estimación">
+    <header class="help-modal__header">
+      <h2>Guía de estimación</h2>
+      <button
+        type="button"
+        class="help-modal__close"
+        aria-label="Cerrar guía de estimación"
+        (click)="closed.emit()"
+      >
+        ✕
+      </button>
+    </header>
+
+    <div class="help-modal__tabs">
+      <button
+        type="button"
+        [class.help-modal__tab--active]="activeTab() === 'new'"
+        (click)="setTab('new')"
+      >
+        Si sos nuevo
+      </button>
+      <button
+        type="button"
+        [class.help-modal__tab--active]="activeTab() === 'moderator'"
+        (click)="setTab('moderator')"
+      >
+        Si moderás
+      </button>
+      <button
+        type="button"
+        [class.help-modal__tab--active]="activeTab() === 'reminder'"
+        (click)="setTab('reminder')"
+      >
+        Ya con experiencia
+      </button>
+    </div>
+
+    <div class="help-modal__content">
+      @if (activeTab() === 'new') {
+        <ul>
+          <li>Planning Poker es una técnica de estimación en equipo: cada persona vota en secreto una carta que representa el esfuerzo o la complejidad de una historia, y los votos se revelan todos a la vez.</li>
+          <li>Se vota en secreto para que nadie ancle su estimación al número que dijo otra persona antes.</li>
+          <li>Los puntos no son horas ni días: miden esfuerzo, complejidad e incertidumbre relativos, no tiempo. Una historia de 5 puntos no es "5 horas de trabajo".</li>
+          <li>Se estima en relativo, comparando contra historias ya estimadas antes ("esto es más grande que aquella de 2 puntos, pero más chico que esta otra de 8"), no calculando el esfuerzo en abstracto desde cero.</li>
+          <li>El mazo de Fibonacci (1, 2, 3, 5, 8, 13...) no usa números consecutivos a propósito: cuanto más grande la historia, más difícil es precisar el esfuerzo, así que la escala se abre a medida que crece.</li>
+          <li>"?" significa "necesito más información para poder estimar", y "☕" significa "necesito una pausa" — no son cartas a evitar, son parte normal del proceso.</li>
+        </ul>
+      } @else if (activeTab() === 'moderator') {
+        <ul>
+          <li>Conviene esperar a que todo el equipo haya votado antes de revelar: un voto que falta es una perspectiva que todavía no se escuchó.</li>
+          <li>Si los votos revelados están muy dispersos (por ejemplo, alguien vota 2 y otra persona 13), pedile primero a quien votó el valor más alto y a quien votó el más bajo que expliquen su razonamiento — esa diferencia suele indicar que alguien vio un riesgo, una dependencia o un detalle que el resto no consideró.</li>
+          <li>Nunca "resuelvas" una dispersión promediando los extremos (por ejemplo, convertir 3 y 8 en un 5): eso borra justo la información que la diferencia de votos estaba señalando. Es mejor discutir y volver a votar.</li>
+          <li>Si tras discutir el equipo sigue sin converger, no hay que iterar votos indefinidamente: suele convenir dividir la historia en partes más chicas, o estimarla con el valor más alto votado y ajustar más adelante con lo que se aprenda.</li>
+          <li>Moderar no es lo mismo que ser Product Owner: en esta app cualquiera puede moderar, incluido un desarrollador del equipo. Lo que importa es que, mientras se modera, conviene facilitar la conversación y responder preguntas sobre la historia antes que opinar primero — decir un número en voz alta puede arrastrar el resto de los votos. Si preferís no influir en la estimación, podés desmarcar "quiero votar como moderador" al crear la sala.</li>
+        </ul>
+      } @else {
+        <ul>
+          <li>El objetivo de Planning Poker no es "llegar a un número" — es que todo el equipo termine con el mismo entendimiento de la historia.</li>
+          <li>Una dispersión alta de votos suele ser una señal de que el equipo no está viendo la historia de la misma manera, no solo de incertidumbre técnica.</li>
+          <li>Si dos personas votan muy distinto, la pregunta útil es "¿qué viste vos que yo no?", no "quién tiene razón".</li>
+          <li>Nunca conviene convertir puntos a horas: hacerlo reintroduce los problemas que la estimación relativa buscaba evitar (una hora no vale lo mismo para cada persona, y aparece presión por "cumplir" el tiempo convertido).</li>
+          <li>Vale la pena revisar de tanto en tanto cómo salieron historias ya estimadas, para calibrar el criterio del equipo con la experiencia real, no solo con la intuición del momento.</li>
+        </ul>
+      }
+    </div>
+  </div>
+</div>
