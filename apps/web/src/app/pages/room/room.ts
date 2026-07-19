@@ -41,17 +41,17 @@ export class RoomPage {
     return room?.participants.find((p) => p.name === name) ?? null;
   });
 
-  readonly deckValues = computed(() => {
-    const room = this.room();
-    if (!room) return [];
-    return AVAILABLE_DECKS.find((deck) => deck.id === room.deckId)?.values ?? [];
-  });
-
-  readonly deckDisplayValues = computed(() => {
+  readonly deck = computed(() => {
     const room = this.room();
     if (!room) return null;
-    return AVAILABLE_DECKS.find((deck) => deck.id === room.deckId)?.displayValues ?? null;
+    return AVAILABLE_DECKS.find((deck) => deck.id === room.deckId) ?? null;
   });
+
+  readonly deckValues = computed(() => this.deck()?.values ?? []);
+
+  readonly deckDisplayValues = computed(() => this.deck()?.displayValues ?? null);
+
+  readonly deckNumericValues = computed(() => this.deck()?.numericValues ?? null);
 
   readonly voteProgress = computed(() => {
     const room = this.room();
@@ -67,8 +67,16 @@ export class RoomPage {
 
   modeAsNumber(mode: string[]): number | null {
     if (mode.length !== 1) return null;
-    const value = Number(mode[0]);
+    const numericValues = this.deckNumericValues();
+    const value = numericValues?.[mode[0]] ?? Number(mode[0]);
     return Number.isFinite(value) ? value : null;
+  }
+
+  valueLabel(value: number): string {
+    const numericValues = this.deckNumericValues();
+    if (!numericValues) return `${value}`;
+    const entry = Object.entries(numericValues).find(([, num]) => num === value);
+    return entry ? entry[0] : `${value}`;
   }
 
   vote(value: string): void {

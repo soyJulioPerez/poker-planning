@@ -5,6 +5,7 @@ export interface DeckOption {
   label: string;
   values: string[];
   displayValues?: string[];
+  numericValues?: Record<string, number>;
 }
 
 export interface IconGroup {

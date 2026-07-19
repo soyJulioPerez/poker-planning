@@ -2,9 +2,16 @@ import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME, connectionKey } from '../lib/dynamo-client';
 import { getRoomMeta, buildRoomState, maskRoomForViewer } from '../lib/room-repository';
 import { broadcastRoomState, sendToConnection } from '../lib/broadcast';
-import { RevealRequest, RevealResult, VoteDistributionEntry } from 'shared-contracts';
+import { AVAILABLE_DECKS, RevealRequest, RevealResult, VoteDistributionEntry } from 'shared-contracts';
 
-function computeRevealResult(votes: Record<string, string>): RevealResult {
+function toNumeric(value: string, numericValues?: Record<string, number>): number {
+  return numericValues?.[value] ?? Number(value);
+}
+
+function computeRevealResult(
+  votes: Record<string, string>,
+  numericValues?: Record<string, number>
+): RevealResult {
   const values = Object.values(votes);
 
   const counts = new Map<string, number>();
@@ -15,14 +22,22 @@ function computeRevealResult(votes: Record<string, string>): RevealResult {
     ([value, count]) => ({ value, count })
   );
 
-  const numericValues = values
-    .map((value) => Number(value))
+  const parsedValues = values
+    .map((value) => toNumeric(value, numericValues))
     .filter((value) => !Number.isNaN(value));
 
-  const average =
-    numericValues.length > 0
-      ? Math.round((numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length) * 10) / 10
+  let average =
+    parsedValues.length > 0
+      ? Math.round((parsedValues.reduce((sum, v) => sum + v, 0) / parsedValues.length) * 10) / 10
       : null;
+
+  if (average !== null && numericValues) {
+    const rawAverage = average;
+    const scale = Object.values(numericValues);
+    average = scale.reduce((closest, candidate) =>
+      Math.abs(candidate - rawAverage) < Math.abs(closest - rawAverage) ? candidate : closest
+    );
+  }
 
   let mode: string[] = [];
   if (counts.size > 0) {
@@ -80,7 +95,8 @@ export async function handleReveal(
     }
   }
 
-  const revealResult = computeRevealResult(votes);
+  const deck = AVAILABLE_DECKS.find((d) => d.id === meta.deckId);
+  const revealResult = computeRevealResult(votes, deck?.numericValues);
 
   await ddb.send(
     new UpdateCommand({

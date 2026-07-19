@@ -51,6 +51,7 @@
         <app-reveal-panel
           [result]="currentRoom.revealResult"
           [isModerator]="isModerator()"
+          [numericValues]="deckNumericValues()"
           (resolveVote)="resolveWith($event)"
           (newRound)="newRound()"
         />
@@ -59,7 +60,7 @@
           <div class="room__resolution">
             @if (currentRoom.revealResult.average !== null) {
               <button type="button" (click)="resolveWith(currentRoom.revealResult.average)">
-                Aceptar promedio ({{ currentRoom.revealResult.average }})
+                Aceptar promedio ({{ valueLabel(currentRoom.revealResult.average) }})
               </button>
             }
             @if (modeAsNumber(currentRoom.revealResult.mode); as numericMode) {

@@ -11,12 +11,13 @@ import { RevealResult } from 'shared-contracts';
 export class RevealPanel {
   readonly result = input.required<RevealResult>();
   readonly isModerator = input(false);
+  readonly numericValues = input<Record<string, number> | null>(null);
 
   readonly resolveVote = output<number>();
   readonly newRound = output<void>();
 
   voteAsNumber(vote: string): number | null {
-    const value = Number(vote);
+    const value = this.numericValues()?.[vote] ?? Number(vote);
     return Number.isFinite(value) ? value : null;
   }
 }
