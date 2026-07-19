@@ -5,7 +5,7 @@
       @for (story of summary.stories; track story.title) {
         <li>
           <span>{{ story.title }}</span>
-          <span>{{ story.finalScore ?? '—' }} pts</span>
+          <span>{{ story.finalScore !== null ? valueLabel(story.finalScore) : '—' }} pts</span>
         </li>
       }
     </ul>
@@ -32,7 +32,7 @@
         <p>Historia actual: <strong>{{ currentRoom.currentStoryTitle }}</strong></p>
       } @else if (currentRoom.lastResolvedStory) {
         <p class="room__last-resolved">
-          Historia "{{ currentRoom.lastResolvedStory.title }}" resuelta con {{ currentRoom.lastResolvedStory.finalScore ?? '—' }} pts
+          Historia "{{ currentRoom.lastResolvedStory.title }}" resuelta con {{ currentRoom.lastResolvedStory.finalScore !== null ? valueLabel(currentRoom.lastResolvedStory.finalScore) : '—' }} pts
         </p>
       }
 
