@@ -1,0 +1,1 @@
+Sin specs de dominio para este change: es una corrección de tooling de desarrollo local (cómo se arranca el backend en la máquina del desarrollador), sin comportamiento observable de la aplicación ni requirements nuevos o modificados. Ver `proposal.md` (sección Capabilities) para el detalle de por qué no aplica.

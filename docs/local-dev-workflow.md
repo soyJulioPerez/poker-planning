@@ -6,7 +6,7 @@ Guía paso a paso para correr la app completa (frontend Angular + backend WebSoc
 
 `sam local invoke` (ver [sam-local-dynamodb-local.md](sam-local-dynamodb-local.md)) sirve para probar una Lambda puntual con un evento de ejemplo, pero no emula bien una WebSocket API completa (conexiones persistentes, broadcast a otros clientes). Para poder abrir el navegador y jugar con la app de verdad, se usa en cambio:
 
-- Un **servidor WebSocket real** (`apps/realtime-api/src/dev-server.ts`, con la librería `ws`) que expone las mismas acciones (`createRoom`, `joinRoom`, etc.) que usan las Lambdas, ejecutando exactamente la misma lógica de negocio (`handleCreateRoom`, `handleJoinRoom`, ...).
+- Un **servidor WebSocket real** (`apps/realtime-api/src/main.ts`, con la librería `ws`) que expone las mismas acciones (`createRoom`, `joinRoom`, etc.) que usan las Lambdas, ejecutando exactamente la misma lógica de negocio (`handleCreateRoom`, `handleJoinRoom`, ...). Se arranca vía `nx serve realtime-api` (executor `@nx/js:node`), igual que el resto de los proyectos del monorepo — no depende de ninguna herramienta externa a Nx.
 - **DynamoDB Local** en Docker, igual que en el flujo de `sam local invoke`.
 - El **dev server de Angular** normal (`nx serve web`).
 
@@ -47,7 +47,7 @@ Si el contenedor de DynamoDB Local se reinicia (`docker stop` / `docker start` d
 npm run dev:api
 ```
 
-Esto arranca `apps/realtime-api/src/dev-server.ts` con `tsx watch` (recarga automática al guardar cambios), escuchando en `ws://localhost:3001`, apuntando a la tabla `poker-planning-rooms` en DynamoDB Local.
+Esto corre `nx serve realtime-api` (build con `@nx/esbuild` + ejecución con `@nx/js:node`, con recarga automática al guardar cambios), escuchando en `ws://localhost:3001`, apuntando a la tabla `poker-planning-rooms` en DynamoDB Local.
 
 Deberías ver:
 ```

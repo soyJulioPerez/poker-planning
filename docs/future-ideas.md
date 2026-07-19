@@ -15,6 +15,7 @@ Backlog de ideas que surgen durante el uso/pruebas del MVP, pendientes de explor
 - **Grupos de íconos/avatares elegibles al crear la sala** — implementado: `IconGroup` en `domain.ts`, `Room.iconGroupId`, `Participant.icon`, catálogo en `icon-groups.ts`, selector en `home.html`/`home.ts`.
 - **Mover el toggle "Quiero votar como moderador" junto a su fila en `ParticipantList`** — implementado en `moderator-voter-toggle-in-list`: el switch vive dentro de la fila del moderador en `participant-list.html`.
 - **Botón de ayuda con buenas prácticas de estimación** — implementado en `estimation-help-guide`: botón FAB persistente y panel modal con tabs (nuevos, moderadores, equipos con experiencia).
+- **No aceptar "?" o "☕"/"🧉" como valor final de la historia** — verificado como completamente cubierto (no solo parcial): no existe ningún input manual de texto libre en la UI actual (fue removido en `improve-story-resolution`, reemplazado por click-to-resolve); las 3 vías vigentes para resolver (click en voto individual, "Aceptar promedio", "Aceptar moda") filtran símbolos antes de habilitar el botón (`voteAsNumber`, `average !== null`, `modeAsNumber`), y `resolve-story.ts` rechaza server-side cualquier `finalScore` no finito como defensa adicional. Sobre "igualar casualmente un símbolo": `average` es de tipo `number | null` (nunca puede ser un símbolo), y aunque `mode` sí puede contener un símbolo como string (ej. `["☕"]` si empata), `modeAsNumber()` lo descarta correctamente (`Number("☕")` → `NaN` → `null`), por lo que nunca se ofrece un botón para aceptarlo.
 
 ## Pendiente por implementar
 
@@ -22,10 +23,6 @@ Backlog de ideas que surgen durante el uso/pruebas del MVP, pendientes de explor
 
 - **Temporizador para la ronda de votación**: el moderador podría configurar un límite de tiempo por ronda; al cumplirse, los participantes que no votaron quedan marcados con un voto nulo/vacío automáticamente (en vez de quedar indefinidamente "esperando voto"). A explorar: ¿el temporizador es configurable por sala o fijo?, ¿se muestra una cuenta regresiva visible a todos?, ¿qué pasa si el voto nulo entra en el cálculo de promedio/moda (probablemente se excluye, similar a "?" o "☕")?
 - **Bloquear "Revelar" hasta que todos los votantes hayan votado**: actualmente el moderador puede revelar con solo un voto emitido (así lo define la spec actual: "con al menos un voto emitido"). Esta idea cambiaría esa regla para exigir que todos los participantes habilitados como votantes hayan votado antes de habilitar el botón. A explorar: ¿qué pasa si alguien se desconecta a mitad de la ronda (bloquearía indefinidamente)?, ¿debería combinarse con la idea del temporizador de arriba como vía de escape?, ¿el moderador podría tener una opción de "forzar revelado" igual, para no quedar bloqueado por un voto pendiente eterno?
-
-### Mazos y valores de estimación
-
-- **No aceptar "?" o "☕"/"🧉" como valor final de la historia** (parcialmente cubierto): `resolve-story.ts` ya exige `Number.isFinite(finalScore)` en el backend, y en la UI el click-to-resolve sobre un voto (`reveal-panel.html`) ya filtra valores no numéricos vía `voteAsNumber` — en la práctica hoy no se puede resolver con un símbolo por la vía estándar de la UI. Lo que falta: un mensaje de validación explícito si se intentara por otra vía (ej. input manual), y confirmar/documentar que la moda o el promedio nunca "igualan" casualmente un símbolo.
 
 ### Gestión de salas
 
