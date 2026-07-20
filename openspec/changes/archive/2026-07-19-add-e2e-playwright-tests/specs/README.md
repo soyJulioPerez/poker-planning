@@ -1,0 +1,1 @@
+Sin specs de dominio para este change: es infraestructura de testing (agregar una suite e2e con Playwright y el mecanismo de Angular environments que la sustenta), sin comportamiento observable nuevo ni modificado de la aplicación. Ver `proposal.md` (sección Capabilities) para el detalle de por qué no aplica.

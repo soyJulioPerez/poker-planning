@@ -11,7 +11,10 @@
     "build": "nx build web",
     "build:api": "nx build realtime-api",
     "test": "nx run-many --target=test --all",
-    "lint": "nx run-many --target=lint --all"
+    "lint": "nx run-many --target=lint --all",
+    "test:e2e": "npm run e2e:db:up && nx e2e e2e",
+    "test:e2e:aws": "cross-env E2E_TARGET=aws nx e2e e2e",
+    "e2e:db:up": "(docker start dynamodb-local || docker run -d --name dynamodb-local -p 8000:8000 amazon/dynamodb-local:latest) && npm run dev:db:create-table || true"
   },
   "private": true,
   "dependencies": {

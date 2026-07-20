@@ -9,7 +9,7 @@ export const HOBBIES_ICON_GROUP: IconGroup = {
 export const EMOTIONS_ICON_GROUP: IconGroup = {
   id: 'emotions',
   label: 'Emociones',
-  icons: ['😀', '😎', '🤓', '😴', '🥳', '🤔', '😅', '🥶', '🤯', '😇', '🙃', '🤠'],
+  icons: ['😀', '😢', '😡', '😱', '😍', '😌', '🤔', '😴', '🤩', '😕', '🥳', '🥶'],
 };
 
 export const ANIMALS_ICON_GROUP: IconGroup = {

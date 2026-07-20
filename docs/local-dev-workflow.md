@@ -80,9 +80,9 @@ docker stop dynamodb-local
 
 Y cerrar (Ctrl+C) los procesos de `npm run dev:api` y `npm start`.
 
-## Verificar sin abrir el navegador manualmente (con Playwright)
+## Verificar sin abrir el navegador manualmente (suite e2e)
 
-Si se quiere automatizar la verificación en vez de hacerla a mano, se puede usar Playwright (ya instalado como dependencia del proyecto vía `@playwright/test`, parte del preset de Nx).
+Existe una suite de tests end-to-end con Playwright en el proyecto Nx `e2e/` (`e2e/playwright.config.mts`, `e2e/estimation-flow.spec.ts`), que reemplaza la necesidad de scripts ad-hoc o de probar manualmente cada flujo.
 
 ### Instalar el navegador (solo la primera vez)
 
@@ -90,49 +90,41 @@ Si se quiere automatizar la verificación en vez de hacerla a mano, se puede usa
 npx playwright install chromium
 ```
 
-### Ejemplo de script de verificación puntual
+### Correr los tests contra el backend local
 
-Crear un archivo temporal en la raíz del proyecto (tiene que estar dentro del repo para que `node` resuelva `@playwright/test` desde `node_modules`; no funciona si se ejecuta desde una carpeta fuera del proyecto):
-
-```js
-// pw-check.mjs
-import { chromium } from '@playwright/test';
-
-const browser = await chromium.launch();
-const modPage = await browser.newPage();
-const partPage = await browser.newPage();
-
-await modPage.goto('http://localhost:4200');
-await modPage.getByLabel('Tu nombre').fill('Ana');
-await modPage.getByRole('button', { name: 'Crear sala' }).last().click();
-await modPage.waitForURL(/\/room\//, { timeout: 5000 });
-const roomId = modPage.url().split('/room/')[1];
-console.log('Room created:', roomId);
-
-await partPage.goto('http://localhost:4200');
-await partPage.getByRole('button', { name: 'Unirse a sala' }).first().click();
-await partPage.getByLabel('Código de sala').fill(roomId);
-await partPage.getByLabel('Tu nombre').fill('Bruno');
-await partPage.getByRole('button', { name: 'Unirse', exact: true }).click();
-await partPage.waitForURL(/\/room\//, { timeout: 5000 });
-
-await modPage.waitForSelector('text=Bruno', { timeout: 5000 });
-console.log('Moderador ve a Bruno en la lista: OK');
-
-await browser.close();
-```
-
-Correrlo con (requiere que `dev:api` y `npm start` ya estén corriendo):
+**Importante**: a diferencia de lo que podría esperarse, esta suite **no levanta el backend ni el frontend automáticamente**. Se intentó que `playwright.config.mts` orquestara todo (`nx serve realtime-api` + `nx serve web` como parte de `webServer`), pero Nx lo detecta como una invocación recursiva del mismo target (`Recursive task invocation detected`) — el plugin `@nx/playwright` ya infiere automáticamente que esos targets deben correr antes de los tests a partir del propio comando, así que declararlo también dentro de `webServer.command` termina invocándolos dos veces. Por eso, en modo local, hay que levantar el entorno manualmente antes de correr los tests — son los mismos pasos 1-4 de arriba, ni más ni menos:
 
 ```bash
-node pw-check.mjs
+# Terminal 1: DynamoDB Local (si no está corriendo)
+npm run e2e:db:up
+
+# Terminal 2: backend
+npm run dev:api
+
+# Terminal 3: frontend
+npm start
+
+# Terminal 4 (o la misma que uses para comandos puntuales): correr los tests
+npx nx e2e e2e
 ```
 
-Borrar el archivo (`pw-check.mjs`) al terminar — es un script de prueba puntual, no parte de la suite de tests del proyecto.
+`npm run test:e2e` existe como atajo, pero **solo** levanta DynamoDB Local (`e2e:db:up`) y corre los tests — igual asume que ya tenés `dev:api` y `npm start` corriendo en otras terminales. Si no lo están, los tests van a fallar intentando conectar a `ws://localhost:3001` / `http://localhost:4200` sin nadie escuchando ahí.
+
+### Correr los tests contra AWS
+
+```bash
+npm run test:e2e:aws
+```
+
+Este modo sí es autocontenido: Playwright levanta `web` con la configuración de AWS (`environment.aws.ts`) automáticamente, sin necesitar nada del backend local — los tests corren contra el stack real ya desplegado. Cada corrida deja datos de prueba en la tabla real de AWS (sin limpieza automática todavía).
+
+**Limitación conocida**: correr contra AWS es más lento e inestable que contra el backend local (WebSocket real en la nube, posible cold start de Lambda en la primera conexión). El spec ya tiene timeouts ampliados en este modo (90s generales, 30s para esperar navegación tras crear/unirse a una sala), pero igual pueden aparecer fallos intermitentes por timeout sin que sea un bug del test — si esto pasa, reintentar suele alcanzar. Si el timeout ocurre justo después de crear la sala (esperando la navegación a `/room/<código>`), es la Lambda tardando en responder al primer mensaje WebSocket, no un problema del flujo en sí.
+
+**Si un solo navegador no alcanza**: hoy la suite corre solo en `chromium` (ver `e2e/playwright.config.mts`, sección `projects`) para mantenerla simple y reducir la carga concurrente contra el WebSocket real de AWS. Se puede reactivar `firefox`/`webkit` descomentando esa sección si hace falta cobertura cross-browser.
 
 ### Nota sobre selectores ambiguos
 
-Si un texto de botón aparece más de una vez en la página (por ejemplo el tab "Unirse a sala" y el botón de submit "Unirse"), Playwright falla en "strict mode" con un error `resolved to 2 elements`. Solución: usar `{ exact: true }` o acotar con `.first()`/`.last()` para desambiguar.
+Si un texto de botón aparece más de una vez en la página (por ejemplo el tab "Unirse a sala" y el botón de submit "Unirse"), Playwright falla en "strict mode" con un error `resolved to 2 elements`. Solución: usar `{ exact: true }` o acotar con `.first()`/`.last()` para desambiguar — ver `e2e/estimation-flow.spec.ts` para ejemplos ya resueltos.
 
 ## Problema conocido: tests unitarios de Angular rotos
 

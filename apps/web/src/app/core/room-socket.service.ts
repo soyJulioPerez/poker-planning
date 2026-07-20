@@ -1,8 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { ClientRequest, Room, RoomInfoMessage, RoomSummary, ServerMessage } from 'shared-contracts';
+import { environment } from '../../environments/environment';
 
-//const WEBSOCKET_URL = 'ws://localhost:3001';
-const WEBSOCKET_URL = 'wss://imzlnpyshh.execute-api.us-east-2.amazonaws.com/dev';
+const WEBSOCKET_URL = environment.wsUrl;
 
 const SESSION_KEY = 'poker-planning-session';
 
