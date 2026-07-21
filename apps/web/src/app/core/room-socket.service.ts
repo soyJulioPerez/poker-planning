@@ -89,14 +89,25 @@ export class RoomSocketService {
     sessionStorage.removeItem(SESSION_KEY);
   }
 
+  private getSessionFor(roomId: string): StoredSession | null {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+
+    const session: StoredSession = JSON.parse(raw);
+    if (session.roomId !== roomId) return null;
+
+    return session;
+  }
+
+  hasSessionFor(roomId: string): boolean {
+    return this.getSessionFor(roomId) !== null;
+  }
+
   rejoinIfNeeded(roomId: string): void {
     if (this.room()) return;
 
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return;
-
-    const session: StoredSession = JSON.parse(raw);
-    if (session.roomId !== roomId) return;
+    const session = this.getSessionFor(roomId);
+    if (!session) return;
 
     this.myName.set(session.name);
     this.connect();

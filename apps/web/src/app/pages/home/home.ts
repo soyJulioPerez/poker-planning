@@ -1,6 +1,6 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AVAILABLE_DECKS, AVAILABLE_ICON_GROUPS } from 'shared-contracts';
 import { RoomSocketService } from '../../core/room-socket.service';
 import { IconPicker } from '../../ui/icon-picker/icon-picker';
@@ -20,6 +20,7 @@ const NONE_ICON_GROUP_ID = 'none';
 export class Home {
   private readonly socketService = inject(RoomSocketService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private submitTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   readonly decks = AVAILABLE_DECKS;
@@ -70,6 +71,13 @@ export class Home {
         this.stopSubmitting();
       }
     });
+
+    const roomFromQuery = this.route.snapshot.queryParamMap.get('room');
+    if (roomFromQuery) {
+      this.mode.set('join');
+      this.joinRoomId = roomFromQuery.toUpperCase();
+      this.fetchRoomInfoForJoin();
+    }
   }
 
   private startSubmitting(): void {
@@ -108,6 +116,10 @@ export class Home {
   }
 
   onJoinRoomIdBlur(): void {
+    this.fetchRoomInfoForJoin();
+  }
+
+  private fetchRoomInfoForJoin(): void {
     const roomId = this.joinRoomId.trim().toUpperCase();
     if (!roomId) return;
     this.joinIcon = null;

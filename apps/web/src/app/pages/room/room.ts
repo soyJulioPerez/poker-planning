@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AVAILABLE_DECKS } from 'shared-contracts';
 import { RoomSocketService } from '../../core/room-socket.service';
@@ -15,6 +15,7 @@ import { RevealPanel } from '../../ui/reveal-panel/reveal-panel';
 })
 export class RoomPage {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly socketService = inject(RoomSocketService);
 
   readonly room = this.socketService.room;
@@ -25,8 +26,12 @@ export class RoomPage {
   nextStoryTitle = '';
 
   constructor() {
-    if (this.roomIdFromUrl) {
+    if (!this.roomIdFromUrl) return;
+
+    if (this.socketService.hasSessionFor(this.roomIdFromUrl)) {
       this.socketService.rejoinIfNeeded(this.roomIdFromUrl);
+    } else {
+      this.router.navigate(['/'], { queryParams: { room: this.roomIdFromUrl } });
     }
   }
 
@@ -62,7 +67,7 @@ export class RoomPage {
   });
 
   get shareLink(): string {
-    return `${window.location.origin}/room/${this.roomIdFromUrl}`;
+    return window.location.href;
   }
 
   modeAsNumber(mode: string[]): number | null {
