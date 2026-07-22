@@ -126,6 +126,10 @@ Este modo sí es autocontenido: Playwright levanta `web` con la configuración d
 
 Si un texto de botón aparece más de una vez en la página (por ejemplo el tab "Unirse a sala" y el botón de submit "Unirse"), Playwright falla en "strict mode" con un error `resolved to 2 elements`. Solución: usar `{ exact: true }` o acotar con `.first()`/`.last()` para desambiguar — ver `e2e/estimation-flow.spec.ts` para ejemplos ya resueltos.
 
+## Despliegue a producción
+
+El frontend (`web`) se despliega automáticamente a GitHub Pages en cada push a `master` (`.github/workflows/deploy-web.yml`). El backend (`realtime-api`) también se despliega automáticamente a AWS en cada push a `master` que toque `apps/realtime-api/**`, `packages/shared-contracts/**` o `infra/**` (`.github/workflows/deploy-backend.yml`, ver [aws-oidc-setup.md](aws-oidc-setup.md) para el setup de credenciales). Ya no hace falta correr `sam deploy` a mano para que un cambio normal llegue a producción — el flujo manual descrito en [aws-deployment.md](aws-deployment.md) sigue disponible como fallback (por ejemplo, para forzar un redeploy sin cambios de código, o para desplegar a un stack separado de pruebas).
+
 ## Problema conocido: tests unitarios de Angular rotos
 
 Los pasos de arriba no dependen de `nx test web` / `nx run web:vite:test` — esos tests unitarios de componentes están actualmente rotos por una incompatibilidad de versiones, ver [known-issues.md](known-issues.md). La verificación manual (o con Playwright) descrita en este documento es el camino recomendado mientras ese problema no se resuelva.

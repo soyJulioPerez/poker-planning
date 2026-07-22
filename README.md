@@ -51,7 +51,7 @@ Abrir `http://localhost:4200`.
 
 ## Despliegue a AWS
 
-Ver la guía completa en [docs/aws-deployment.md](docs/aws-deployment.md) (incluye cómo desplegar, verificar, actualizar, y eliminar el stack).
+El backend se despliega automáticamente a AWS en cada push a `master` vía GitHub Actions (`.github/workflows/deploy-backend.yml`), autenticado con OIDC — ver [docs/aws-oidc-setup.md](docs/aws-oidc-setup.md) para el setup de credenciales (paso único) y la explicación del mecanismo. Para el flujo manual (fallback, o desplegar a un stack distinto), ver la guía completa en [docs/aws-deployment.md](docs/aws-deployment.md) (incluye cómo desplegar, verificar, actualizar, y eliminar el stack).
 
 ```bash
 cd infra
@@ -84,7 +84,8 @@ openspec/
   changes/planning-poker-mvp/  Proceso de diseño: proposal, design, specs, tasks
 docs/
   local-dev-workflow.md    Cómo levantar y probar el entorno local paso a paso
-  aws-deployment.md        Cómo desplegar, verificar y eliminar el stack de AWS
+  aws-deployment.md        Cómo desplegar, verificar y eliminar el stack de AWS (flujo manual)
+  aws-oidc-setup.md        Setup único de OIDC para que GitHub Actions despliegue el backend automáticamente
   sam-local-dynamodb-local.md  Notas de debugging de SAM local + DynamoDB Local
   known-issues.md          Problemas conocidos (test runner de Angular)
   future-ideas.md          Backlog de ideas para futuras iteraciones

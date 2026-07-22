@@ -1,0 +1,51 @@
+name: Deploy backend to AWS
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/realtime-api/**'
+      - 'packages/shared-contracts/**'
+      - 'infra/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: sam build
+        working-directory: infra
+        run: sam build
+
+      - name: sam deploy
+        working-directory: infra
+        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
