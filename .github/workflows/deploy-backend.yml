@@ -45,6 +45,8 @@ jobs:
       - name: sam build
         working-directory: infra
         run: sam build
+        env:
+          PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}
 
       - name: sam deploy
         working-directory: infra
