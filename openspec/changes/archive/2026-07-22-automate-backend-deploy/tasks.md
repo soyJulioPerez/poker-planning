@@ -18,8 +18,8 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Trigger the workflow manually via `workflow_dispatch` and confirm it authenticates via OIDC (no static keys) and completes `sam deploy` successfully
-- [ ] 3.2 Confirm the deployed stack (`poker-planning-dev`) is unchanged in behavior — WebSocket URL stable, existing rooms/table unaffected
+- [x] 3.1 Trigger the workflow manually via `workflow_dispatch` and confirm it authenticates via OIDC (no static keys) and completes `sam deploy` successfully
+- [x] 3.2 Confirm the deployed stack (`poker-planning-dev`) is unchanged in behavior — WebSocket URL stable, existing rooms/table unaffected
 - [ ] 3.3 Make a trivial change under `packages/shared-contracts/` on a branch, merge to `master`, and confirm the workflow triggers automatically and deploys
 - [ ] 3.4 Confirm a `master` push touching only `apps/web/**` does NOT trigger the backend workflow
 

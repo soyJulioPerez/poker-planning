@@ -125,9 +125,31 @@ Crear `deploy-permissions-policy.json`:
         "cloudformation:DescribeStacks",
         "cloudformation:DescribeStackEvents",
         "cloudformation:GetTemplate",
+        "cloudformation:GetTemplateSummary",
         "cloudformation:ListStackResources"
       ],
       "Resource": "arn:aws:cloudformation:us-east-2:343218183958:stack/poker-planning-dev/*"
+    },
+    {
+      "Sid": "CloudFormationManagedStackOps",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:ListStackResources",
+        "cloudformation:CreateStack"
+      ],
+      "Resource": "arn:aws:cloudformation:us-east-2:343218183958:stack/aws-sam-cli-managed-default/*"
+    },
+    {
+      "Sid": "CloudFormationServerlessTransform",
+      "Effect": "Allow",
+      "Action": ["cloudformation:CreateChangeSet"],
+      "Resource": "arn:aws:cloudformation:us-east-2:aws:transform/Serverless-2016-10-31"
     },
     {
       "Sid": "S3DeploymentBucket",
@@ -220,6 +242,22 @@ GitHub → repo → **Settings** → **Secrets and variables** → **Actions** �
 ## Verificación
 
 Una vez hecho esto, `.github/workflows/deploy-backend.yml` puede autenticarse. Confirmar corriendo el workflow manualmente (`workflow_dispatch`) antes de depender del trigger automático — ver tarea 3.1 en `tasks.md` del change `automate-backend-deploy`.
+
+Disparar el workflow manualmente con GitHub CLI:
+
+```bash
+gh workflow run "Deploy backend to AWS" --repo soyJulioPerez/poker-planning
+```
+
+Seguir la ejecución en vivo:
+
+```bash
+gh run watch --repo soyJulioPerez/poker-planning
+```
+
+(Si pide elegir un run porque hay varios recientes, seleccionar el más nuevo.)
+
+Alternativa sin terminal: en GitHub → pestaña **Actions** → workflow **"Deploy backend to AWS"** → botón **"Run workflow"**.
 
 Si `AssumeRoleWithWebIdentity` falla, los errores más comunes son:
 - **`sub` no matchea**: revisar que el nombre del repo en el trust policy sea exactamente `soyJulioPerez/poker-planning` (case-sensitive).
