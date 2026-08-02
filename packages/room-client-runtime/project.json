@@ -1,0 +1,19 @@
+{
+  "name": "room-client-runtime",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/room-client-runtime/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/room-client-runtime",
+        "main": "packages/room-client-runtime/src/index.ts",
+        "tsConfig": "packages/room-client-runtime/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  }
+}

@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "shared-contracts": ["./packages/shared-contracts/src/index.ts"]
+      "shared-contracts": ["./packages/shared-contracts/src/index.ts"],
+      "room-client-runtime": ["./packages/room-client-runtime/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
