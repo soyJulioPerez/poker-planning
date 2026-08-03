@@ -1,0 +1,1 @@
+Sin specs de dominio para este change: es infraestructura de testing (agregar cobertura e2e con Playwright para requirements de `estimation-session` ya existentes, más una capa de Page Objects/fixtures que los soporta), sin comportamiento observable nuevo ni modificado de la aplicación. Ver `proposal.md` (sección Capabilities) para el detalle de por qué no aplica.
