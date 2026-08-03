@@ -53,6 +53,8 @@ Abrir `http://localhost:4200`.
 
 Para la app mobile (Expo, requiere el backend de los pasos 1-2 arriba y la app **Expo Go** en tu celular): `npm run start:mobile`, escanear el QR. Ver la sección "Probar la app mobile (Expo)" de [docs/local-dev-workflow.md](docs/local-dev-workflow.md) para el detalle (configuración de red, troubleshooting de firewall, compatibilidad de SDK con Expo Go).
 
+**Para compartir la app mobile con QA/PO/stakeholders remotos** (sin que necesiten correr nada localmente ni estar en tu red): un build instalable (`.apk`) generado bajo demanda desde GitHub Actions, conectado al backend ya desplegado en AWS. Ver [docs/mobile-preview-builds.md](docs/mobile-preview-builds.md) para el setup y cómo disparar un build.
+
 ## Despliegue a AWS
 
 El backend se despliega automáticamente a AWS en cada push a `master` vía GitHub Actions (`.github/workflows/deploy-backend.yml`), autenticado con OIDC — ver [docs/aws-oidc-setup.md](docs/aws-oidc-setup.md) para el setup de credenciales (paso único) y la explicación del mecanismo. Para el flujo manual (fallback, o desplegar a un stack distinto), ver la guía completa en [docs/aws-deployment.md](docs/aws-deployment.md) (incluye cómo desplegar, verificar, actualizar, y eliminar el stack).
@@ -96,6 +98,7 @@ openspec/
   specs/                  Specs vigentes por capability (fuente de verdad del comportamiento actual)
 docs/
   local-dev-workflow.md         Cómo levantar y probar el entorno local paso a paso (web y mobile)
+  mobile-preview-builds.md      Cómo generar y distribuir un build instalable de mobile (EAS) a QA/stakeholders remotos
   aws-deployment.md             Cómo desplegar, verificar y eliminar el stack de AWS (flujo manual)
   aws-oidc-setup.md             Setup único de OIDC para que GitHub Actions despliegue el backend automáticamente
   sam-local-dynamodb-local.md   Notas de debugging de SAM local + DynamoDB Local
