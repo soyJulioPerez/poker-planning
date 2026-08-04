@@ -80,6 +80,75 @@ docker stop dynamodb-local
 
 Y cerrar (Ctrl+C) los procesos de `npm run dev:api` y `npm start`.
 
+## Probar la app mobile (Expo)
+
+La app `apps/mobile` (Expo/React Native, agregada en el change `add-mobile-app`) reusa `packages/shared-contracts` y `packages/room-client-runtime` tal cual, y se conecta al mismo backend WebSocket que la web (`apps/realtime-api`). El camino más rápido para probarla sin instalar Android Studio ni Xcode es un dispositivo físico con la app **Expo Go**.
+
+### Requisitos
+
+- Backend local corriendo — mismos pasos 1-3 de la sección anterior (`npm run dev:db:up`, `npm run dev:db:create-table` la primera vez, `npm run dev:api`).
+- Un celular (Android o iOS) con la app **Expo Go** instalada (Play Store / App Store).
+- El celular y la PC en la **misma red Wi-Fi** (no una red de invitados/aislada — algunos routers domésticos bloquean que los dispositivos se vean entre sí).
+
+### 1. Configurar la URL del backend para tu red local
+
+`apps/mobile/.env` trae como default `EXPO_PUBLIC_WS_URL=ws://localhost:3001`, que funciona para un emulador/simulador corriendo en la misma máquina, pero **no** para un dispositivo físico: `localhost` en el celular apunta al celular mismo, no a la PC.
+
+Para un dispositivo físico, creá `apps/mobile/.env.local` (gitignored — es específico de tu red, no se commitea) con la IP LAN de tu PC:
+
+```bash
+# apps/mobile/.env.local
+EXPO_PUBLIC_WS_URL=ws://<IP-LAN-DE-TU-PC>:3001
+```
+
+Para encontrar tu IP LAN en Windows:
+
+```powershell
+Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' -and $_.IPAddress -notlike '169.254.*' }
+```
+
+Usá la IP del adaptador Wi-Fi real (ej. `Wi-Fi` o `Wi-Fi 2`), no las de adaptadores virtuales (`vEthernet (...)`).
+
+**Importante**: las variables `EXPO_PUBLIC_*` se leen al arrancar el bundler de Metro, no en caliente. Si cambiás `.env.local` con el bundler ya corriendo, hay que reiniciarlo.
+
+### 2. Levantar la app mobile
+
+```bash
+npm run start:mobile
+```
+
+Corre `cd apps/mobile && npx expo start` — el CLI de Expo directo, **no** el target `nx start mobile`.
+
+**Por qué no usa Nx acá**: se probó primero con el target inferido `start` (`@nx/expo/plugin`, respaldado por Nx), pero en esta versión de `@nx/expo` (`23.0.1`) ese target sigue routeando internamente al executor deprecado `@nx/expo:start`, que lanza el CLI real de Expo vía `child_process.fork()` **sin conectar su stdout a una TTY real** (`stdio` en modo `pipe`, no `inherit` — confirmado leyendo `node_modules/@nx/expo/dist/src/executors/start/start.impl.js`). Expo CLI, al no detectar una terminal interactiva, no dibuja el QR ni imprime la URL, aunque el bundler funcione perfectamente. Se probó `nx g @nx/expo:convert-to-inferred` para migrar al mecanismo moderno, pero no aplica: el proyecto ya usa targets 100% inferidos (`apps/mobile/project.json` tiene `"targets": {}`), así que no hay nada que convertir — la limitación está en la implementación interna del plugin, no en la configuración del proyecto. Correr `expo start` directo evita el wrapper por completo.
+
+### 3. Escanear el QR
+
+- **Android**: abrir Expo Go → "Scan QR code" (el escaneo se hace desde adentro de la app, no desde la cámara nativa).
+- **iOS**: escanear con la app Cámara nativa, que ofrece abrir el link en Expo Go.
+
+Debería cargar la pantalla Home (`apps/mobile/src/app/screens/HomeScreen.tsx`, con las tabs "Unirse a sala"/"Crear sala").
+
+### Si Expo Go rechaza el proyecto ("requires a newer version of Expo Go")
+
+El SDK de Expo del proyecto (`expo` en `package.json`, hoy `~54.0.36`) tiene que coincidir con la versión de Expo Go instalada en tu celular — Expo Go solo soporta un SDK específico por versión publicada en la store, no siempre el más nuevo de npm. La app te dice qué SDK espera ("Supported SDK XX") al fallar; si no coincide con el `expo` del proyecto, hay que bajar (o subir) el SDK del proyecto con `expo install --fix` y realinear las versiones correlacionadas (`react`, `react-native`, `react-native-svg`, etc. — ver commits de este change para el detalle de qué se realineó).
+
+### Si no conecta
+
+- **Firewall de Windows**: la causa más común. Puede estar bloqueando conexiones entrantes al puerto `3001` (backend) o `8081` (Metro bundler) desde la red local. Si el QR carga pero crear/unirse a una sala no hace nada, revisar reglas de firewall entrantes para esos puertos.
+- **IP cambió**: si la PC se reconecta al Wi-Fi y le asignan otra IP, hay que actualizar `apps/mobile/.env.local` y reiniciar el bundler.
+- **Backend caído**: si `dev:api` se reinicia y el contenedor de DynamoDB Local había perdido la tabla (`ResourceNotFoundException`), hay que correr `npm run dev:db:create-table` de nuevo y relanzar `npm run dev:api`.
+- **Red aislada**: routers domésticos con "modo invitado" o aislamiento de clientes AP impiden que el celular vea la PC aunque estén en el mismo Wi-Fi — probar conectando ambos a un hotspot simple, o desactivando el aislamiento en la config del router.
+
+### Validar el bundle sin dispositivo (CI-friendly)
+
+Para confirmar que la app compila y que Metro resuelve correctamente `shared-contracts`/`room-client-runtime` sin necesitar un dispositivo ni Expo Go:
+
+```bash
+npx nx export mobile
+```
+
+Genera un bundle de producción real para web/iOS/Android en `apps/mobile/dist` (gitignored). Sirve como chequeo rápido de que no hay nada roto en la resolución de módulos del monorepo antes de probar en un dispositivo.
+
 ## Verificar sin abrir el navegador manualmente (suite e2e)
 
 Existe una suite de tests end-to-end con Playwright en el proyecto Nx `e2e/` (`e2e/playwright.config.mts`, `e2e/estimation-flow.spec.ts`), que reemplaza la necesidad de scripts ad-hoc o de probar manualmente cada flujo.

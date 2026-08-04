@@ -58,3 +58,19 @@ vitest.config.*.timestamp*
 # SAM
 infra/.aws-sam
 infra/env.json
+
+# Expo
+node_modules/
+.expo/
+.env*.local
+.yarn/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+cache/
