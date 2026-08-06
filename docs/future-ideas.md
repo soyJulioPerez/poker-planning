@@ -19,6 +19,11 @@ Backlog de ideas que surgen durante el uso/pruebas del MVP, pendientes de explor
 
 ## Pendiente por implementar
 
+### Delegar función de Moderador
+
+El que crea la sala la crea como moderador.
+Agregar una opción que permita delegar esta función en alguno de los participantes
+
 ### Control de tiempo y disciplina de votación
 
 - **Temporizador para la ronda de votación**: el moderador podría configurar un límite de tiempo por ronda; al cumplirse, los participantes que no votaron quedan marcados con un voto nulo/vacío automáticamente (en vez de quedar indefinidamente "esperando voto"). A explorar: ¿el temporizador es configurable por sala o fijo?, ¿se muestra una cuenta regresiva visible a todos?, ¿qué pasa si el voto nulo entra en el cálculo de promedio/moda (probablemente se excluye, similar a "?" o "☕")?
