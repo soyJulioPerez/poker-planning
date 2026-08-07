@@ -4,6 +4,7 @@ import { ddb, TABLE_NAME, connectionKey, nowPlusTtl } from '../lib/dynamo-client
 
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionId = event.requestContext.connectionId;
+  console.log('New connection', connectionId);
 
   await ddb.send(
     new PutCommand({

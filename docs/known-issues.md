@@ -1,5 +1,23 @@
 # Problemas conocidos
 
+## Lint roto en todo el monorepo: `@nx/enforce-module-boundaries`
+
+**Síntoma**: `nx lint realtime-api` (y, por la misma causa, `nx lint web`/`nx lint mobile`) falla en cada archivo que importa algo de otro proyecto del workspace (ej. `packages/shared-contracts`), con:
+```
+error  A project without tags matching at least one constraint cannot depend on any libraries  @nx/enforce-module-boundaries
+```
+
+**Causa**: `eslint.config.mjs` define `depConstraints` (`scope:shared`, `scope:shop`, `scope:api`, `type:data`) que son boilerplate del generador de Nx, nunca adaptado a la estructura real de este workspace (`scope:shop` no tiene sentido en un proyecto de Planning Poker). Mientras tanto, **todos** los `project.json` del repo (`apps/web`, `apps/mobile`, `apps/realtime-api`, `packages/shared-contracts`, `packages/room-client-runtime`) tienen `"tags": []` — ningún proyecto matchea ninguno de los `sourceTag` configurados, así que la regla cae en su comportamiento por defecto: "un proyecto sin tags que matcheen ninguna constraint no puede depender de ninguna lib".
+
+**Impacto**: `nx lint` falla en cualquier archivo con un import cross-proyecto, en los 3 proyectos de aplicación. No es un problema de código nuevo — ya existía antes de este change, simplemente ningún change anterior corrió `nx lint` sobre archivos que importan `shared-contracts`/`room-client-runtime` con suficiente atención para notarlo, o se venía tolerando.
+
+**Recomendación** (siguiendo la convención real de Nx, no aplicada todavía):
+1. Reemplazar los `depConstraints` boilerplate por unos que reflejen la estructura real: por ejemplo `scope:web`, `scope:mobile`, `scope:api`, `scope:shared` (para `packages/*`).
+2. Etiquetar cada `project.json` con su tag correspondiente (`"tags": ["scope:web"]` en `apps/web`, `"tags": ["scope:shared"]` en `packages/shared-contracts`, etc.).
+3. Definir constraints que reflejen las dependencias reales y deseadas — ej. `apps/web`/`apps/mobile`/`apps/realtime-api` pueden depender de `scope:shared`, pero no entre sí.
+
+No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance (ese change solo tocó `apps/realtime-api/src/handlers/connect.ts` para agregar un log de prueba, sin afectar los imports cross-proyecto que disparan esto).
+
 ## Test runner de componentes Angular roto (vitest-analog)
 
 **Síntoma**: `npx nx run web:vite:test` falla con `Error: Need to call TestBed.initTestEnvironment() first` y `TypeError: Cannot read properties of null (reading 'ngModule')` en cualquier spec que use `TestBed` (incluido el spec `app.spec.ts` generado por el propio scaffold de Nx, sin modificar).
