@@ -52,9 +52,9 @@ Sin usuarios reales ni datos que proteger (el stack único anterior fue eliminad
 
 - [x] 8.1 Push a la rama `release/*` de prueba despliega automáticamente al stack `qa`, sin tocar `dev` ni `prod` — verificado en vivo, run [31134640527](https://github.com/soyJulioPerez/poker-planning/actions/runs/31134640527), éxito en 2m37s
 - [x] 8.2 Disparo manual de `workflow_dispatch` con `environment: dev` despliega al stack `dev` — verificado en vivo, run [31135550135](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135550135), éxito en 2m30s. Nota: `gh workflow run` sin `--ref` toma la definición del workflow en `master` (desactualizada, sin el input `environment`, hasta que 8.3 mergee); hay que apuntar explícitamente `--ref develop` (o la rama que corresponda) al disparar manualmente antes del merge a `master`
-- [ ] 8.3 Push a `master` despliega al stack `prod` automáticamente
+- [x] 8.3 Push a `master` despliega al stack `prod` automáticamente — verificado en vivo, run [31136779611](https://github.com/soyJulioPerez/poker-planning/actions/runs/31136779611), éxito en 2m43s
 - [ ] 8.4 Disparo manual de `workflow_dispatch` con `environment: prod` y `ref` a un tag anterior redepliega esa versión sin mover el puntero de `master`
 - [x] 8.5 Build de mobile conecta al ambiente elegido, desacoplado del perfil — verificado con `environment: dev` (run [31135319827](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135319827)) en vez de `qa` como decía la redacción original; mismo mecanismo, misma cobertura
-- [ ] 8.6 La web publicada en GitHub Pages conecta al stack `prod`
+- [x] 8.6 La web publicada en GitHub Pages conecta al stack `prod` — verificado en vivo, run [31136779760](https://github.com/soyJulioPerez/poker-planning/actions/runs/31136779760), éxito en 9s
 
 Todas las tareas de la sección 8 requieren que 1.4–1.7 (AWS real) y 2.1–2.2 (ramas) estén resueltas primero — quedan pendientes de una sesión donde el maintainer tenga credenciales AWS a mano.
