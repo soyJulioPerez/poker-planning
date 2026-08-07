@@ -128,7 +128,7 @@ Crear `deploy-permissions-policy.json`:
         "cloudformation:GetTemplateSummary",
         "cloudformation:ListStackResources"
       ],
-      "Resource": "arn:aws:cloudformation:us-east-2:343218183958:stack/poker-planning-dev/*"
+      "Resource": "arn:aws:cloudformation:us-east-2:343218183958:stack/poker-planning-*/*"
     },
     {
       "Sid": "CloudFormationManagedStackOps",
@@ -193,7 +193,7 @@ Crear `deploy-permissions-policy.json`:
         "dynamodb:DescribeTimeToLive",
         "dynamodb:TagResource"
       ],
-      "Resource": "arn:aws:dynamodb:us-east-2:343218183958:table/poker-planning-rooms"
+      "Resource": "arn:aws:dynamodb:us-east-2:343218183958:table/poker-planning-rooms*"
     },
     {
       "Sid": "IamRoleManagementForLambdas",
@@ -210,13 +210,17 @@ Crear `deploy-permissions-policy.json`:
         "iam:GetRolePolicy",
         "iam:TagRole"
       ],
-      "Resource": "arn:aws:iam::343218183958:role/poker-planning-dev-*"
+      "Resource": "arn:aws:iam::343218183958:role/poker-planning-*"
     }
   ]
 }
 ```
 
 > Los recursos con wildcard (`poker-planning-*`) están acotados por prefijo de nombre, no abiertos a toda la cuenta — así un uso indebido del rol queda limitado a los recursos de este proyecto. `apigateway:*` sobre `/apis/*` es más amplio porque IAM no soporta scoping fino por nombre de API en ese servicio; si se quiere endurecer más adelante, se puede acotar por tag una vez que el API Gateway ya exista.
+>
+> **Actualizado para 3 ambientes** (`openspec/changes/add-multi-environment-deployment`): los recursos de CloudFormation, DynamoDB e IAM Role pasaron de estar acotados al stack/tabla/rol único (`poker-planning-dev`) a un prefijo (`poker-planning-*` / `poker-planning-rooms*`) que cubre también los stacks nuevos `poker-planning-qa` y `poker-planning-prod` (y sus tablas `poker-planning-rooms-qa`/`poker-planning-rooms-prod`, ver `infra/template.yaml`). `LambdaManagement` y `S3DeploymentBucket` ya usaban wildcards de prefijo y no necesitaron cambios — los nombres de función/bucket que genera SAM para los stacks nuevos ya empiezan con `poker-planning-`.
+>
+> Si el rol ya existe, esta policy actualizada debe volver a aplicarse a mano (`aws iam put-role-policy`, Paso 3 más abajo) — editar este documento no cambia nada en AWS por sí solo.
 
 Crear la policy y adjuntarla al rol:
 

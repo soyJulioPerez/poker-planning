@@ -1,3 +1,3 @@
 export const environment = {
-  wsUrl: 'wss://imzlnpyshh.execute-api.us-east-2.amazonaws.com/dev',
+  wsUrl: 'wss://nv52vd8su1.execute-api.us-east-2.amazonaws.com/prod',
 };

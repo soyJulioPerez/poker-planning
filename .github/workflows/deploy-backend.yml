@@ -2,12 +2,29 @@ name: Deploy backend to AWS
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release/**']
     paths:
       - 'apps/realtime-api/**'
       - 'packages/shared-contracts/**'
       - 'infra/**'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente a desplegar'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      ref:
+        description: >
+          Ref (tag o commit) a desplegar. Opcional — por defecto usa el commit que
+          disparó el workflow. Sirve para rollback de prod sin mover la rama master
+          (ej. "v1.4.0").
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -23,6 +40,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
+
+      - name: Determinar ambiente
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref_name }}" = "master" ]; then
+            echo "name=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=qa" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -50,4 +80,4 @@ jobs:
 
       - name: sam deploy
         working-directory: infra
-        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
+        run: sam deploy --config-env ${{ steps.env.outputs.name }} --no-confirm-changeset --no-fail-on-empty-changeset

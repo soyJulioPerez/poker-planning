@@ -2,6 +2,24 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Planning Poker - WebSocket API + Lambda + DynamoDB
 
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - prod
+    Description: >
+      Ambiente de despliegue. Determina el nombre físico de la tabla DynamoDB,
+      la API Gateway y el stage, para evitar colisiones de nombre entre los
+      stacks de dev/qa/prod en la misma cuenta y región. El sufijo aplica por
+      igual a los 3 ambientes, incluido "dev" — desplegar este cambio sobre el
+      stack dev ya existente reemplaza su tabla DynamoDB (TableName es una
+      propiedad create-only en CloudFormation, no se puede renombrar in-place),
+      lo cual borra las salas que existan en ese momento. Aceptado a propósito:
+      las salas son efímeras (TTL, sin historial entre sesiones).
+
 Globals:
   Function:
     Runtime: nodejs24.x
@@ -16,7 +34,7 @@ Resources:
   RoomsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: poker-planning-rooms
+      TableName: !Sub 'poker-planning-rooms-${Environment}'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: PK
@@ -35,7 +53,7 @@ Resources:
   WebSocketApi:
     Type: AWS::ApiGatewayV2::Api
     Properties:
-      Name: poker-planning-ws
+      Name: !Sub 'poker-planning-ws-${Environment}'
       ProtocolType: WEBSOCKET
       RouteSelectionExpression: '$request.body.action'
 
@@ -43,7 +61,7 @@ Resources:
     Type: AWS::ApiGatewayV2::Stage
     Properties:
       ApiId: !Ref WebSocketApi
-      StageName: dev
+      StageName: !Ref Environment
       AutoDeploy: true
 
   ConnectRoute:
@@ -173,6 +191,6 @@ Resources:
 Outputs:
   WebSocketUrl:
     Description: WebSocket connection URL
-    Value: !Sub wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/dev
+    Value: !Sub wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}
   TableName:
     Value: !Ref RoomsTable

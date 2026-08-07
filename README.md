@@ -55,14 +55,16 @@ Para la app mobile (Expo, requiere el backend de los pasos 1-2 arriba y la app *
 
 **Para compartir la app mobile con QA/PO/stakeholders remotos** (sin que necesiten correr nada localmente ni estar en tu red): un build instalable (`.apk`) generado bajo demanda desde GitHub Actions, conectado al backend ya desplegado en AWS. Ver [docs/mobile-preview-builds.md](docs/mobile-preview-builds.md) para el setup y cómo disparar un build.
 
-## Despliegue a AWS
+## Ambientes y despliegue a AWS
 
-El backend se despliega automáticamente a AWS en cada push a `master` vía GitHub Actions (`.github/workflows/deploy-backend.yml`), autenticado con OIDC — ver [docs/aws-oidc-setup.md](docs/aws-oidc-setup.md) para el setup de credenciales (paso único) y la explicación del mecanismo. Para el flujo manual (fallback, o desplegar a un stack distinto), ver la guía completa en [docs/aws-deployment.md](docs/aws-deployment.md) (incluye cómo desplegar, verificar, actualizar, y eliminar el stack).
+El backend tiene tres ambientes reales, cada uno su propio stack de AWS (DynamoDB + API Gateway + Lambdas, sin datos compartidos): `dev` (rama `develop`, deploy manual), `qa` (rama `release/*`, deploy automático) y `prod` (rama `master`, deploy automático) — vía GitHub Actions (`.github/workflows/deploy-backend.yml`), autenticado con OIDC. Ver [docs/git-branching-strategy.md](docs/git-branching-strategy.md) para la convención de ramas y rollback, [docs/aws-oidc-setup.md](docs/aws-oidc-setup.md) para el setup de credenciales (paso único), y [docs/aws-deployment.md](docs/aws-deployment.md) para el flujo manual completo (desplegar, verificar, actualizar, eliminar un stack).
+
+`apps/web` no tiene ambientes múltiples todavía — sigue desplegándose solo desde `master` a GitHub Pages, apuntando al stack `prod`.
 
 ```bash
 cd infra
 sam build
-sam deploy
+sam deploy --config-env dev   # o qa / prod
 ```
 
 ## Comandos útiles
@@ -99,8 +101,9 @@ openspec/
 docs/
   local-dev-workflow.md         Cómo levantar y probar el entorno local paso a paso (web y mobile)
   mobile-preview-builds.md      Cómo generar y distribuir un build instalable de mobile (EAS) a QA/stakeholders remotos
-  aws-deployment.md             Cómo desplegar, verificar y eliminar el stack de AWS (flujo manual)
+  aws-deployment.md             Cómo desplegar, verificar y eliminar un stack de AWS por ambiente (flujo manual)
   aws-oidc-setup.md             Setup único de OIDC para que GitHub Actions despliegue el backend automáticamente
+  git-branching-strategy.md     Convención de ramas (develop/release/master), su mapeo a ambientes, y rollback
   sam-local-dynamodb-local.md   Notas de debugging de SAM local + DynamoDB Local
   known-issues.md               Problemas conocidos
   future-ideas.md               Backlog de ideas para futuras iteraciones

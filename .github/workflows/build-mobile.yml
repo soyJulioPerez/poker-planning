@@ -2,6 +2,25 @@ name: Build mobile (preview)
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Perfil de empaquetado EAS (apps/mobile/eas.json) — define cómo se empaqueta el build'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+      environment:
+        description: 'Ambiente de backend al que se conecta el build — independiente del perfil de empaquetado'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
 
 permissions:
   contents: read
@@ -26,12 +45,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Seleccionar ambiente de backend
+        working-directory: apps/mobile
+        run: cp ".env.${{ github.event.inputs.environment }}" .env.production.local
+
       - name: Setup EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: EAS Build (Android, preview)
+      - name: EAS Build (Android)
         working-directory: apps/mobile
-        run: eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive
