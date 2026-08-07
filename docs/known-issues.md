@@ -1,5 +1,20 @@
 # Problemas conocidos
 
+## `node-version: 20` deprecado en los workflows de GitHub Actions
+
+**Síntoma**: las corridas de `deploy-backend.yml`, `build-mobile.yml` y `deploy-web.yml` muestran esta anotación:
+```
+Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on
+Node.js 24: actions/checkout@v4, actions/setup-node@v4, aws-actions/configure-aws-credentials@v4,
+aws-actions/setup-sam@v2.
+```
+
+**Causa**: los 3 workflows fijan `node-version: 20` en el step `actions/setup-node@v4` (usado para instalar dependencias y correr `sam build`/`eas build`, no para las actions de GitHub en sí — esas ya corren forzadas en Node 24 por decisión de GitHub, de ahí la anotación).
+
+**Impacto**: ninguno todavía — es una advertencia, no una falla; las corridas verificadas en `openspec/changes/add-multi-environment-deployment` (runs [31134640527](https://github.com/soyJulioPerez/poker-planning/actions/runs/31134640527), [31135550135](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135550135)) terminaron exitosas igual. GitHub eventualmente puede dejar de soportar runners con Node 20 por completo.
+
+**Recomendación**: subir `node-version: 20` → `24` (o `lts/*`) en los 3 workflows (`deploy-backend.yml`, `build-mobile.yml`, `deploy-web.yml`), en línea con el runtime que ya usan las Lambdas (`nodejs24.x` en `infra/template.yaml`). No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance.
+
 ## Lint roto en todo el monorepo: `@nx/enforce-module-boundaries`
 
 **Síntoma**: `nx lint realtime-api` (y, por la misma causa, `nx lint web`/`nx lint mobile`) falla en cada archivo que importa algo de otro proyecto del workspace (ej. `packages/shared-contracts`), con:

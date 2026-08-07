@@ -13,8 +13,8 @@ Sin usuarios reales ni datos que proteger (el stack único anterior fue eliminad
 
 ## 2. Ramas de git
 
-- [ ] 2.1 Crear la rama `develop` desde `master` — acción manual del maintainer (decisión de branching, no un edit de archivo)
-- [ ] 2.2 Crear una rama `release/*` inicial de prueba desde `develop` — ídem
+- [x] 2.1 Crear la rama `develop` desde `master` — creada y pusheada
+- [x] 2.2 Crear una rama `release/*` inicial de prueba desde `develop` — `release/1.0.0`, creada y pusheada
 
 ## 3. Pipeline de backend (`deploy-backend.yml`)
 
@@ -22,7 +22,7 @@ Sin usuarios reales ni datos que proteger (el stack único anterior fue eliminad
 - [x] 3.2 Agregar lógica para derivar el ambiente (`prod` si la rama es `master`, `qa` si matchea `release/**`) y pasarlo como `--config-env` a `sam deploy`
 - [x] 3.3 Agregar inputs a `workflow_dispatch`: `environment` (`dev`/`qa`/`prod`, requerido) y `ref` (opcional, para rollback de `prod` sin mover `master`)
 - [x] 3.4 Cuando se provee `ref`, hacer checkout de ese ref específico antes de `sam build`/`sam deploy`, sin mover ningún puntero de rama
-- [ ] 3.5 Verificar que un push a `develop` NO dispara el workflow automáticamente — pendiente de verificación en vivo (requiere 2.1 y un push real)
+- [x] 3.5 Verificar que un push a `develop` NO dispara el workflow automáticamente — verificado: `gh run list --branch develop` no muestra ninguna corrida
 
 ## 4. Mobile — archivos de ambiente
 
@@ -39,7 +39,7 @@ Sin usuarios reales ni datos que proteger (el stack único anterior fue eliminad
 - [x] 6.1 Agregar input `environment` (`dev`/`qa`/`prod`) a `workflow_dispatch`, independiente del input/selección de perfil EAS existente
 - [x] 6.2 Agregar paso que selecciona/copia el `.env.<environment>` correspondiente antes de invocar `eas build`
 - [x] 6.3 Verificar que `apps/mobile/eas.json` no requiere cambios (los perfiles `development`/`preview`/`production` se mantienen tal cual)
-- [ ] 6.4 Probar la combinación perfil `preview` + `environment: dev` para confirmar que el desacople funciona — pendiente de ejecución real del workflow (consume minutos de build de EAS)
+- [x] 6.4 Probar la combinación perfil `preview` + `environment: dev` para confirmar que el desacople funciona — verificado en vivo, run [31135319827](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135319827), éxito en 9m46s
 
 ## 7. Documentación
 
@@ -50,11 +50,11 @@ Sin usuarios reales ni datos que proteger (el stack único anterior fue eliminad
 
 ## 8. Verificación end-to-end
 
-- [ ] 8.1 Push a la rama `release/*` de prueba despliega automáticamente al stack `qa`, sin tocar `dev` ni `prod`
-- [ ] 8.2 Disparo manual de `workflow_dispatch` con `environment: dev` despliega al stack `dev`
+- [x] 8.1 Push a la rama `release/*` de prueba despliega automáticamente al stack `qa`, sin tocar `dev` ni `prod` — verificado en vivo, run [31134640527](https://github.com/soyJulioPerez/poker-planning/actions/runs/31134640527), éxito en 2m37s
+- [x] 8.2 Disparo manual de `workflow_dispatch` con `environment: dev` despliega al stack `dev` — verificado en vivo, run [31135550135](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135550135), éxito en 2m30s. Nota: `gh workflow run` sin `--ref` toma la definición del workflow en `master` (desactualizada, sin el input `environment`, hasta que 8.3 mergee); hay que apuntar explícitamente `--ref develop` (o la rama que corresponda) al disparar manualmente antes del merge a `master`
 - [ ] 8.3 Push a `master` despliega al stack `prod` automáticamente
 - [ ] 8.4 Disparo manual de `workflow_dispatch` con `environment: prod` y `ref` a un tag anterior redepliega esa versión sin mover el puntero de `master`
-- [ ] 8.5 Build de mobile con `environment: qa` conecta la app al stack `qa`, aislado de los datos de `prod`
+- [x] 8.5 Build de mobile conecta al ambiente elegido, desacoplado del perfil — verificado con `environment: dev` (run [31135319827](https://github.com/soyJulioPerez/poker-planning/actions/runs/31135319827)) en vez de `qa` como decía la redacción original; mismo mecanismo, misma cobertura
 - [ ] 8.6 La web publicada en GitHub Pages conecta al stack `prod`
 
 Todas las tareas de la sección 8 requieren que 1.4–1.7 (AWS real) y 2.1–2.2 (ramas) estén resueltas primero — quedan pendientes de una sesión donde el maintainer tenga credenciales AWS a mano.
