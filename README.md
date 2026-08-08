@@ -105,6 +105,8 @@ docs/
   aws-oidc-setup.md             Setup único de OIDC para que GitHub Actions despliegue el backend automáticamente
   git-branching-strategy.md     Convención de ramas (develop/release/master), su mapeo a ambientes, y rollback
   sam-local-dynamodb-local.md   Notas de debugging de SAM local + DynamoDB Local
+  hardening-roadmap.md          Plan progresivo para cerrar los huecos del repo (CI, tests de backend,
+                                observabilidad, seguridad, release) — con objetivo de aprendizaje por fase
   known-issues.md               Problemas conocidos
   future-ideas.md               Backlog de ideas para futuras iteraciones
 ```
