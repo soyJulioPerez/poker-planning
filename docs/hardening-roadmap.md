@@ -107,6 +107,7 @@ En GitHub → Settings → Branches, para `master` y `develop`:
 - [ ] Un push directo a `master` es rechazado por GitHub.
 - [ ] Un PR con CI en rojo no se puede mergear.
 - [ ] `docs/git-branching-strategy.md` actualizado: sacar la frase de que no hay protección y documentar qué reglas quedaron.
+- [ ] **Eliminar la excepción "commit directo a `develop`" de [conventions.md](conventions.md)** — está escrita con vencimiento en esta fase. A partir de acá deja de ser una decisión y pasa a ser imposible, así que la excepción sobra.
 
 **Qué aprendés**
 

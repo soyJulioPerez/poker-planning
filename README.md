@@ -99,6 +99,7 @@ openspec/
                           (MVP original, extracción de room-client-runtime, agregado de mobile)
   specs/                  Specs vigentes por capability (fuente de verdad del comportamiento actual)
 docs/
+  conventions.md                Lineamientos del repo: ramas, commits, idioma, dónde va cada documento
   local-dev-workflow.md         Cómo levantar y probar el entorno local paso a paso (web y mobile)
   mobile-preview-builds.md      Cómo generar y distribuir un build instalable de mobile (EAS) a QA/stakeholders remotos
   aws-deployment.md             Cómo desplegar, verificar y eliminar un stack de AWS por ambiente (flujo manual)

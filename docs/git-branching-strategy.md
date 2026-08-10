@@ -28,6 +28,13 @@ feature/z ──╯                         ▲                      │        
 
 1. **Features → `develop`**: cada feature/fix se mergea a `develop` por **squash merge** (un solo commit por feature, sin importar cuántos commits tuvo la rama). No dispara deploy automático — se prueba en el ambiente `dev` cuando el desarrollador lo dispare manualmente.
 
+   **Excepción: fast-forward.** Cuando la rama trae commits limpios y separados a propósito que vale la pena conservar en la historia de `develop` —por ejemplo un `docs:` y un `chore:` que no tienen por qué mezclarse— se mergea así en vez de aplastarlos:
+   ```bash
+   git checkout develop
+   git merge --ff-only <rama>
+   ```
+   Es la **excepción, no la vía habitual**. Solo aplica si la historia de la rama ya está exactamente como se la quiere ver en `develop`: sin commits de `WIP`, sin "arregla typo", sin idas y vueltas. Si hay ruido, se hace squash. `--ff-only` falla en vez de crear un merge commit si `develop` avanzó mientras tanto — misma protección que en la promoción a `master`.
+
 2. **Cortar un release**: cuando `develop` tiene algo listo para pasar a QA:
    ```bash
    git checkout -b release/1.5.0 develop

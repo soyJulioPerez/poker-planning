@@ -1,5 +1,9 @@
 # Problemas conocidos
 
+Archivo único de problemas conocidos del proyecto: infraestructura, tooling, tests y bugs de producto.
+
+> **Nota histórica**: hasta el 2026-08-10 existía además un `openspec/known-issues.md` con los bugs de producto detectados al verificar changes. Los dos archivos se fusionaron acá. Los changes archivados anteriores a esa fecha referencian `openspec/known-issues.md`; esas referencias se dejaron intactas a propósito —son un registro histórico— y apuntan al contenido que ahora vive en este archivo.
+
 ## `node-version: 20` deprecado en los workflows de GitHub Actions
 
 **Síntoma**: las corridas de `deploy-backend.yml`, `build-mobile.yml` y `deploy-web.yml` muestran esta anotación:
@@ -97,3 +101,60 @@ Al revisar `apps/web/src/app/ui/reveal-panel/reveal-panel.html` por el botón "N
 **Qué buscar si el paso 9 reproduce el problema**: revisar la consola del navegador (F12) en el momento del cuelgue en busca de errores de WebSocket, y el log de la terminal de `dev:api` en busca de excepciones no capturadas o de un `ResourceNotFoundException`/timeout de DynamoDB — este mismo diagnóstico ya identificó que un `docker restart dynamodb-local` sin recrear la tabla causa exactamente este síntoma (ver comando `npm run dev:db:create-table` en `docs/local-dev-workflow.md`), así que vale la pena descartar eso primero si el contenedor fue reiniciado en algún momento de la sesión.
 
 **Si el paso 9 NO reproduce nada anómalo tras varias repeticiones**: el problema podría ser específico del entorno de la máquina donde se corrieron los tests originalmente (recursos limitados, muchos procesos Node acumulados de sesiones previas — se observaron varios procesos zombie reteniendo los puertos 3001/9229 durante el diagnóstico), no de la lógica de la aplicación. En ese caso, se puede intentar quitar `test.fixme` y volver a correr la suite completa para ver si el problema persiste en un entorno más limpio.
+
+> **Ver también** el problema "Test e2e inestable: participante desconectado" más abajo. Ambos fallan en el mismo punto exacto (`waitForRoomUrl` justo después de `createRoom`), en el mismo archivo de tests. Es probable que sean el mismo problema subyacente manifestándose en dos tests distintos — vale la pena investigarlos juntos, no por separado.
+
+## Link directo a una sala en una pestaña nueva nunca conecta
+
+**Detectado**: 2026-07-06, verificando el change `deploy-web-github-pages`.
+
+**Síntoma**: pegar la URL de una sala (ej. `/room/U9DG8K`) en una pestaña nueva —o en un navegador/sesión sin estado previo de esa sala— queda colgado en "Conectando a la sala..." para siempre. Recargar una pestaña *existente* que ya se unió a la sala funciona bien.
+
+**Causa raíz**: `RoomSocketService.rejoinIfNeeded` (`apps/web/src/app/core/room-socket.service.ts`) solo reconecta si hay una sesión coincidente en `sessionStorage`:
+
+```ts
+rejoinIfNeeded(roomId: string): void {
+  if (this.room()) return;
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return; // no-op: nunca conecta, nunca muestra el formulario de ingreso
+  ...
+}
+```
+
+`sessionStorage` es por pestaña y nunca se llena hasta que el usuario efectivamente envía un nombre desde el flujo de ingreso de la home. Una pestaña recién abierta (alguien que hace clic en un link compartido) no tiene sesión, así que `rejoinIfNeeded` no hace nada en silencio — ni intenta conectar, ni ofrece una UI alternativa para pedir el nombre.
+
+**No está relacionado con**: el deploy a GitHub Pages ni el fallback SPA de `404.html` — ambos funcionan correctamente (verificado con `curl`, comparando `etag`/contenido contra `index.html`, y confirmando el `base href`). Es comportamiento preexistente de la app, reproducible también en desarrollo local.
+
+**Recomendación** (futuro change): cuando `room()` es null y no hay sesión válida para ese `roomId`, mostrar un formulario de "unirse a esta sala" (input de nombre) en vez de dejar al usuario en el estado de carga indefinidamente.
+
+## Test e2e inestable: participante desconectado
+
+**Detectado**: 2026-08-01, verificando el change `uncouple-client-logic`.
+
+**Síntoma**: `e2e/room-moderation.spec.ts:158` (`participante desconectado se marca como desconectado sin salir de la lista`) falla intermitentemente — unas 2 de cada 3 corridas aisladas con `--workers=1` — casi siempre en `waitForRoomUrl` justo después de `moderatorHome.createRoom(...)`, con timeout de 10s esperando la navegación a `/room/...`. En al menos una corrida falló más adelante, en la aserción del estado "desconectado".
+
+**Confirmado que no lo causó `uncouple-client-logic`**: se hizo `git stash` de todos los cambios de ese refactor (volviendo al `RoomSocketService` original basado en `signal()`/`sessionStorage` directo) y se corrió el mismo test 5 veces seguidas contra el código original — **falló las 5 veces**, en el mismo punto exacto. El resto de la suite (11/11 tests restantes) pasa consistentemente en ambas versiones del código.
+
+**No investigado a fondo**: no se determinó la causa raíz. Hipótesis sin confirmar: el test abre un segundo `browser.newContext()` (proceso Chromium adicional) antes de que el moderador termine de crear la sala, lo que podría introducir contención de recursos o una condición de carrera con el WebSocket local de desarrollo.
+
+**Recomendación** (futuro change): investigar en conjunto con "Test e2e inestable: reconexión automática" más arriba — mismo punto de falla, mismo archivo, probablemente la misma causa. No bloquear changes no relacionados por estos flakes.
+
+## Mobile (Expo): el ícono y el splash no cargan, error ENOENT en `assets/images`
+
+**Detectado**: 2026-08-02, probando `apps/mobile` en un dispositivo Android real (change `add-mobile-app`).
+
+**Síntoma**: al correr `npx expo start` desde `apps/mobile` (el directorio correcto) y abrir la app en Expo Go, la terminal muestra repetidamente:
+
+```
+Error: ENOENT: no such file or directory, scandir 'C:\claude-code\poker-planning\assets\images'
+    at Object.readdir (node:internal/fs/promises:955:18)
+    at getAbsoluteAssetRecord (...\node_modules\metro\src\Assets.js:114:17)
+```
+
+El path que busca es `<raíz-del-repo>/assets/images`, **no** `apps/mobile/assets/images`, que es donde realmente están los archivos referenciados por `app.json` (`icon.png`, `adaptive-icon.png`, `favicon.png`, `splash-icon.png`). El bundle igual compila y la app funciona —conexión WebSocket, creación de sala y el flujo completo verificados en dispositivo real— solo faltan el ícono y el splash screen.
+
+**Hipótesis sin confirmar**: algo en `withNxMetro` (`apps/mobile/metro.config.js`), que reconfigura Metro para resolver librerías del workspace (`shared-contracts`, `room-client-runtime`), parece mezclar la raíz del workspace —usada correctamente para resolución de módulos— con la raíz de la app, que debería usarse para el *asset server* HTTP que sirve íconos e imágenes. No se revisó el código fuente de `withNxMetro` a fondo.
+
+**Descartado como causa**: no es haber corrido el comando desde la carpeta equivocada — se confirmó que se ejecutaba desde `apps/mobile`.
+
+**Recomendación** (futuro change): revisar el manejo de `server.rootPath` vs `projectRoot` de `withNxMetro`/`@nx/expo` en `metro.config.js`. Como workaround más simple, probar apuntar `app.json` a paths absolutos, o verificar si actualizar `@nx/expo` a una versión más reciente ya lo corrige.
