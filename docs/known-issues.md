@@ -37,22 +37,100 @@ error  A project without tags matching at least one constraint cannot depend on 
 
 No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance (ese change solo tocó `apps/realtime-api/src/handlers/connect.ts` para agregar un log de prueba, sin afectar los imports cross-proyecto que disparan esto).
 
-## Test runner de componentes Angular roto (vitest-analog)
+## Vitest con Angular falla por la casing de la letra de unidad en Windows
 
-**Síntoma**: `npx nx run web:vite:test` falla con `Error: Need to call TestBed.initTestEnvironment() first` y `TypeError: Cannot read properties of null (reading 'ngModule')` en cualquier spec que use `TestBed` (incluido el spec `app.spec.ts` generado por el propio scaffold de Nx, sin modificar).
+**Detectado**: 2026-08-10.
 
-**Causa probable**: incompatibilidad de versiones entre Angular `21.2.9` (muy reciente) y `@analogjs/vitest-angular@2.2.0` / `@analogjs/vite-plugin-angular@2.2.0`, que el generador de Nx instaló como parte del preset `unitTestRunner=vitest-analog`.
+> Esta entrada **reemplaza** un diagnóstico anterior del mismo síntoma, que atribuía el fallo a una incompatibilidad de versiones entre Angular `21.2.9` y `@analogjs/vitest-angular@2.2.0`. Esa hipótesis quedó descartada: no hay ninguna incompatibilidad. La causa es ambiental y se describe abajo.
 
-**Confirmado que no es un problema de código propio**: un test trivial sin `TestBed` (`expect(1+1).toBe(2)`) pasa sin problemas en el mismo archivo/proyecto. Solo falla la inicialización de `TestBed`.
+**Síntoma**: cualquier spec que use `TestBed` falla, con un error distinto según la variante de Vitest:
 
-**Impacto**: no se pueden correr tests unitarios de componentes Angular por ahora. El build de producción (`nx build web`) y el dev server (`nx serve web`) funcionan con normalidad — no es un problema del código de la aplicación, solo del test runner.
+| Variante | Error |
+|---|---|
+| `vitest-analog` (`nx vite:test web`) | `Error: Need to call TestBed.initTestEnvironment() first` y después `TypeError: Cannot read properties of null (reading 'ngModule')` |
+| `vitest-angular` (`@angular/build:unit-test`) | `Error: Vitest failed to find the runner`, en `angular:test-bed-init` |
 
-**Decisión**: se deja como deuda técnica anotada. La verificación de cada incremento del MVP se hace manualmente en el navegador (como pide `tasks.md`), no depende de estos tests.
+Falla incluso con el `app.spec.ts` que genera el scaffold de Nx sin modificar. El build (`nx build web`) y el dev server (`nx serve web`) funcionan con normalidad.
 
-**Posibles soluciones a futuro** (no aplicadas):
-- Fijar una versión de Angular más antigua y probada contra `@analogjs/vitest-angular`.
-- Actualizar `@analogjs/vitest-angular` a una versión más nueva cuando exista soporte confirmado para Angular 21.x.
-- Migrar el test runner de `web` a Jest con `@angular-builders/jest` u otra combinación más estable, si el problema persiste.
+**Causa raíz**: el proceso padre (IDE / extensión de Nx / agente) exporta `NX_WORKSPACE_ROOT_PATH` con la letra de unidad en **minúscula** (`c:\claude-code\poker-planning`), aunque la ruta real en disco es `C:\claude-code\poker-planning`. Nx la respeta sin normalizar, porque es una variable de override explícita:
+
+```js
+// node_modules/nx/dist/src/utils/workspace-root.js
+exports.workspaceRoot = workspaceRootInner(process.cwd(), process.cwd());
+
+function workspaceRootInner(dir, candidateRoot) {
+    if (process.env.NX_WORKSPACE_ROOT_PATH)
+        return process.env.NX_WORKSPACE_ROOT_PATH;   // corta acá, sin normalizar
+    ...
+```
+
+Ese root viaja por todo el pipeline hasta Vitest. Node cachea los módulos ESM **por string de URL**, así que `file:///c:/…/vitest` y `file:///C:/…/vitest` son dos entradas distintas: el paquete se carga dos veces y la segunda copia no tiene worker state.
+
+Eso rompe el patrón que usan **las dos** integraciones de Angular con Vitest — guarda en `globalThis` + `TestBed` local al módulo:
+
+```js
+const ANGULAR_TESTBED_SETUP = Symbol.for('testbed-setup');              // Analog
+const ANGULAR_TESTBED_SETUP = Symbol.for('@angular/cli/testbed-setup'); // Angular oficial
+
+if (!globalThis[ANGULAR_TESTBED_SETUP]) {   // la guarda es global: compartida
+  globalThis[ANGULAR_TESTBED_SETUP] = true;
+  getTestBed().initTestEnvironment(...);    // el TestBed es del módulo: NO compartido
+}
+```
+
+La primera copia inicializa y marca la guarda; la segunda ve la guarda puesta, no inicializa, y expone un `TestBed` virgen. De ahí el mensaje engañoso: dice que falta llamar a `initTestEnvironment()` cuando en realidad ya se llamó, sobre la otra instancia.
+
+Es [angular/angular-cli#33559](https://github.com/angular/angular-cli/issues/33559), abierto al 2026-08-10.
+
+**Cómo confirmarlo en 10 segundos**:
+
+```bash
+node -e "console.log(JSON.stringify(process.env.NX_WORKSPACE_ROOT_PATH))"
+node -e "const {workspaceRoot}=require('nx/src/utils/workspace-root');console.log(JSON.stringify(workspaceRoot))"
+```
+
+Si alguno devuelve la unidad en minúscula (`c:\...`) y en disco es mayúscula, es esto.
+
+**Verificado**: sacando la variable del entorno, sin tocar una sola línea del repo, las dos variantes pasaban de fallar a correr:
+
+```powershell
+$env:NX_WORKSPACE_ROOT_PATH = $null
+npx nx vite:test web     # el target se llamaba así cuando se hizo este diagnóstico
+#  RUN  v4.1.10 C:/claude-code/poker-planning/apps/web
+#      ✓ should create the app 76ms
+#       Tests  1 failed | 1 passed (2)
+```
+
+> El comando de arriba queda como registro del diagnóstico. Después de este hallazgo `web` migró a `vitest-angular` y el target pasa a llamarse `test`: hoy el equivalente es `npx nx test web`.
+
+El test que quedaba rojo era un problema real del spec (`querySelector('h1')` devolvía `null` porque el router todavía no había navegado), no del runner — se corrigió al migrar.
+
+**Lo que se descartó como causa**:
+- *Incompatibilidad de versiones Angular 21 / Analog* — era la hipótesis anterior. Falsa: con la casing corregida, Analog `2.2.0` funciona sobre Angular `21.2.9`.
+- *Configuración mal hecha* — `apps/web/src/test-setup.ts` es idéntico, línea por línea, a la plantilla que genera Nx 23 para Angular 21 (`@nx/vitest/dist/src/generators/configuration/configuration.js:76-83`).
+- *Que fuera propio de Analog* — el builder oficial de Angular (`@angular/build:unit-test`, `runner: vitest`) falla igual, por el mismo mecanismo.
+- *Que el workaround del issue alcance* — entrar con `cd /d C:\...` **no sirve** mientras la variable esté puesta: corta antes de mirar el `cwd`. Se verificó lanzando el proceso con `cwd` en mayúscula y obteniendo el root en minúscula igual.
+
+**Dónde vive la variable**: no está en el entorno de usuario ni de máquina (`[Environment]::GetEnvironmentVariable('NX_WORKSPACE_ROOT_PATH','User'|'Machine')` devuelven vacío). La inyecta el proceso padre y la heredan todas las shells hijas — por eso aparece tanto en PowerShell como en Git Bash.
+
+**Impacto**: solo Windows y solo desarrollo local. **CI no está afectado**: los runners son `ubuntu-latest`, donde no hay letras de unidad y la variable no se setea. Un pipeline verde no dice nada sobre este problema, y viceversa.
+
+También explica por qué el síntoma aparece en cualquier proyecto Angular abierto desde el mismo entorno: no depende del repo.
+
+**Mitigaciones aplicadas** (2026-08-10):
+
+1. **[.vscode/settings.json](../.vscode/settings.json)** anula la variable en las terminales integradas:
+   ```json
+   { "terminal.integrated.env.windows": { "NX_WORKSPACE_ROOT_PATH": null } }
+   ```
+   Se versiona, no afecta a Linux/macOS por el sufijo `.windows`, y deja que Nx calcule el root solo — que es lo que hace bien.
+2. **[tools/scripts/check-workspace-root.mjs](../tools/scripts/check-workspace-root.mjs)** compara la variable contra `fs.realpathSync.native()` y, si no coinciden, falla con las dos rutas y cómo corregirlo. Está enganchado como `dependsOn` del target `test` de `web`, con `cache: false` para que corra siempre.
+
+Con eso, el modo de falla dejó de ser un error críptico de `TestBed` y pasó a ser un mensaje que nombra la causa.
+
+**Lo que todavía requiere acción manual**: si abrís el proyecto desde una terminal externa al IDE (o desde otro editor), la variable puede seguir viniendo mal. La solución de fondo es **abrir el proyecto desde la ruta canónica** (`C:\claude-code\poker-planning`, con la `C` mayúscula). Eso no se puede versionar.
+
+**Lo que no funciona** (para no volver a intentarlo): un `.env` en la raíz, una opción en `nx.json`, o `env` en el target de `project.json`. Los tres corren **después** de que `workspaceRoot` quedó fijado — el valor se evalúa al cargar el módulo, cuando arranca el CLI de Nx.
 
 ## Botón "Nueva ronda" sin accessible name descriptivo
 

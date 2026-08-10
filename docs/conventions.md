@@ -136,7 +136,7 @@ El criterio de la separación era defendible en abstracto (tooling vs. producto)
 - **Nx para todas las tareas**: `nx build`, `nx test`, `nx lint` — nunca la herramienta subyacente directamente. Ver [../CLAUDE.md](../CLAUDE.md).
 - **Lógica compartida en `packages/`**: si algo lo necesitan web y mobile, va en `packages/room-client-runtime` o `packages/shared-contracts`, no duplicado en cada app. Cada app aporta solo su capa de UI y su persistencia de sesión.
 - **Límites entre proyectos**: hoy la regla `@nx/enforce-module-boundaries` está configurada pero **no aplica a nada** (los proyectos no tienen tags). Ver Fase 3.1 del [roadmap](hardening-roadmap.md). Hasta que se resuelva, el desacople depende de disciplina, no de la herramienta.
-- **Tests**: Jest en `realtime-api`, `mobile`, `packages/*`; Vitest en `web`; Playwright para e2e. No mezclar runners dentro de un proyecto.
+- **Tests**: el target es `test` en los 5 proyectos. Jest en `realtime-api`, `mobile` y `packages/*`; Vitest en `web`, vía el builder oficial `@angular/build:unit-test` (no Analog); Playwright para e2e. No mezclar runners dentro de un proyecto. En Windows, ver la nota de casing en [known-issues.md](known-issues.md) antes de pelear con un fallo de `TestBed`.
 
 ## Decisiones pendientes
 

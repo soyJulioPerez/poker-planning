@@ -93,6 +93,21 @@
         }
       }
     },
+    "check-workspace-root": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/check-workspace-root.mjs"
+      }
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "dependsOn": ["check-workspace-root"],
+      "options": {
+        "buildTarget": "web:build:development",
+        "runner": "vitest"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint"
     },

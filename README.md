@@ -29,7 +29,7 @@ Ver el proceso completo de diseño en `openspec/changes/archive/` (proposal, des
 
 - **Identidad de reconexión por nombre + sala**: un participante se identifica únicamente por su nombre dentro de la sala, no por un token de sesión. Si dos personas intentan usar el mismo nombre en la misma sala mientras una está conectada, la segunda es rechazada. Esto es una limitación aceptada para el MVP — la evolución natural sería generar un token de sesión persistido en el navegador (`localStorage`) al unirse, para desambiguar identidad sin depender del nombre. Ver `openspec/changes/archive/2026-07-05-planning-poker-mvp/design.md` (Decisión 3) para el detalle completo.
 - **Sin historial entre sesiones**: las salas son efímeras (TTL en DynamoDB); no hay cuentas de usuario ni comparación de velocity entre sprints.
-- Ver también [docs/known-issues.md](docs/known-issues.md) (incompatibilidad de versiones en el test runner de componentes Angular) y [docs/future-ideas.md](docs/future-ideas.md) (ideas para futuras iteraciones, aún no implementadas).
+- Ver también [docs/known-issues.md](docs/known-issues.md) (entre otros, la casing de la letra de unidad que rompe Vitest en Windows) y [docs/future-ideas.md](docs/future-ideas.md) (ideas para futuras iteraciones, aún no implementadas).
 
 ## Desarrollo local
 

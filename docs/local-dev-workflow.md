@@ -199,6 +199,36 @@ Si un texto de botón aparece más de una vez en la página (por ejemplo el tab 
 
 El frontend (`web`) se despliega automáticamente a GitHub Pages en cada push a `master` (`.github/workflows/deploy-web.yml`). El backend (`realtime-api`) también se despliega automáticamente a AWS en cada push a `master` que toque `apps/realtime-api/**`, `packages/shared-contracts/**` o `infra/**` (`.github/workflows/deploy-backend.yml`, ver [aws-oidc-setup.md](aws-oidc-setup.md) para el setup de credenciales). Ya no hace falta correr `sam deploy` a mano para que un cambio normal llegue a producción — el flujo manual descrito en [aws-deployment.md](aws-deployment.md) sigue disponible como fallback (por ejemplo, para forzar un redeploy sin cambios de código, o para desplegar a un stack separado de pruebas).
 
-## Problema conocido: tests unitarios de Angular rotos
+## Tests unitarios
 
-Los pasos de arriba no dependen de `nx test web` / `nx run web:vite:test` — esos tests unitarios de componentes están actualmente rotos por una incompatibilidad de versiones, ver [known-issues.md](known-issues.md). La verificación manual (o con Playwright) descrita en este documento es el camino recomendado mientras ese problema no se resuelva.
+```bash
+npx nx test web            # componentes Angular (Vitest, vía @angular/build:unit-test)
+npx nx run-many -t test    # los 5 proyectos
+```
+
+Los 5 proyectos con tests corren con el target `test`. `web` usa **Vitest** a través del builder oficial de Angular; el resto usa **Jest**.
+
+### Si los tests fallan en Windows con un error raro de `TestBed`
+
+Antes de correr `test`, el target ejecuta un chequeo que valida la casing de la letra de unidad. Si falla, vas a ver algo así:
+
+```
+NX_WORKSPACE_ROOT_PATH no coincide con la ruta real en disco:
+  declarada : c:\claude-code\poker-planning
+  real      : C:\claude-code\poker-planning
+```
+
+**Qué hacer**: limpiar la variable en la terminal actual.
+
+```powershell
+$env:NX_WORKSPACE_ROOT_PATH = $null    # PowerShell
+```
+```bash
+unset NX_WORKSPACE_ROOT_PATH           # bash
+```
+
+Nx recalcula el root solo y con la casing correcta. La solución de fondo es abrir el proyecto en el IDE desde la ruta con la `C` mayúscula.
+
+**Por qué pasa**: Nx respeta esa variable sin normalizarla y Node cachea los módulos ESM por string de URL, así que `c:` y `C:` cargan Vitest dos veces. Sin el chequeo, el síntoma es `Need to call TestBed.initTestEnvironment() first` — un mensaje que no menciona rutas por ningún lado. Diagnóstico completo en [known-issues.md](known-issues.md).
+
+Las terminales integradas de VS Code ya vienen cubiertas por [.vscode/settings.json](../.vscode/settings.json); esto aplica sobre todo a terminales externas.
