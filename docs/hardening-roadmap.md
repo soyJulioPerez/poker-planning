@@ -2,15 +2,12 @@
 
 Plan de implementación progresiva de los huecos detectados en la revisión del repo. Cada ítem es una unidad de trabajo independiente con criterio de aceptación propio.
 
-**Este documento tiene doble propósito**: cerrar huecos reales del proyecto y servir como plan de estudio. Por eso cada ítem incluye una sección **Qué aprendés** — el objetivo no es solo que el hueco quede tapado, sino entender por qué existía.
-
 ## Cómo usar este documento
 
 - **Cada fase = un change de OpenSpec.** Antes de escribir código, `/opsx:propose` con el alcance de la fase. Los criterios de aceptación de abajo son el borrador de sus `tasks.md`.
-- **Lo implementás vos, no el agente.** Ese es el punto. El rol del agente es revisar (`/code-review`), desbloquear dudas puntuales y señalar lo que se rompió — no escribir la fase entera.
-- **Las fases están ordenadas por dependencia y por valor.** No saltees la Fase 1: casi todo lo demás se cuelga del pipeline de CI.
-- **Marcá el progreso** en la tabla de abajo a medida que avanzás.
-- **Consultá los `PLUGIN.md` de Nx antes de cada fase que toque testing.** Varios plugins traen guía de buenas prácticas propia, y en este workspace están instalados los que más importan para las Fases 1 y 2: `node_modules/@nx/jest/dist/PLUGIN.md`, `@nx/playwright/dist/PLUGIN.md`, `@nx/vitest/dist/PLUGIN.md` y `@nx/vite/dist/PLUGIN.md`. No todos los plugins tienen este archivo; si no está, seguí sin él.
+- **Las fases están ordenadas por dependencia y por valor.** No saltear la Fase 1: casi todo lo demás se cuelga del pipeline de CI.
+- **Marcar el progreso** en la tabla de abajo a medida que se avanza.
+- **Consultar los `PLUGIN.md` de Nx antes de cada fase que toque testing.** Varios plugins traen guía de buenas prácticas propia, y en este workspace están instalados los que más importan para las Fases 1 y 2: `node_modules/@nx/jest/dist/PLUGIN.md`, `@nx/playwright/dist/PLUGIN.md`, `@nx/vitest/dist/PLUGIN.md` y `@nx/vite/dist/PLUGIN.md`. No todos los plugins tienen este archivo; si no está, seguir sin él.
 
 ## Estado
 
@@ -32,7 +29,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 
 Los tres workflows en `.github/workflows/` son **todos de deploy**. Ninguno corre `lint`, `test` ni `e2e`. Un push a `master` dispara `sam deploy` sin que se haya ejecutado una sola prueba, y los tres specs de Playwright en `e2e/` solo corren si alguien se acuerda de correrlos a mano — o sea, se van a pudrir.
 
-Además el repo nunca usa `nx affected`, que es la razón técnica principal para tener un monorepo: sin él, o corrés todo siempre (lento) o no corrés nada (lo que pasa hoy).
+Además el repo nunca usa `nx affected`, que es la razón técnica principal para tener un monorepo: sin él, o se corre todo siempre (lento) o no se corre nada (lo que pasa hoy).
 
 ### 1.1 — Workflow de CI en pull requests
 
@@ -41,9 +38,16 @@ Crear `.github/workflows/ci.yml` que corra en `pull_request` y en push a `develo
 **Qué hacer**
 
 - Job único que corra `npx nx affected -t lint test build`.
-- Para que `affected` sepa contra qué comparar, usar `nrwl/nx-set-shas@v4` (calcula el SHA base correcto en PRs y en push). Sin eso, `affected` en CI o falla o compara contra el commit anterior, que no es lo que querés.
+- Para que `affected` sepa contra qué comparar, usar `nrwl/nx-set-shas@v4` (calcula el SHA base correcto en PRs y en push). Sin eso, `affected` en CI o falla o compara contra el commit anterior, que no es lo que se busca.
 - `npm ci` + `actions/setup-node@v4` con `cache: npm`, igual que los workflows existentes.
 - `fetch-depth: 0` en el checkout — `affected` necesita historia de git, y el default (`depth: 1`) la rompe.
+
+Antes de escribir el YAML, verificar localmente qué considera "afectado" el workspace:
+
+```bash
+npx nx show projects --affected --base=HEAD~3   # qué proyectos considera afectados
+npx nx graph --base=HEAD~3                      # el grafo, visualmente
+```
 
 **Criterio de aceptación**
 
@@ -51,21 +55,11 @@ Crear `.github/workflows/ci.yml` que corra en `pull_request` y en push a `develo
 - [ ] Un PR que toca `packages/shared-contracts` sí corre los tests de web, mobile y realtime-api (es dependencia de los tres).
 - [ ] Un PR con un test roto deja el check en rojo.
 
-**Qué aprendés**
-
-Cómo Nx construye el grafo de dependencias y qué significa "afectado". Antes de escribir el YAML, probá localmente:
-
-```bash
-npx nx show projects --affected --base=HEAD~3   # qué proyectos considera afectados
-npx nx graph --base=HEAD~3                      # el grafo, visualmente
-```
-
-Ojo con el segundo: `nx graph` **no** tiene flag `--affected` (a diferencia de `nx show projects`, que sí). En `nx graph` el modo afectado se activa pasando `--base`/`--head`. Verificalo con `npx nx graph --help` — vale la pena adquirir el hábito de confirmar las flags de Nx antes de meterlas en un YAML de CI, donde el error tarda un push en aparecer.
-
 **Trampas**
 
-- El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí evaluás Nx Cloud o un caché self-hosted — no antes.
-- Pasá `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).
+- `nx graph` **no** tiene flag `--affected`, a diferencia de `nx show projects`. En `nx graph` el modo afectado se activa pasando `--base`/`--head`. Conviene confirmar toda flag de Nx con `--help` (o `nx_docs`) antes de meterla en un YAML de CI, donde el error tarda un push en aparecer.
+- El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí se evalúa Nx Cloud o un caché self-hosted — no antes.
+- Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).
 
 ### 1.2 — E2E en CI
 
@@ -73,34 +67,30 @@ Ojo con el segundo: `nx graph` **no** tiene flag `--affected` (a diferencia de `
 
 Los e2e necesitan tres cosas arriba: DynamoDB Local, `realtime-api` y `web`. Hoy [e2e/playwright.config.mts](e2e/playwright.config.mts) **no orquesta nada** en modo `local` — asume que ya están corriendo. El comentario del archivo explica por qué (poner `nx serve` dentro de `webServer.command` choca con el `dependsOn` que infiere el plugin de Nx/Playwright: *"recursive task invocation detected"*).
 
-Dos caminos, elegí uno y dejá registrada la decisión en el `design.md` del change:
+Dos caminos; elegir uno y dejar registrada la decisión en el `design.md` del change:
 
 1. **Orquestar desde el YAML**: levantar DynamoDB Local con `services:` de GitHub Actions (o el `npm run e2e:db:up` que ya existe), arrancar api y web en background, esperar a que respondan, y recién ahí `nx e2e e2e`.
 2. **Agregar un `E2E_TARGET=ci`** al config de Playwright que sí use `webServer` con los binarios ya buildeados (no `nx serve`), esquivando el conflicto de tasks recursivas.
 
-La opción 1 es más simple de arrancar; la 2 deja el repo reproducible en local con un solo comando. Recomendación: arrancá con la 1 y migrá a la 2 si te cansa mantener el YAML.
+La opción 1 es más simple de arrancar; la 2 deja el repo reproducible en local con un solo comando. Recomendación: arrancar con la 1 y migrar a la 2 si mantener el YAML se vuelve molesto.
 
 **Criterio de aceptación**
 
 - [ ] Los 3 specs corren en CI y pasan.
 - [ ] Un e2e roto deja el PR en rojo.
-- [ ] En caso de fallo, el trace de Playwright queda subido como artifact (`actions/upload-artifact`) — `trace: 'on-first-retry'` ya está configurado, pero sin subir el artifact no lo podés ver.
+- [ ] En caso de fallo, el trace de Playwright queda subido como artifact (`actions/upload-artifact`) — `trace: 'on-first-retry'` ya está configurado, pero sin subir el artifact no se puede ver.
 - [ ] El job de e2e no bloquea el feedback rápido: separado del job de lint/test, no en serie con él.
-
-**Qué aprendés**
-
-La diferencia entre un test unitario (rápido, aislado, corre siempre) y uno e2e (lento, necesita entorno real, se ejecuta selectivamente). Y por qué la orquestación del entorno es la parte difícil de los e2e, no los asserts.
 
 ### 1.3 — Branch protection
 
-[docs/git-branching-strategy.md](docs/git-branching-strategy.md) dice explícitamente: *"no hay branch protection rules configuradas todavía"*. La convención existe solo en la cabeza de quien la sigue.
+[docs/git-branching-strategy.md](git-branching-strategy.md) dice explícitamente: *"no hay branch protection rules configuradas todavía"*. La convención existe solo en la cabeza de quien la sigue.
 
 **Qué hacer**
 
 En GitHub → Settings → Branches, para `master` y `develop`:
 - Requerir que el check de CI pase antes de mergear.
 - Requerir PR (no push directo).
-- En `master`, considerar "require linear history" — es lo que ya hacés a mano con `merge --ff-only`.
+- En `master`, considerar "require linear history" — es lo que ya se hace a mano con `merge --ff-only`.
 
 **Criterio de aceptación**
 
@@ -109,17 +99,13 @@ En GitHub → Settings → Branches, para `master` y `develop`:
 - [ ] `docs/git-branching-strategy.md` actualizado: sacar la frase de que no hay protección y documentar qué reglas quedaron.
 - [ ] **Eliminar la excepción "commit directo a `develop`" de [conventions.md](conventions.md)** — está escrita con vencimiento en esta fase. A partir de acá deja de ser una decisión y pasa a ser imposible, así que la excepción sobra.
 
-**Qué aprendés**
-
-La diferencia entre una convención documentada y una restricción aplicada. Es el mismo patrón que la Fase 3: configuración que existe pero no hace nada.
-
 ---
 
 ## Fase 2 — Tests del backend
 
 ### El problema
 
-[apps/realtime-api/project.json](apps/realtime-api/project.json) tiene `"passWithNoTests": true` y **no hay un solo test**. Ahí vive la lógica de dominio del producto: 10 acciones (`vote`, `reveal`, `resolve-story`, `close-room`, `next-story`, `new-round`…), el cálculo de promedio y moda, las reglas de quién puede hacer qué, y el repositorio de DynamoDB.
+[apps/realtime-api/project.json](../apps/realtime-api/project.json) tiene `"passWithNoTests": true` y **no hay un solo test**. Ahí vive la lógica de dominio del producto: 10 acciones (`vote`, `reveal`, `resolve-story`, `close-room`, `next-story`, `new-round`…), el cálculo de promedio y moda, las reglas de quién puede hacer qué, y el repositorio de DynamoDB.
 
 Los 4 tests unitarios que existen hoy están en las piezas más fáciles del repo.
 
@@ -127,14 +113,14 @@ Los 4 tests unitarios que existen hoy están en las piezas más fáciles del rep
 
 **Qué hacer**
 
-Empezá por las acciones con reglas de negocio puras, en este orden:
+Empezar por las acciones con reglas de negocio puras, en este orden:
 
 1. **`resolve-story`** — promedio, moda, resolución manual. Hay reglas sutiles ya documentadas en el archive: la moda solo aplica a mazos numéricos (`2026-07-11-fix-mode-numeric-only`) y T-Shirt tiene resolución numérica propia (`2026-07-19-tshirt-numeric-resolution`). Esos dos changes son casos de test listos para escribir.
 2. **`vote`** — votar dos veces, votar después del reveal, votar siendo moderador no-votante.
 3. **`reveal`** / **`new-round`** / **`next-story`** — transiciones de estado y quién tiene permiso.
 4. **`close-room`** — el resumen final.
 
-Mockeá el repositorio (`lib/room-repository.ts`) y `lib/broadcast.ts`; no toques DynamoDB en este nivel.
+Mockear el repositorio (`lib/room-repository.ts`) y `lib/broadcast.ts`; no tocar DynamoDB en este nivel.
 
 **Criterio de aceptación**
 
@@ -142,32 +128,25 @@ Mockeá el repositorio (`lib/room-repository.ts`) y `lib/broadcast.ts`; no toque
 - [ ] Cada acción con lógica de decisión tiene tests de camino feliz **y** de camino de error (permiso denegado, estado inválido).
 - [ ] Los casos de los changes `fix-mode-numeric-only` y `tshirt-numeric-resolution` están cubiertos explícitamente.
 
-**Qué aprendés**
-
-Diseño para testabilidad: vas a descubrir qué partes del backend son difíciles de testear, y esa dificultad **es** la señal de dónde el acoplamiento está mal. Si mockear el repositorio duele, el problema no es el test.
-
 **Trampas**
 
-- `realtime-api` usa **Jest** (`jest.config.cts`), igual que `packages/` y `mobile`. Solo `web` usa Vitest. No mezcles convenciones.
-- Resistí la tentación de testear a través del handler HTTP. Los handlers (`connect`, `disconnect`, `default`) son adaptadores finos; la lógica está en `actions/`. Testeá ahí.
+- `realtime-api` usa **Jest** (`jest.config.cts`), igual que `packages/` y `mobile`. Solo `web` usa Vitest. No mezclar convenciones.
+- Evitar testear a través del handler HTTP. Los handlers (`connect`, `disconnect`, `default`) son adaptadores finos; la lógica está en `actions/`. Los tests van ahí.
+- Si mockear el repositorio resulta difícil, esa dificultad es señal de acoplamiento mal puesto en el código, no de un problema del test.
 
 ### 2.2 — Test de integración contra DynamoDB Local
 
 **Qué hacer**
 
-Los unitarios de 2.1 mockean el repositorio, así que **no prueban que las queries a DynamoDB estén bien**. Agregá una capa fina de integración que corra `lib/room-repository.ts` contra DynamoDB Local — la infra ya existe (`npm run dev:db:up` + `npm run dev:db:create-table`).
+Los unitarios de 2.1 mockean el repositorio, así que **no prueban que las queries a DynamoDB estén bien**. Agregar una capa fina de integración que corra `lib/room-repository.ts` contra DynamoDB Local — la infra ya existe (`npm run dev:db:up` + `npm run dev:db:create-table`).
 
-Cubrí sobre todo el diseño single-table: PK/SK, el TTL, y las lecturas de sala completa.
+Cubrir sobre todo el diseño single-table: PK/SK, el TTL, y las lecturas de sala completa.
 
 **Criterio de aceptación**
 
 - [ ] Los tests crean y limpian sus propios datos (nada de estado compartido entre tests).
-- [ ] Corren en CI (misma infra que armaste en 1.2).
+- [ ] Corren en CI (misma infra que se armó en 1.2).
 - [ ] Están separados de los unitarios: `nx test realtime-api` sigue siendo rápido y no necesita Docker.
-
-**Qué aprendés**
-
-La pirámide de tests aplicada de verdad, y por qué un mock que miente es peor que no tener test. También el modelado single-table de DynamoDB, que es de las cosas más transferibles del repo.
 
 ### 2.3 — Cobertura con umbral
 
@@ -175,19 +154,17 @@ La pirámide de tests aplicada de verdad, y por qué un mock que miente es peor 
 
 Activar reporte de cobertura y fijar un umbral mínimo que falle el build si baja.
 
+El umbral funciona como **trinquete**: se fija en el valor ya alcanzado y solo sube. Un 80% impuesto de golpe genera tests basura escritos para el número; un umbral que sube de a poco genera cobertura real.
+
 **Criterio de aceptación**
 
 - [ ] `nx test realtime-api --coverage` produce reporte.
-- [ ] Hay un umbral configurado, fijado en el valor que ya alcanzaste (no un número aspiracional).
+- [ ] Hay un umbral configurado, fijado en el valor ya alcanzado (no un número aspiracional).
 - [ ] CI falla si la cobertura baja de ese umbral.
-
-**Qué aprendés**
-
-Que la cobertura es un **trinquete** (no retroceder), no una meta. Un 80% impuesto de golpe genera tests basura; un umbral que sube de a poco genera hábito.
 
 **Trampas**
 
-- El workspace mezcla runners (Jest en 3 proyectos, Vitest en `web`). Agregar la cobertura de todos en un solo número es trabajo extra y poco valor — mantené el umbral **por proyecto**.
+- El workspace mezcla runners (Jest en 3 proyectos, Vitest en `web`). Agregar la cobertura de todos en un solo número es trabajo extra y poco valor — mantener el umbral **por proyecto**.
 
 ---
 
@@ -199,7 +176,7 @@ Fase corta (una tarde) pero de alto retorno: hay tres configuraciones que existe
 
 **El problema**
 
-[eslint.config.mjs](eslint.config.mjs) define constraints para `scope:shared`, `scope:api` y `scope:shop`. `scope:shop` es texto de ejemplo del generador de Nx: no tiene nada que ver con esta app. Y los 5 proyectos tienen `"tags": []`. **La regla está prendida pero no aplica a nada**: hoy `apps/web` podría importar de `apps/realtime-api` y ESLint no diría una palabra.
+[eslint.config.mjs](../eslint.config.mjs) define constraints para `scope:shared`, `scope:api` y `scope:shop`. `scope:shop` es texto de ejemplo del generador de Nx: no tiene nada que ver con esta app. Y los 5 proyectos tienen `"tags": []`. **La regla está prendida pero no aplica a nada**: hoy `apps/web` podría importar de `apps/realtime-api` y ESLint no diría una palabra.
 
 **Qué hacer**
 
@@ -216,19 +193,17 @@ Definir el esquema de tags que refleje la arquitectura que **ya existe** de hech
 
 Reglas que deberían derivarse de eso: `shared-contracts` no depende de nadie; `room-client-runtime` solo de `shared`; `web` y `mobile` no se ven entre sí ni ven `api`; nadie depende de una app.
 
+Esto convierte en mecánico el desacople web/mobile/api que se logró en el change `uncouple-client-logic` y que hoy depende solo de disciplina.
+
 **Criterio de aceptación**
 
 - [ ] `scope:shop` eliminado del config.
 - [ ] Todos los proyectos tienen tags.
-- [ ] **Verificación activa**: agregá temporalmente un `import` de `apps/realtime-api` dentro de `apps/web`, confirmá que `nx lint web` falla, y revertilo. Una regla de boundaries que nunca viste fallar no sabés si funciona.
-
-**Qué aprendés**
-
-Que la arquitectura se documenta con restricciones ejecutables, no con diagramas. El desacople web/mobile/api que lograste en el change `uncouple-client-logic` hoy depende de disciplina; esto lo vuelve mecánico.
+- [ ] **Verificación activa**: agregar temporalmente un `import` de `apps/realtime-api` dentro de `apps/web`, confirmar que `nx lint web` falla, y revertirlo. Una regla de boundaries que nunca se vio fallar no se sabe si funciona.
 
 ### 3.2 — `nx.json`: `release.projects` apunta a un proyecto inexistente
 
-[nx.json](nx.json) declara `"release": { "projects": ["api"] }`, pero no existe ningún proyecto llamado `api` — se llama `realtime-api` (`npx nx show projects` lo confirma).
+[nx.json](../nx.json) declara `"release": { "projects": ["api"] }`, pero no existe ningún proyecto llamado `api` — se llama `realtime-api` (`npx nx show projects` lo confirma).
 
 **Criterio de aceptación**
 
@@ -238,14 +213,12 @@ Que la arquitectura se documenta con restricciones ejecutables, no con diagramas
 
 `nx.json` registra el plugin `@nx/docker` con `buildTarget`/`runTarget`, y `@nx/docker` está en `devDependencies`, pero **no existe ningún Dockerfile en el repo**. El backend se despliega como Lambdas vía SAM, así que probablemente el plugin sobra.
 
+Las dependencias no usadas no son gratis: son superficie de ataque (Fase 5), ruido en el árbol de decisiones, y tiempo de instalación en cada corrida de CI.
+
 **Criterio de aceptación**
 
 - [ ] Decidir: o se usa (¿hay un caso? ¿el dev server local containerizado?) o se saca el plugin de `nx.json` y la dependencia de `package.json`.
 - [ ] Si se saca: confirmar que `npx nx show projects` y los builds siguen funcionando.
-
-**Qué aprendés**
-
-Que las dependencias no usadas no son gratis: son superficie de ataque (Fase 5), ruido en el árbol de decisiones, y tiempo de instalación en cada corrida de CI.
 
 ---
 
@@ -253,7 +226,7 @@ Que las dependencias no usadas no son gratis: son superficie de ataque (Fase 5),
 
 ### El problema
 
-Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales corriendo en AWS. **Si `prod` se rompe hoy, te enterás porque alguien te avisa.** Es el área del ciclo de vida que falta entera, y la que más se nota en un contexto profesional.
+Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales corriendo en AWS. **Si `prod` se rompe hoy, alguien tiene que avisar para enterarse.** Es el área del ciclo de vida que falta entera.
 
 ### 4.1 — Logging estructurado
 
@@ -261,24 +234,21 @@ Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales
 
 Reemplazar los `console.log` sueltos por logs en JSON con campos consistentes: `level`, `requestId`, `connectionId`, `roomId`, `action`, `durationMs`. CloudWatch Logs Insights puede consultar JSON; texto libre no.
 
-Empezá por los tres handlers (`connect`, `disconnect`, `default`) y por los errores de todas las acciones.
+Empezar por los tres handlers (`connect`, `disconnect`, `default`) y por los errores de todas las acciones.
 
 **Criterio de aceptación**
 
 - [ ] Todos los logs del backend salen como JSON de una línea.
 - [ ] Cada log de una acción incluye `roomId` y la acción, para poder reconstruir la sesión de una sala.
 - [ ] Los errores loguean el stack completo y el contexto, no solo el mensaje.
-- [ ] Una query de CloudWatch Logs Insights documentada en `docs/` que muestre los errores de la última hora. Escribila y probala contra `dev`.
-
-**Qué aprendés**
-
-Que el logging es una interfaz de consulta, no un `printf`. La prueba es si podés contestar *"¿qué pasó en la sala ABC123 hace 20 minutos?"* sin leer código.
+- [ ] Una query de CloudWatch Logs Insights documentada en `docs/` que muestre los errores de la última hora, escrita y probada contra `dev`.
+- [ ] Prueba práctica del resultado: se puede contestar *"¿qué pasó en la sala ABC123 hace 20 minutos?"* sin leer código.
 
 ### 4.2 — Alarmas en CloudWatch
 
 **Qué hacer**
 
-En [infra/template.yaml](infra/template.yaml), agregar alarmas y una suscripción SNS a tu email. Mínimo viable:
+En [infra/template.yaml](../infra/template.yaml), agregar alarmas y una suscripción SNS a un email. Mínimo viable:
 
 - Errores de Lambda > N en 5 minutos.
 - Throttles de Lambda > 0.
@@ -288,25 +258,17 @@ En [infra/template.yaml](infra/template.yaml), agregar alarmas y una suscripció
 **Criterio de aceptación**
 
 - [ ] Las alarmas se crean por ambiente (una alarma de `dev` no puede despertar por un problema de `prod`).
-- [ ] **Probaste que dispara**: forzá un error en `dev` y confirmá que te llega la notificación. Una alarma que nunca viste disparar no existe.
-- [ ] Umbrales distintos por ambiente, o `dev` te va a spamear hasta que apagues las notificaciones — que es la forma más común en que muere el monitoreo.
-
-**Qué aprendés**
-
-La diferencia entre monitoreo (datos que existen) y alerting (alguien se entera). Y el problema de la fatiga de alertas, que es la razón #1 por la que los sistemas de alerta se vuelven inútiles.
+- [ ] **Probado que dispara**: forzar un error en `dev` y confirmar que llega la notificación. Una alarma que nunca se vio disparar no existe.
+- [ ] Umbrales distintos por ambiente, o `dev` genera spam hasta que alguien apaga las notificaciones — que es la forma más común en que muere el monitoreo.
 
 ### 4.3 — Tracing distribuido (opcional)
 
-Activar AWS X-Ray en las Lambdas y el API Gateway (`Tracing: Active` en el template de SAM).
+Activar AWS X-Ray en las Lambdas y el API Gateway (`Tracing: Active` en el template de SAM). Con una sola Lambda el valor es limitado.
 
 **Criterio de aceptación**
 
-- [ ] Podés ver el timeline de un mensaje WebSocket: API Gateway → Lambda → DynamoDB → broadcast.
-- [ ] Identificaste dónde se va el tiempo en la acción más lenta.
-
-**Qué aprendés**
-
-Por qué en sistemas distribuidos los logs por servicio no alcanzan. Con una sola Lambda el valor es limitado; el concepto es lo transferible.
+- [ ] Se puede ver el timeline de un mensaje WebSocket: API Gateway → Lambda → DynamoDB → broadcast.
+- [ ] Identificado dónde se va el tiempo en la acción más lenta.
 
 ---
 
@@ -322,7 +284,7 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 
 **Qué hacer**
 
-`.github/dependabot.yml` (o Renovate, que agrupa mejor). Configuralo para agrupar por ecosistema — 90 PRs sueltos por semana los vas a ignorar, y un Dependabot ignorado es peor que ninguno.
+`.github/dependabot.yml` (o Renovate, que agrupa mejor). Configurarlo para agrupar por ecosistema — 90 PRs sueltos por semana se terminan ignorando, y un Dependabot ignorado es peor que ninguno.
 
 **Criterio de aceptación**
 
@@ -335,11 +297,11 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 **Criterio de aceptación**
 
 - [ ] Un job que corra `npm audit --audit-level=high` (o `--production` para acotar el ruido).
-- [ ] Definido explícitamente qué severidad rompe el build y cuál solo avisa. Documentalo.
+- [ ] Definido explícitamente qué severidad rompe el build y cuál solo avisa. Documentado.
 
 **Trampas**
 
-- `npm audit` sobre devDependencies genera mucho falso positivo (una vulnerabilidad en una herramienta de build no es la misma que una en runtime). Si lo dejás fallando el build por todo, en dos semanas alguien le pone `|| true` — y ahí perdiste la señal para siempre.
+- `npm audit` sobre devDependencies genera mucho falso positivo (una vulnerabilidad en una herramienta de build no es la misma que una en runtime). Si rompe el build por todo, en dos semanas alguien le pone `|| true` — y ahí se pierde la señal para siempre.
 
 ### 5.3 — Análisis estático y secret scanning
 
@@ -347,11 +309,7 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 
 - [ ] CodeQL activo para JavaScript/TypeScript (workflow provisto por GitHub).
 - [ ] Secret scanning + push protection activados en Settings del repo.
-- [ ] Revisado que [infra/env.json](infra/env.json) no tenga secretos commiteados y que esté en `.gitignore` (existe `env.json.example`, así que la intención está — confirmá que se cumple).
-
-**Qué aprendés**
-
-Que la seguridad de la cadena de suministro es la que más se descuida y la más explotada. El punto no son las herramientas, es el hábito.
+- [ ] Revisado que [infra/env.json](../infra/env.json) no tenga secretos commiteados y que esté en `.gitignore` (existe `env.json.example`, así que la intención está — confirmar que se cumple).
 
 ---
 
@@ -361,7 +319,7 @@ Que la seguridad de la cadena de suministro es la que más se descuida y la más
 
 **El problema**
 
-[deploy-backend.yml](.github/workflows/deploy-backend.yml) termina en `sam deploy` y reporta éxito. Pero "el stack se actualizó" no es lo mismo que "la app funciona": el deploy puede salir verde con la API completamente rota.
+[deploy-backend.yml](../.github/workflows/deploy-backend.yml) termina en `sam deploy` y reporta éxito. Pero "el stack se actualizó" no es lo mismo que "la app funciona": el deploy puede salir verde con la API completamente rota.
 
 **Qué hacer**
 
@@ -371,11 +329,7 @@ Agregar un step después de `sam deploy` que abra un WebSocket contra el endpoin
 
 - [ ] Corre contra la URL del ambiente que se acaba de desplegar (leída de los outputs del stack, no hardcodeada).
 - [ ] Un endpoint roto deja el deploy en rojo.
-- [ ] Se limpia lo que crea (la sala de prueba no queda dando vueltas — el TTL ayuda, pero no dependas de eso).
-
-**Qué aprendés**
-
-La diferencia entre desplegar y entregar. Es el prerequisito conceptual de todo lo que viene después: rollback automático, canary, blue/green.
+- [ ] Se limpia lo que crea (la sala de prueba no queda dando vueltas — el TTL ayuda, pero no conviene depender de eso).
 
 ### 6.2 — Multi-ambiente para web
 
@@ -385,7 +339,9 @@ El backend tiene tres ambientes reales; `apps/web` tiene tres archivos de enviro
 
 **Qué hacer**
 
-Extender el modelo de ambientes del backend a la web. Decisión de diseño a tomar y documentar: GitHub Pages sirve un solo sitio por repo, así que necesitás o subdirectorios por ambiente, o mover a S3 + CloudFront, o hacer que la URL del WebSocket sea configurable en runtime en vez de en build time.
+Extender el modelo de ambientes del backend a la web. Decisión de diseño a tomar y documentar: GitHub Pages sirve un solo sitio por repo, así que hace falta o subdirectorios por ambiente, o mover a S3 + CloudFront, o hacer que la URL del WebSocket sea configurable en runtime en vez de en build time.
+
+Esa última alternativa es la decisión de fondo —configuración en build time vs. runtime— y es la que más consecuencias tiene a largo plazo.
 
 **Criterio de aceptación**
 
@@ -394,21 +350,17 @@ Extender el modelo de ambientes del backend a la web. Decisión de diseño a tom
 - [ ] La decisión y sus alternativas descartadas quedan en el `design.md` del change.
 - [ ] README actualizado: sacar la frase *"apps/web no tiene ambientes múltiples todavía"*.
 
-**Qué aprendés**
-
-Configuración en build time vs. runtime — una de las decisiones de arquitectura con más consecuencias a largo plazo, y la que explica por qué las apps modernas tienden a un `config.json` cargado al inicio en vez de un bundle por ambiente.
-
 ---
 
 ## Fase 7 — Release y colaboración
 
-Esta fase tiene el valor más bajo mientras trabajes solo, y el más alto en el momento en que entra una segunda persona. Hacela última, pero hacela.
+Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona, y el más alto en el momento en que entra una segunda. Va última, pero va.
 
 ### 7.1 — Versionado y changelog
 
 **El problema**
 
-`git tag v1.5.0` está en la convención de [docs/git-branching-strategy.md](docs/git-branching-strategy.md), pero no hay tags en el repo, ni changelog, ni relación entre lo que está desplegado en `prod` y una versión nombrable. Si `prod` se rompe, no hay respuesta rápida a *"¿qué cambió?"*.
+`git tag v1.5.0` está en la convención de [git-branching-strategy.md](git-branching-strategy.md), pero no hay tags en el repo, ni changelog, ni relación entre lo que está desplegado en `prod` y una versión nombrable. Si `prod` se rompe, no hay respuesta rápida a *"¿qué cambió?"*.
 
 **Qué hacer**
 
@@ -425,19 +377,15 @@ Esta fase tiene el valor más bajo mientras trabajes solo, y el más alto en el 
 **Criterio de aceptación**
 
 - [ ] `CODEOWNERS` — trivial hoy, pero define quién revisa qué cuando entra alguien más.
-- [ ] Plantilla de PR que pida el link al change de OpenSpec correspondiente. Cierra el ciclo entre tu proceso de diseño y el de revisión, que hoy están desconectados.
+- [ ] Plantilla de PR que pida el link al change de OpenSpec correspondiente. Cierra el ciclo entre el proceso de diseño y el de revisión, que hoy están desconectados.
 - [ ] `commitlint` en CI para que Conventional Commits sea verificado y no solo una costumbre (prerequisito real de 7.1: si un commit se escapa del formato, el changelog sale mal).
-
-**Qué aprendés**
-
-Que el proceso que vive en la cabeza de una persona no es un proceso — es un cuello de botella esperando a manifestarse.
 
 ---
 
 ## Deuda menor detectada de paso
 
-No justifican una fase propia; barrelos cuando toques el área.
+No justifican una fase propia; se barren cuando se toque el área.
 
-- [ ] [e2e/playwright.config.mts](e2e/playwright.config.mts) referencia `docs/e2e-tests.md` en dos comentarios. Ese archivo no existe — el que hay es [docs/e2e-lessons-learned.md](docs/e2e-lessons-learned.md). Corregir la referencia (junto con la Fase 1.2).
+- [ ] [e2e/playwright.config.mts](../e2e/playwright.config.mts) referencia `docs/e2e-tests.md` en dos comentarios. Ese archivo no existe — el que hay es [e2e-lessons-learned.md](e2e-lessons-learned.md). Corregir la referencia (junto con la Fase 1.2).
 - [ ] `apps/web/src/environments/environment.ts` y `environment.development.ts` son byte por byte idénticos (Fase 6.2).
 - [ ] `INSTALL_LOG.md` (23 KB en la raíz) parece un artefacto de instalación inicial. Evaluar si va a `docs/` o se elimina.
