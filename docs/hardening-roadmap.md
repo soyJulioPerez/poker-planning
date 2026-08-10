@@ -35,12 +35,29 @@ Además el repo nunca usa `nx affected`, que es la razón técnica principal par
 
 Crear `.github/workflows/ci.yml` que corra en `pull_request` y en push a `develop`, `release/**` y `master`.
 
+**Prerrequisito: arreglar el target `build` de mobile**
+
+Antes de escribir el YAML hay que resolver esto, o el gate nace roto. Hoy `nx build mobile` usa el executor `@nx/expo:build`, que **no compila nada localmente**: invoca `eas build`, o sea un build en los servidores de Expo (cuota, minutos, `EXPO_TOKEN`). Y como `packages/shared-contracts` es dependencia de mobile, cualquier PR que la toque lo dispara.
+
+Peor: ese executor **corrompe el working tree aunque falle** — borra `apps/mobile/package-lock.json` y reescribe `apps/mobile/package.json`. Ver [known-issues.md](known-issues.md). En CI el daño es efímero, pero en local no.
+
+**Solución: correr el generador oficial** en vez de renombrar targets a mano.
+
+```bash
+npx nx g @nx/expo:convert-to-inferred
+```
+
+El propio executor lo recomienda al correr (`@nx/expo:build` está deprecado y se elimina en Nx v24). Resuelve la deprecación y la nomenclatura de una vez.
+
+El criterio para saber si quedó bien: **`nx build mobile` tiene que bundlear local, no llamar a la nube.** El equivalente local es `expo export`, que produce bytecode Hermes para android e ios más el bundle web —verificación real de que la app compila en las tres plataformas— y tarda ~63s. El `eas build` es conceptualmente un *deploy*, no un build: va con los workflows de despliegue (`build-mobile.yml`, que ya lo invoca por CLI y no usa el target de Nx), no en el gate de PRs.
+
 **Qué hacer**
 
 - Job único que corra `npx nx affected -t lint test build`.
 - Para que `affected` sepa contra qué comparar, usar `nrwl/nx-set-shas@v4` (calcula el SHA base correcto en PRs y en push). Sin eso, `affected` en CI o falla o compara contra el commit anterior, que no es lo que se busca.
 - `npm ci` + `actions/setup-node@v4` con `cache: npm`, igual que los workflows existentes.
 - `fetch-depth: 0` en el checkout — `affected` necesita historia de git, y el default (`depth: 1`) la rompe.
+- Definir `"defaultBase": "develop"` en `nx.json`. Hoy no está, y Nx cae a `main`, que no existe en este repo: `nx affected` sin `--base` **falla en local**. En CI lo tapa `nx-set-shas`, pero sin esto no podés probar el comando antes de pushearlo.
 
 Antes de escribir el YAML, verificar localmente qué considera "afectado" el workspace:
 
@@ -48,6 +65,17 @@ Antes de escribir el YAML, verificar localmente qué considera "afectado" el wor
 npx nx show projects --affected --base=HEAD~3   # qué proyectos considera afectados
 npx nx graph --base=HEAD~3                      # el grafo, visualmente
 ```
+
+**Costo medido** (este workspace, cache limpia, corridas verificadas con exit 0):
+
+| Target | Proyectos | Tiempo |
+|---|---|---|
+| `lint` | 6 | 29s |
+| `test` | 5 | 14s |
+| `build` | 4 (sin mobile) | 9s |
+| `export` mobile | 1 | 63s |
+
+El gate completo está en el orden de **~2 minutos**, y mobile es más de la mitad. Con esos números, el job único alcanza: dividir no compra nada todavía. Revisarlo si el gate pasa de ~5 minutos.
 
 **Criterio de aceptación**
 
@@ -57,6 +85,7 @@ npx nx graph --base=HEAD~3                      # el grafo, visualmente
 
 **Trampas**
 
+- **`nx lint` está rojo hoy.** `nx lint web` falla con 10 errores de `@nx/enforce-module-boundaries` (todos los proyectos tienen `"tags": []`, ver [known-issues.md](known-issues.md) y la Fase 3.1). Si el gate incluye `lint` sin resolver eso, **todo PR nace en rojo** y el portón no sirve. Hay que elegir a propósito: adelantar la Fase 3.1, o arrancar el gate sin `lint` y sumarlo después. No es una decisión que se pueda postergar hasta el primer PR.
 - `nx graph` **no** tiene flag `--affected`, a diferencia de `nx show projects`. En `nx graph` el modo afectado se activa pasando `--base`/`--head`. Conviene confirmar toda flag de Nx con `--help` (o `nx_docs`) antes de meterla en un YAML de CI, donde el error tarda un push en aparecer.
 - El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí se evalúa Nx Cloud o un caché self-hosted — no antes.
 - Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).

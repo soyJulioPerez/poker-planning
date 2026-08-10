@@ -132,6 +132,47 @@ Con eso, el modo de falla dejó de ser un error críptico de `TestBed` y pasó a
 
 **Lo que no funciona** (para no volver a intentarlo): un `.env` en la raíz, una opción en `nx.json`, o `env` en el target de `project.json`. Los tres corren **después** de que `workspaceRoot` quedó fijado — el valor se evalúa al cargar el módulo, cuando arranca el CLI de Nx.
 
+## `nx build mobile` borra el lockfile de mobile, aunque falle
+
+**Detectado**: 2026-08-10.
+
+**Síntoma**: después de correr `npx nx build mobile`, el working tree queda sucio sin que uno haya editado nada:
+
+```
+ D apps/mobile/package-lock.json      # el original, de 24.042 líneas
+ M apps/mobile/package.json           # + "devDependencies": {}, y sin newline final
+```
+
+Las dos marcas delatan una reescritura por `JSON.stringify`: una clave vacía que no estaba y el salto de línea final perdido.
+
+**Causa**: el executor `@nx/expo:build` copia el `package.json` y el lockfile **de la raíz** dentro de `apps/mobile/` antes de invocar `eas` —para que EAS en la nube vea el árbol de dependencias completo— y los restaura al terminar:
+
+```js
+// node_modules/@nx/expo/dist/src/executors/build/build.impl.js:18
+resetLocalFunction = copyPackageJsonAndLock(detectPackageManager(context.root), context.root, projectRoot);
+await runCliBuild(context.root, projectRoot, options);
+} finally {
+    resetLocalFunction();   // restaura, pero mal
+```
+
+La restauración es defectuosa: reescribe `package.json` desde un objeto en memoria (de ahí el formato normalizado) y no repone el lockfile original, que quedó pisado por el de la raíz.
+
+**Ocurre incluso cuando el build falla.** Sin `eas-cli` instalado, el comando muere con `EAS is not installed` y el `finally` corre igual, dejando el destrozo.
+
+**Aislado por descarte** (restaurando los archivos y corriendo cada candidato por separado): `nx export mobile` no lo produce, `npm install` en la raíz tampoco. Solo `nx build mobile`.
+
+**Impacto**: en CI el daño es efímero (el checkout se descarta, no hay commit). En local es real y silencioso — el efecto no tiene ninguna relación visible con el comando que lo causó, así que es fácil commitearlo sin darse cuenta. `apps/mobile` no es un workspace de npm (el `package.json` raíz no declara `workspaces`), así que ese lockfile es suyo y no se regenera solo.
+
+**Recomendación**: correr el generador oficial, que además resuelve que el executor esté deprecado (`@nx/expo:build` se elimina en Nx v24 — el propio comando lo avisa):
+
+```bash
+npx nx g @nx/expo:convert-to-inferred
+```
+
+Es prerrequisito de la Fase 1.1 del [roadmap](hardening-roadmap.md): `nx affected -t build` incluye a mobile cada vez que se toca `packages/shared-contracts`.
+
+**Si ya pasó**: `git checkout -- apps/mobile/` restaura los dos archivos íntegros.
+
 ## Botón "Nueva ronda" sin accessible name descriptivo
 
 **Síntoma**: el botón "↻" del panel de revelado (`apps/web/src/app/ui/reveal-panel/reveal-panel.html`) tiene `title="Nueva ronda"`, pero su accessible name real (según ARIA/accessible-name computation) es el texto de contenido visible "↻", no el `title`. Cualquier código que intente ubicarlo por nombre accesible "Nueva ronda" (por ejemplo `getByRole('button', { name: 'Nueva ronda' })` en Playwright) no lo encuentra, porque el contenido de texto tiene prioridad sobre `title` en el cálculo del accessible name.
