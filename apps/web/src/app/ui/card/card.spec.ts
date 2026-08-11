@@ -20,7 +20,7 @@ describe('Card', () => {
     // pantalla no tiene forma de confirmar qué votó.
     const host = await render('5', true);
 
-    expect(host.querySelector('button')?.getAttribute('aria-pressed')).toBe('ROTO-A-PROPOSITO');
+    expect(host.querySelector('button')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('comunica que una carta no elegida no lo está', async () => {
