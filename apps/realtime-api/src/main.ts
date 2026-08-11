@@ -189,8 +189,12 @@ wss.on('connection', (socket) => {
 
 // Incluye la config de DynamoDB para poder confirmar que las variables de entorno
 // llegaron al proceso — en CI las inyecta el `webServer` de Playwright.
+// `address` incluye la familia (IPv4/IPv6) a la que quedo bindeado el socket. Importa:
+// el navegador resuelve `localhost` por su cuenta y si elige la familia que el servidor
+// no atiende, la conexion se cuelga sin que al backend le llegue nada.
 log('server.listening', {
   url: `ws://localhost:${PORT}`,
+  address: wss.address(),
   table: TABLE_NAME,
   dynamoEndpoint: process.env.DYNAMODB_ENDPOINT ?? '(default AWS)',
   region: process.env.AWS_REGION ?? '(sin definir)',
