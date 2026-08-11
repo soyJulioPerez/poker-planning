@@ -72,14 +72,33 @@ disparan las **actions mismas** según su versión mayor. Se corrigió subiendo
 `actions/checkout` y `actions/setup-node` a `@v5` en `ci.yml`, que son los primeros
 majors sobre Node 24. Ver `known-issues.md`.
 
+### Verificación del gate en rojo — 6.3 y 6.4 (run 31491583353)
+
+Se rompió a propósito una aserción de `card.spec.ts` y se pusheó al PR:
+
+```
+run: failure
+verify: failure
+deploy-backend: skipped
+deploy-web: skipped
+```
+
+**Es el punto del change**: con la verificación en rojo, ningún deploy corrió.
+Restaurado después, y el PR volvió a verde (`verify: success`).
+
+### Corrida con las actions en v5 (run 31491297378)
+
+Sin anotaciones. La de Node 20 desapareció, y el tiempo bajó de 2m47s a 1m39s
+con el caché de npm tibio.
+
 Este PR toca `nx.json` y `project.json`, o sea configuración raíz: **afecta a todos los
 proyectos**, así que no sirve para verificar el acotado por grafo (6.2, 6.6, 6.7). Eso
 necesita un PR que toque un solo proyecto.
 
 - [x] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
 - [ ] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
-- [ ] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
-- [ ] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
+- [x] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
+- [x] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
 - [x] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
 - [ ] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
 - [ ] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
