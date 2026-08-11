@@ -16,6 +16,9 @@ import { handleSetModeratorIsVoter } from './actions/set-moderator-is-voter';
 import { handleCloseRoom } from './actions/close-room';
 import { ClientRequest, ServerMessage } from 'shared-contracts';
 
+// Toque deliberado para la verificacion 6.5: hace que `realtime-api` quede afectado y
+// que el job de deploy sea elegible, de modo que si NO corre sea por el e2e roto y no
+// porque el grafo no lo alcanzaba. Se revierte junto con el resto.
 const PORT = Number(process.env.PORT ?? 3001);
 const LOCAL_API_ENDPOINT = 'local://dev';
 
