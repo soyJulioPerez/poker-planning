@@ -85,7 +85,9 @@ AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_EC2_METADATA_DISABLED=tr
   aws dynamodb create-table ... --endpoint-url http://127.0.0.1:8000
 ```
 
-**No aplicado todavía**: el cambio es de una línea por script, pero queda fuera del alcance del change en el que se detectó. Vale hacerlo junto con la próxima tarea que toque el entorno local.
+**Resuelto** el 2026-08-11, change `add-e2e-to-ci`. Los tres scripts usan `127.0.0.1` y `dev:db:create-table` lleva las credenciales dummy. Se agregó además [tools/scripts/wait-for-dynamodb.mjs](../tools/scripts/wait-for-dynamodb.mjs), que `e2e:db:up` invoca antes de crear la tabla: `docker start` vuelve en cuanto el contenedor arranca, no cuando el proceso Java de adentro atiende, y el `create-table` podía correr contra un puerto todavía mudo.
+
+**El reflejo del mismo problema, al revés**: el `http-server` que usa `nx run web:serve-static` escucha **solo** en `[::1]:4200`. Ahí hay que usar `localhost` y no `127.0.0.1`. O sea que en este repo conviven las dos direcciones y ninguna sirve para todo — DynamoDB Local necesita IPv4 explícito, `serve-static` necesita que se resuelva IPv6.
 
 ## Playwright: los binarios del navegador no vienen con `npm ci`
 
@@ -102,7 +104,9 @@ C:\Users\<user>\AppData\Local\ms-playwright\chromium_headless_shell-1234\...
 
 **Solución**: `npx playwright install chromium` (~115 MB).
 
-**Relevante para la Fase 1.2 del [roadmap](hardening-roadmap.md)**: el workflow de e2e en CI va a necesitar ese paso explícito, o los tests fallan con un error que no dice nada sobre la causa real.
+**Resuelto en CI** el 2026-08-11, change `add-e2e-to-ci`: el job de e2e de `ci.yml` corre `npx playwright install --with-deps chromium` antes de la suite.
+
+**Sigue aplicando en local**: `npm ci` no baja los navegadores en tu máquina tampoco. La primera vez que corras la suite hace falta `npx playwright install chromium`, como dice [local-dev-workflow.md](local-dev-workflow.md). Un pipeline verde no dice nada sobre esto.
 
 ## Vitest con Angular falla por la casing de la letra de unidad en Windows
 

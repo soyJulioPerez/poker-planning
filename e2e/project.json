@@ -4,6 +4,7 @@
   "sourceRoot": "e2e/src",
   "projectType": "library",
   "tags": ["scope:e2e", "type:e2e"],
+  "implicitDependencies": ["web", "realtime-api"],
   "// targets": "to see all targets run: nx show project e2e --web",
   "targets": {}
 }

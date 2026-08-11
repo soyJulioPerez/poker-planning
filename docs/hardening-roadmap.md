@@ -442,6 +442,5 @@ Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona
 
 No justifican una fase propia; se barren cuando se toque el área.
 
-- [ ] [e2e/playwright.config.mts](../e2e/playwright.config.mts) referencia `docs/e2e-tests.md` en dos comentarios. Ese archivo no existe — el que hay es [e2e-lessons-learned.md](e2e-lessons-learned.md). Corregir la referencia (junto con la Fase 1.2).
 - [ ] `apps/web/src/environments/environment.ts` y `environment.development.ts` son byte por byte idénticos (Fase 6.2).
 - [ ] `INSTALL_LOG.md` (23 KB en la raíz) parece un artefacto de instalación inicial. Evaluar si va a `docs/` o se elimina.

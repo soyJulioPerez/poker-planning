@@ -30,6 +30,26 @@ Notas prácticas recogidas durante la implementación de `add-e2e-estimation-rul
 
 **Lección general**: antes de escribir el assert, leer el componente real (no solo el spec de requirements) para confirmar qué texto/atributo se muestra de verdad. El spec describe el comportamiento observable a alto nivel; los detalles de presentación (qué etiqueta exacta, qué selector) solo están en el código.
 
+## `nx serve` no es la única forma de levantar las apps para Playwright
+
+**Registrado el 2026-08-11, armando el job de e2e en CI (change `add-e2e-to-ci`).**
+
+Durante mucho tiempo este repo dio por sentado que la suite **no podía** levantar su propio entorno. La razón era real pero se generalizó de más: poner `nx serve realtime-api` / `nx serve web` dentro de `webServer.command` choca con el `dependsOn` que el plugin `@nx/playwright` infiere **a partir de ese mismo comando**, y termina en `Recursive task invocation detected`.
+
+La conclusión correcta no era "no se puede orquestar" sino "**no se puede orquestar con `nx serve`**". Las dos apps se levantan sin él:
+
+| App | Comando | Por qué no choca |
+|---|---|---|
+| `web` | `npx nx run web:serve-static` | `@nx/web:file-server` con `spa: true`. Buildea y sirve con fallback SPA. Es el comando que los generadores de `@nx/playwright` emiten por defecto, y `serve-static` está marcado `continuous: true` — el mecanismo que Nx tiene justamente para esto. |
+| `realtime-api` | `node dist/apps/realtime-api/main.js` | Es un `ws` plano: no hay nada que "servir". Y un comando que no empieza con `nx` es **opaco** para la inferencia del plugin. |
+
+Verificado: los 12 tests activos corren desde cero, sin recursión, en ~22s con 8 workers.
+
+**Dos detalles que cuestan tiempo si no se saben:**
+
+- **`serve-static` escucha solo en `[::1]:4200`**, no en `127.0.0.1`. El `baseURL` tiene que ser `localhost`; forzar IPv4 no conecta. Es el reflejo exacto del problema inverso de DynamoDB Local, donde `localhost` resuelve a IPv6 y el contenedor no responde (ver `known-issues.md`).
+- **Para el backend se espera por `port`, no por `url`.** Es un WebSocket: no hay status HTTP que chequear, y esperar por puerto evita depender de qué contesta a un GET.
+
 ## Diagnóstico de fallos intermitentes en el entorno local
 
 Esta fue la parte que más tiempo tomó y la que más vale la pena releer antes de asumir que un test es "flaky" o que hay un bug real en la app.
