@@ -48,7 +48,14 @@ jobs:
       - run: npm ci
 
       # Calcula el SHA base contra el último commit verificado con éxito.
+      #
+      # `main-branch-name` es obligatorio acá: su default es "main", que no existe
+      # en este repo. Sin encontrarla, la action cae al hash del árbol vacío
+      # (4b825dc...) y `affected` marca TODO como afectado — lo que en un pipeline
+      # con deploys significa desplegar sin que haya cambiado nada.
       - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: develop
 
       - run: npx nx affected -t lint test build --outputStyle=static
 
