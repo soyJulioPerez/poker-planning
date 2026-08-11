@@ -68,8 +68,15 @@ const localBackendEnv = {
  * `retries: 2`, `workers: 1`, `forbidOnly` y el reporter `blob` se activan solos
  * cuando la variable CI está seteada.
  */
+const preset = nxE2EPreset(import.meta.dirname, { testDir: './.' });
+
 export default defineConfig({
-  ...nxE2EPreset(import.meta.dirname, { testDir: './.' }),
+  ...preset,
+  // El reporter `html` que trae el preset **captura** el stdout de los tests en vez de
+  // imprimirlo, así que los diagnósticos de fixtures.ts no llegaban al log del job. `list`
+  // sí los echa por stdout, que es donde hacen falta para correlacionarlos con los logs
+  // del backend.
+  reporter: [...(preset.reporter as Array<[string, object?]>), ['list']],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
