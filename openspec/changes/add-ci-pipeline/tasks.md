@@ -237,3 +237,28 @@ después y el PR volvió a verde.
 
 (Este registro se había anotado antes del squash merge de #3 y se perdió en el camino; se
 repone acá con los datos de la corrida.)
+
+
+### Hallazgos de `/opsx:verify`
+
+**1. `cancel-in-progress` podía cancelar un deploy a mitad** — corregido (`v1.3.1`).
+
+`concurrency.cancel-in-progress: true` estaba a nivel de workflow, así que un segundo push
+a `master` cancelaba la corrida entera de la anterior, **incluidos sus jobs de deploy**. Un
+`sam deploy` cancelado a mitad deja un changeset de CloudFormation aplicándose sin nadie
+esperándolo.
+
+El `cancel-in-progress: false` de los jobs de deploy no protegía: evita dos deploys
+simultáneos, no que cancelen el suyo desde arriba. Ahora la cancelación aplica solo a
+`pull_request`, que es donde el feedback rápido importa y no hay nada que romper.
+
+**2. `deploy-web.yml` tiene la misma falla latente que tuvo el backend** — documentado, no
+corregido.
+
+Usa `nx deploy web`, y `workflow_dispatch` permite elegir un tag desde la UI: dispararlo
+sobre uno anterior a `v1.1.0` falla con `Cannot find configuration for task web:deploy`.
+
+Se dejó así a propósito: a diferencia del backend, este workflow **no tiene input `ref`** ni
+un flujo de rollback documentado — para revertir la web se revierte el commit y se despliega
+desde `master`. Quitarle el target obligaría a duplicar el build y el `cp` del 404 en YAML,
+que es justo lo que este change vino a evitar. Queda anotado en el propio workflow.
