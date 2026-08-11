@@ -2,7 +2,9 @@
   <h3>Votos revelados</h3>
 
   @if (isModerator()) {
-    <p class="reveal-panel__hint">Click en un voto para usarlo como puntuación final</p>
+    <!-- "Elegí" y no "Click": desde el change fix-room-ui-accessibility los votos
+         también se seleccionan con teclado (Tab + Enter o Space). -->
+    <p class="reveal-panel__hint">Elegí un voto para usarlo como puntuación final</p>
   }
 
   <ul class="reveal-panel__votes">
