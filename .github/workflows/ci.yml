@@ -24,7 +24,15 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Solo se cancela en pull requests, donde tres pushes seguidos no deberían dejar
+  # tres pipelines completos corriendo.
+  #
+  # En push a develop/release/master NO se cancela: esta cancelación es a nivel de
+  # workflow y se lleva puesta la corrida entera, incluidos los jobs de deploy. Un
+  # `sam deploy` cancelado a mitad deja un changeset de CloudFormation aplicándose
+  # sin nadie esperándolo. El `cancel-in-progress: false` de los jobs no alcanza:
+  # protege de dos deploys simultáneos, no de que cancelen el suyo desde arriba.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:

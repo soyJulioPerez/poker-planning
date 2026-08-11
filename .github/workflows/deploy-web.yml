@@ -38,6 +38,16 @@ jobs:
         run: npm ci
 
       # El target hace el build con la configuración `aws` y agrega el 404.html.
+      #
+      # A diferencia de deploy-backend.yml, acá SÍ se usa el target de Nx: este
+      # workflow no tiene input `ref`, así que se dispara sobre el código actual de
+      # la rama elegida. La salvedad: `workflow_dispatch` permite elegir un tag desde
+      # la UI de GitHub, y si se elige uno anterior a v1.1.0 —cuando se agregó el
+      # target— esto falla con "Cannot find configuration for task web:deploy".
+      #
+      # No hay un flujo de rollback de web documentado (a diferencia del backend, que
+      # tiene input `ref` justamente para eso): para revertir la web se revierte el
+      # commit y se vuelve a desplegar desde master.
       - name: Build y preparar artefacto
         run: npx nx deploy web --outputStyle=static
 
