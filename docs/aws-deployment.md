@@ -118,7 +118,7 @@ Para probar el frontend contra el stack real desplegado (hoy siempre `prod`, ya 
 Para redesplegar una versión anterior a `prod` sin mover el puntero de la rama `master` (ver `docs/git-branching-strategy.md`):
 
 ```bash
-gh workflow run "Deploy backend to AWS" -f environment=prod -f ref=v1.4.0
+gh workflow run deploy-backend.yml -f environment=prod -f ref=v1.4.0
 ```
 
 Esto dispara `.github/workflows/deploy-backend.yml` con `workflow_dispatch`, haciendo checkout del tag `v1.4.0` y desplegándolo al stack `prod` — la rama `master` sigue apuntando a donde estaba.

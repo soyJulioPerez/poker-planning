@@ -250,7 +250,7 @@ Una vez hecho esto, `.github/workflows/deploy-backend.yml` puede autenticarse. C
 Disparar el workflow manualmente con GitHub CLI:
 
 ```bash
-gh workflow run "Deploy backend to AWS" --repo soyJulioPerez/poker-planning
+gh workflow run deploy-backend.yml --repo soyJulioPerez/poker-planning
 ```
 
 Seguir la ejecución en vivo:
@@ -261,7 +261,7 @@ gh run watch --repo soyJulioPerez/poker-planning
 
 (Si pide elegir un run porque hay varios recientes, seleccionar el más nuevo.)
 
-Alternativa sin terminal: en GitHub → pestaña **Actions** → workflow **"Deploy backend to AWS"** → botón **"Run workflow"**.
+Alternativa sin terminal: en GitHub → pestaña **Actions** → workflow **"Deploy backend to AWS (manual)"** → botón **"Run workflow"**.
 
 Si `AssumeRoleWithWebIdentity` falla, los errores más comunes son:
 - **`sub` no matchea**: revisar que el nombre del repo en el trust policy sea exactamente `soyJulioPerez/poker-planning` (case-sensitive).

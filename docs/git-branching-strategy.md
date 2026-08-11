@@ -73,6 +73,6 @@ git push origin v1.4.0:release/1.5.0 --force
 
 **PROD**: nunca se reescribe `master`. En vez de eso, disparar manualmente el workflow de deploy backend con `environment: prod` y el input `ref` apuntando al tag a restaurar:
 ```bash
-gh workflow run "Deploy backend to AWS" -f environment=prod -f ref=v1.4.0
+gh workflow run deploy-backend.yml -f environment=prod -f ref=v1.4.0
 ```
 Esto despliega ese commit al stack `prod` sin mover el puntero de la rama `master`.
