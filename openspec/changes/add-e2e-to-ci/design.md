@@ -93,7 +93,7 @@ Eso es cierto **de `nx serve`**. Pero ninguna de las dos apps necesita `nx serve
 
 | | Qué necesita en realidad |
 |---|---|
-| `web` | `nx run web:serve-static` — ya existe, buildea y sirve con fallback SPA. Es el comando que los generadores de `@nx/playwright` emiten por defecto en `webServer`. |
+| `web` | ~~`nx run web:serve-static`~~ → **`npx http-server dist/apps/web/browser --proxy`**. Ver la corrección de abajo. |
 | `realtime-api` | `node dist/apps/realtime-api/main.js`. Es un `ws` plano; no hay nada que "servir". Y un comando `node` es **opaco** para la inferencia del plugin, que solo mira comandos `nx`. |
 
 **Elegido**: un tercer modo, `E2E_TARGET=ci`.
@@ -117,7 +117,22 @@ Para el backend se espera por **`port`, no por `url`**: es un WebSocket, no un s
 
 Lo que compra este camino sobre el del YAML: **el modo `ci` se reproduce en local con un comando**, así que cuando el job falle no hay que adivinar qué levantó el runner. El YAML habría dejado ese conocimiento dentro de GitHub Actions, que es el peor lugar para debuggear.
 
-**Lo primero que hay que verificar**, porque es donde este diseño puede caerse: que `nx run web:serve-static` dentro de `webServer.command` **no** dispare la recursión. Es el patrón que Nx genera por defecto y `serve-static` está marcado `continuous: true` —que es justamente el mecanismo de Nx para tareas de este tipo— así que debería andar. Si no anda, la salida es simétrica al backend: buildear web aparte y servir `dist/apps/web/browser` con un comando opaco al plugin.
+**Corrección aplicada durante la implementación: `serve-static` sí dispara la recursión, y se tomó la salida que este diseño dejaba prevista.**
+
+La primera versión usaba `nx run web:serve-static` —el patrón que emiten los propios generadores de `@nx/playwright`— y **pasó ocho corridas seguidas**, entre local y CI. Después falló:
+
+```
+e2e:e2e -> web:serve-static -> web:serve-static
+Task "web:serve-static" was already invoked by a parent Nx process in this chain.
+```
+
+El plugin infiere el `dependsOn` a partir del comando, así que Nx levanta `web:serve-static` como dependencia continua **y** Playwright lo invoca de nuevo. Es intermitente porque `reuseExistingServer` lo tapa: si Playwright encuentra el puerto ya atendido por la tarea que levantó Nx, no ejecuta su comando y no hay conflicto.
+
+Las ocho corridas verdes no probaban nada: **probaban que la carrera se venía ganando.** Queda como lección de método — un fallo intermitente no se descarta acumulando repeticiones exitosas, se descarta entendiendo el mecanismo.
+
+**Elegido**: `npx http-server dist/apps/web/browser -p 4200 --proxy "http://localhost:4200?" -s`, opaco a la inferencia igual que el `node` del backend. Es el mismo binario que `@nx/web:file-server` usa por debajo, con el `--proxy` a sí mismo que da el fallback SPA. El build de `web` pasa a ser explícito, simétrico con el del backend.
+
+Verificado: tres corridas locales consecutivas, 13/13, cero recursión.
 
 ### Decisión 3: el job corre en paralelo con `verify` y nunca queda `skipped`
 

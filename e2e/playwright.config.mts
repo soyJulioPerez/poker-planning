@@ -34,7 +34,8 @@ const target =
 // `serve-static` escucha solo en el loopback IPv6 (`[::1]:4200`), así que forzar IPv4
 // no conecta. Es el reflejo del problema inverso que tiene DynamoDB Local, documentado
 // en docs/known-issues.md.
-const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
+const WEB_PORT = 4200;
+const baseURL = process.env['BASE_URL'] || `http://localhost:${WEB_PORT}`;
 
 // El backend necesita esto para hablar con DynamoDB Local. `127.0.0.1` y no `localhost`
 // —acá sí— porque en Windows `localhost` resuelve primero a IPv6 y el contenedor no
@@ -101,12 +102,25 @@ export default defineConfig({
       : target === 'ci'
         ? [
             {
-              command: 'npx nx run web:serve-static',
+              // NO se usa `nx run web:serve-static` acá, aunque sea el comando que los
+              // generadores de @nx/playwright emiten por defecto: el plugin infiere un
+              // `dependsOn` a partir de los comandos `nx` que encuentra en
+              // `webServer.command`, así que Nx levanta `web:serve-static` como
+              // dependencia continua **y** Playwright lo invoca de nuevo. El resultado es
+              // intermitente —cuando `reuseExistingServer` encuentra el server ya arriba
+              // no pasa nada— y cuando la carrera sale al revés falla con
+              // "Task web:serve-static was already invoked by a parent Nx process".
+              //
+              // `http-server` invocado directo es opaco para esa inferencia, igual que el
+              // `node` del backend. Es el mismo binario que usa `@nx/web:file-server` por
+              // debajo, con el `--proxy` a sí mismo que da el fallback SPA.
+              //
+              // Requiere `nx build web` previo — lo hace `npm run test:e2e:ci`.
+              command: `npx http-server dist/apps/web/browser -p ${WEB_PORT} --proxy "${baseURL}?" -s`,
               url: baseURL,
               reuseExistingServer: !process.env['CI'],
               cwd: workspaceRoot,
-              // Incluye el build de `web`, que en una caché fría no es inmediato.
-              timeout: 180_000,
+              timeout: 60_000,
               // Playwright ignora el stdout de los webServer por defecto (solo pipea
               // stderr). Sin esto, los console.log del backend no aparecen en el log del
               // job y un fallo en CI se diagnostica a ciegas.

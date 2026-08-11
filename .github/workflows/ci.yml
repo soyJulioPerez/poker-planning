@@ -120,10 +120,13 @@ jobs:
       - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
         run: npm run e2e:db:up
 
-      # El backend se levanta desde el bundle (ver el modo `ci` de playwright.config.mts),
-      # así que hay que construirlo antes. `web` lo construye `serve-static` por su cuenta.
+      # Las dos apps se levantan desde sus bundles (ver el modo `ci` de
+      # playwright.config.mts), así que hay que construirlas antes. Los comandos del
+      # `webServer` son a propósito opacos para Nx —`http-server` y `node`, nunca `nx`—
+      # porque el plugin infiere un `dependsOn` de cualquier comando `nx` que encuentre
+      # ahí y termina invocando la misma tarea dos veces.
       - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
-        run: npx nx build realtime-api --outputStyle=static
+        run: npx nx run-many -t build -p web realtime-api --outputStyle=static
 
       # El target no atomizado. `e2e-ci` divide por archivo de spec para repartir entre
       # agentes de Nx Cloud; sin agentes corren igual de serie y cada uno vuelve a levantar

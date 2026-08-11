@@ -38,12 +38,20 @@ Durante mucho tiempo este repo dio por sentado que la suite **no podía** levant
 
 La conclusión correcta no era "no se puede orquestar" sino "**no se puede orquestar con `nx serve`**". Las dos apps se levantan sin él:
 
-| App | Comando | Por qué no choca |
-|---|---|---|
-| `web` | `npx nx run web:serve-static` | `@nx/web:file-server` con `spa: true`. Buildea y sirve con fallback SPA. Es el comando que los generadores de `@nx/playwright` emiten por defecto, y `serve-static` está marcado `continuous: true` — el mecanismo que Nx tiene justamente para esto. |
-| `realtime-api` | `node dist/apps/realtime-api/main.js` | Es un `ws` plano: no hay nada que "servir". Y un comando que no empieza con `nx` es **opaco** para la inferencia del plugin. |
+**La regla es que el comando no puede empezar con `nx`.** El plugin infiere el `dependsOn` a partir de lo que encuentra en `webServer.command`, así que cualquier comando `nx` lo hace levantar la tarea *además* de que Playwright la invoque.
 
-Verificado: los 12 tests activos corren desde cero, sin recursión, en ~22s con 8 workers.
+| App | Comando | Por qué funciona |
+|---|---|---|
+| `web` | `npx http-server dist/apps/web/browser -p 4200 --proxy "http://localhost:4200?" -s` | Es el mismo binario que usa `@nx/web:file-server` por debajo; el `--proxy` a sí mismo da el fallback SPA. Opaco para la inferencia. |
+| `realtime-api` | `node dist/apps/realtime-api/main.js` | Es un `ws` plano: no hay nada que "servir". Opaco también. |
+
+Las dos apps se buildean explícitamente antes (`nx run-many -t build -p web realtime-api`).
+
+**`nx run web:serve-static` NO sirve, aunque sea lo que generan los propios generadores de `@nx/playwright`.** Falla con `Task "web:serve-static" was already invoked by a parent Nx process in this chain` — pero de forma **intermitente**, porque `reuseExistingServer` lo tapa: si Playwright encuentra el puerto ya atendido por la tarea que levantó Nx, no ejecuta su comando y no hay conflicto.
+
+Pasó ocho corridas seguidas antes de fallar. Vale la pena registrarlo como lección de método: **un fallo intermitente no se descarta acumulando corridas verdes.** Esas ocho no probaban que no existiera el problema, probaban que la carrera se venía ganando.
+
+Verificado con el comando opaco: tres corridas consecutivas, 13/13, cero recursión.
 
 **Dos detalles que cuestan tiempo si no se saben:**
 
