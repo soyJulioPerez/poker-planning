@@ -180,7 +180,7 @@ El estado esperado al terminar este change:
 | `e2e` | verde | verde |
 | `web` | 8 boundaries + 2 a11y | **2 a11y — sigue rojo** |
 
-Los dos que quedan están en `apps/web/src/app/ui/participant-list/participant-list.html:18`:
+Los dos que quedan están en `apps/web/src/app/ui/reveal-panel/reveal-panel.html:18`:
 `@angular-eslint/template/click-events-have-key-events` e `interactive-supports-focus`.
 
 **Recomendación de este diseño: change aparte.** Son accesibilidad, no arquitectura; tocan un template y no la configuración del workspace; y ya están relevados en `known-issues.md` junto con el resto de la deuda de ARIA, así que conviene resolverlos todos juntos y no de a dos.

@@ -7,6 +7,7 @@ import { Component, computed, input, output } from '@angular/core';
       type="button"
       class="card"
       [class.card--selected]="selected()"
+      [attr.aria-pressed]="selected()"
       [disabled]="disabled()"
       (click)="pick.emit(value())"
     >

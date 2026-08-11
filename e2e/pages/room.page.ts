@@ -24,9 +24,7 @@ export class RoomPage {
   }
 
   async newRound() {
-    // El botón tiene contenido de texto visible ("↻"), así que Playwright usa
-    // ese texto como accessible name en vez del atributo title="Nueva ronda".
-    await this.page.locator('button.reveal-panel__new-round').click();
+    await this.page.getByRole('button', { name: 'Nueva ronda' }).click();
   }
 
   async acceptAverage() {
@@ -41,7 +39,7 @@ export class RoomPage {
 
   async resolveWithParticipantVote(name: string) {
     await this.page
-      .locator('li.reveal-panel__vote--clickable', { hasText: name })
+      .getByRole('button', { name: `Usar el voto de ${name}` })
       .click();
   }
 
@@ -74,7 +72,7 @@ export class RoomPage {
   }
 
   newRoundButton(): Locator {
-    return this.page.locator('button.reveal-panel__new-round');
+    return this.page.getByRole('button', { name: 'Nueva ronda' });
   }
 
   resolutionPanel(): Locator {

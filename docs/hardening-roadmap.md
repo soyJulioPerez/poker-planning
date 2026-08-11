@@ -85,14 +85,16 @@ El gate completo está en el orden de **~2 minutos**, y mobile es más de la mit
 
 **Trampas**
 
-- **`nx lint` está rojo hoy, y por dos causas distintas.** Medido sobre los 6 proyectos:
+- **El prerrequisito de lint ya está resuelto.** `nx lint` estuvo rojo por dos causas distintas, y las dos se cerraron:
 
-  | Causa | Errores | Dónde | Estado |
-  |---|---|---|---|
-  | `@nx/enforce-module-boundaries` | ~~30~~ → **0** | `realtime-api` 14, `web` 8, `mobile` 7, `room-client-runtime` 1 | ✅ resuelto en la Fase 3.1 |
-  | `@angular-eslint/template` | **2** | `web` — `participant-list.html:18` | ❌ **pendiente**, ver [known-issues.md](known-issues.md) |
+  | Causa | Errores | Resuelto en |
+  |---|---|---|
+  | `@nx/enforce-module-boundaries` | ~~30~~ → **0** | Fase 3.1 — change `enable-module-boundaries` |
+  | `@angular-eslint/template` | ~~2~~ → **0** | change `fix-room-ui-accessibility` |
 
-  Cinco de los seis proyectos ya quedaron en verde. **`web` sigue rojo**, y con eso alcanza para que todo PR que lo toque falle el gate. Esos 2 errores son hoy el único prerrequisito de lint que queda para esta fase — conviene resolverlos antes de escribir el YAML, no descubrirlo en el primer PR.
+  `nx run-many -t lint --all` pasa en los 6 proyectos. `lint` puede entrar al gate sin que los PRs nazcan en rojo.
+
+- **Playwright necesita `npx playwright install` en CI.** `npm ci` instala la librería pero no los navegadores; sin ese paso los e2e fallan con `Executable doesn't exist`, que no dice nada sobre la causa. Aplica sobre todo a la Fase 1.2, pero conviene tenerlo presente si el gate de 1.1 llega a tocar `e2e`. Ver [known-issues.md](known-issues.md).
 - `nx graph` **no** tiene flag `--affected`, a diferencia de `nx show projects`. En `nx graph` el modo afectado se activa pasando `--base`/`--head`. Conviene confirmar toda flag de Nx con `--help` (o `nx_docs`) antes de meterla en un YAML de CI, donde el error tarda un push en aparecer.
 - El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí se evalúa Nx Cloud o un caché self-hosted — no antes.
 - Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).

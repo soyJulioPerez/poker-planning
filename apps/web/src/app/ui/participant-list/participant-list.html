@@ -5,7 +5,9 @@
         <app-moderator-badge />
       }
       @if (participant.icon) {
-        <span class="participant-list__icon">{{ participant.icon }}</span>
+        <!-- Decorativo: el nombre que sigue ya identifica al participante, así que
+             anunciarlo duplicaría información sin aportar nada. -->
+        <span class="participant-list__icon" aria-hidden="true">{{ participant.icon }}</span>
       }
       <span class="participant-list__name">{{ participant.name }}</span>
       @if (participant.isModerator) {

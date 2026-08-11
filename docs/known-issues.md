@@ -19,22 +19,72 @@ aws-actions/setup-sam@v2.
 
 **Recomendación**: subir `node-version: 20` → `24` (o `lts/*`) en los 3 workflows (`deploy-backend.yml`, `build-mobile.yml`, `deploy-web.yml`), en línea con el runtime que ya usan las Lambdas (`nodejs24.x` en `infra/template.yaml`). No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance.
 
-## Accesibilidad de `participant-list`: además, bloquea el lint en CI
+## Los tabs no comunican cuál está activo fuera del CSS
 
-**Actualizado**: 2026-08-10.
+**Detectado**: 2026-08-10, verificando el change `fix-room-ui-accessibility`.
 
-Los 2 errores de `@angular-eslint/template` en `apps/web/src/app/ui/participant-list/participant-list.html:18` —`click-events-have-key-events` e `interactive-supports-focus`— dejaron de ser solo deuda de accesibilidad.
+**Síntoma**: en dos lugares hay tabs cuyo estado activo existe únicamente como clase CSS, invisible para un lector de pantalla y para cualquier selector por rol y estado:
 
-Desde el change `enable-module-boundaries`, que llevó los errores de `@nx/enforce-module-boundaries` de 30 a 0, **son lo único que mantiene `nx lint` en rojo en todo el workspace**:
+- [apps/web/src/app/pages/home/home.html:5,8](../apps/web/src/app/pages/home/home.html) — `home__tab--active` en "Unirse a sala" / "Crear sala"
+- [apps/web/src/app/ui/help-modal/help-modal.html:22,29,36](../apps/web/src/app/ui/help-modal/help-modal.html) — `help-modal__tab--active` en los tres tabs de la guía
 
-| Proyecto | Estado |
-|---|---|
-| `shared-contracts`, `room-client-runtime`, `mobile`, `realtime-api`, `e2e` | ✅ verde |
-| `web` | ❌ 2 errores de accesibilidad |
+**Por qué no se resolvió junto con el resto de la deuda de ARIA**: los otros dos conjuntos de opciones —las cartas del mazo y la grilla de íconos— se arreglaron con `aria-pressed`, que es correcto para un grupo plano de botones toggle. Los tabs son otra cosa: su patrón accesible es `role="tablist"` / `role="tab"` con `aria-selected`, y arrastra manejo de foco compuesto (una sola parada de `Tab` para todo el grupo) y navegación con flechas.
 
-Eso los convierte en **bloqueante de la Fase 1.1** del [roadmap](hardening-roadmap.md): el gate de CI corre `nx affected -t lint test build`, así que mientras sigan ahí, todo PR que toque `web` nace en rojo.
+Parcharlos con `aria-pressed` comunicaría el estado pero dejaría la navegación incorrecta, así que sería una mejora a medias que después cuesta más deshacer.
 
-El detalle de qué hay que cambiar está más abajo, en "Otros elementos sin ARIA suficiente". Lo que cambia con esta nota es la **prioridad**: no es una mejora deseable, es un prerrequisito de pipeline.
+**Recomendación**: un change propio que implemente el patrón de tabs completo en los dos lugares. No bloquea nada: ambos conjuntos son alcanzables y activables con teclado hoy, solo que sin la semántica ni la navegación de un tablist.
+
+## DynamoDB Local: los scripts usan `localhost` y se cuelgan en Windows
+
+**Detectado**: 2026-08-10, levantando el entorno local para verificar un change.
+
+**Síntoma**: `npm run dev:db:create-table` y cualquier operación del backend contra DynamoDB Local quedan colgadas hasta el timeout:
+
+```
+aws: [ERROR]: Read timeout on endpoint URL: "http://localhost:8000/"
+```
+
+En la app, el síntoma es indirecto y desconcertante: crear una sala falla con *"No se pudo conectar. Intentá de nuevo."* después de 10 segundos, **sin ningún error en el log del backend**. El WebSocket conecta bien; lo que se cuelga es la consulta a DynamoDB.
+
+**Causa**: `localhost` resuelve a IPv6 (`::1`) antes que a IPv4 en Windows. El contenedor publica en ambos (`0.0.0.0:8000` y `[::]:8000`), pero el camino IPv6 no responde. Se confirma con `curl`, que sí funciona porque resuelve distinto:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/   # 400 en 60ms — el servicio está sano
+aws dynamodb list-tables --endpoint-url http://localhost:8000     # timeout
+aws dynamodb list-tables --endpoint-url http://127.0.0.1:8000     # responde
+```
+
+**Afecta** a los scripts de `package.json` que fijan `localhost:8000`:
+
+- `dev:db:create-table`
+- `dev:api` (`DYNAMODB_ENDPOINT=http://localhost:8000`)
+- `e2e:db:up`, que llama a `dev:db:create-table`
+
+**Solución**: reemplazar `localhost` por `127.0.0.1` en esos scripts. Además, el AWS CLI necesita credenciales aunque sean falsas:
+
+```bash
+AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_EC2_METADATA_DISABLED=true \
+  aws dynamodb create-table ... --endpoint-url http://127.0.0.1:8000
+```
+
+**No aplicado todavía**: el cambio es de una línea por script, pero queda fuera del alcance del change en el que se detectó. Vale hacerlo junto con la próxima tarea que toque el entorno local.
+
+## Playwright: los binarios del navegador no vienen con `npm ci`
+
+**Detectado**: 2026-08-10.
+
+**Síntoma**: los 13 tests e2e fallan de golpe con:
+
+```
+Error: browserType.launch: Executable doesn't exist at
+C:\Users\<user>\AppData\Local\ms-playwright\chromium_headless_shell-1234\...
+```
+
+**Causa**: `@playwright/test` instala la librería, no los navegadores. Hay que bajarlos aparte, y no está documentado en el flujo de desarrollo local.
+
+**Solución**: `npx playwright install chromium` (~115 MB).
+
+**Relevante para la Fase 1.2 del [roadmap](hardening-roadmap.md)**: el workflow de e2e en CI va a necesitar ese paso explícito, o los tests fallan con un error que no dice nada sobre la causa real.
 
 ## Vitest con Angular falla por la casing de la letra de unidad en Windows
 
@@ -171,26 +221,6 @@ npx nx g @nx/expo:convert-to-inferred
 Es prerrequisito de la Fase 1.1 del [roadmap](hardening-roadmap.md): `nx affected -t build` incluye a mobile cada vez que se toca `packages/shared-contracts`.
 
 **Si ya pasó**: `git checkout -- apps/mobile/` restaura los dos archivos íntegros.
-
-## Botón "Nueva ronda" sin accessible name descriptivo
-
-**Síntoma**: el botón "↻" del panel de revelado (`apps/web/src/app/ui/reveal-panel/reveal-panel.html`) tiene `title="Nueva ronda"`, pero su accessible name real (según ARIA/accessible-name computation) es el texto de contenido visible "↻", no el `title`. Cualquier código que intente ubicarlo por nombre accesible "Nueva ronda" (por ejemplo `getByRole('button', { name: 'Nueva ronda' })` en Playwright) no lo encuentra, porque el contenido de texto tiene prioridad sobre `title` en el cálculo del accessible name.
-
-**Confirmado en**: `openspec/changes/add-e2e-estimation-rules-coverage` — el test e2e de "nueva ronda" tuvo que usar el selector `page.locator('button.reveal-panel__new-round')` como workaround en vez de `getByRole` por nombre.
-
-**Impacto**: además de complicar los selectores de test, lectores de pantalla anuncian el botón como "↻" (un carácter sin significado semántico) en vez de "Nueva ronda", afectando la accesibilidad real de la app, no solo la testeabilidad.
-
-**Recomendación**: agregar `aria-label="Nueva ronda"` al `<button class="reveal-panel__new-round">` (además o en reemplazo del `title` existente), de forma que el accessible name sea "Nueva ronda" tanto para lectores de pantalla como para selectores de test basados en rol/nombre. No aplicado en este change por ser un ajuste de `apps/web` fuera de alcance de un change de testing puro.
-
-## Otros elementos sin ARIA suficiente (relevado junto con el caso anterior)
-
-Al revisar `apps/web/src/app/ui/reveal-panel/reveal-panel.html` por el botón "Nueva ronda", se relevó el resto de la UI en busca del mismo patrón (contenido visible = un emoji/ícono sin texto, sin `aria-label` que lo explique). `apps/web/src/app/ui/help-button/help-button.html` y `help-modal.html` ya siguen la práctica correcta (`aria-label="Abrir guía de estimación"`, `aria-label="Cerrar guía de estimación"`) — sirven de referencia del patrón a aplicar en los siguientes:
-
-- **`apps/web/src/app/ui/moderator-badge/moderator-badge.ts`**: `<span class="moderator-badge" title="Moderador">🧙</span>`. Un `title` en un `<span>` no participa del accessible name de forma confiable para todos los lectores de pantalla (a diferencia de un `<button>`/control interactivo). **Recomendación**: agregar `role="img" aria-label="Moderador"` al span, para que se anuncie como "Moderador" y no como una interpretación literal del emoji (ej. "mago").
-
-- **`apps/web/src/app/ui/participant-list/participant-list.html`** (línea `<span class="participant-list__icon">{{ participant.icon }}</span>`): el ícono elegido por el participante (ver capability `participant-identity`) se renderiza sin ningún label, antes del nombre. **Recomendación**: agregar `aria-hidden="true"` si se considera puramente decorativo (el nombre ya identifica al participante y el ícono no aporta información nueva), o `role="img" aria-label="Ícono de {{ participant.name }}"` si se prefiere que sea anunciado explícitamente. Se recomienda la primera opción (`aria-hidden`) para no duplicar información ya presente en el nombre.
-
-- **`apps/web/src/app/ui/icon-picker/icon-picker.html`**: la grilla de selección de ícono (usada al crear sala y al unirse, ver capability `participant-identity`) renderiza cada `<button>` con el emoji como único contenido, sin `aria-label` que indique qué ícono representa cada botón, y sin `aria-pressed` para comunicar cuál está seleccionado (la selección solo se distingue visualmente vía `icon-picker__item--selected`). **Recomendación**: agregar `[attr.aria-label]="'Ícono ' + icon"` (o una descripción más rica si en el futuro el catálogo de íconos define nombres, ej. "Perro" en vez de "🐶") y `[attr.aria-pressed]="icon === selectedIcon()"` a cada botón.
 
 ## Test e2e inestable: reconexión automática (marcado `test.fixme`)
 

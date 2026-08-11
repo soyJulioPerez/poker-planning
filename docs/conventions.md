@@ -160,5 +160,5 @@ El criterio de la separación era defendible en abstracto (tooling vs. producto)
 Resumen de lo marcado arriba, más lo que sale del roadmap:
 
 - [x] ~~Definir el esquema de tags y activar los boundaries~~ — hecho en la Fase 3.1 (change `enable-module-boundaries`)
-- [ ] Resolver los 2 errores de accesibilidad de `participant-list` — únicos que mantienen `nx lint` en rojo, y por eso bloquean la Fase 1.1 (ver [known-issues.md](known-issues.md))
+- [x] ~~Resolver los 2 errores de accesibilidad de `reveal-panel`~~ — hecho en el change `fix-room-ui-accessibility`. `nx lint` pasa en los 6 proyectos, así que la Fase 1.1 ya no tiene prerrequisitos de lint.
 - [ ] `CODEOWNERS` y plantilla de PR (Fase 7.2 del roadmap)

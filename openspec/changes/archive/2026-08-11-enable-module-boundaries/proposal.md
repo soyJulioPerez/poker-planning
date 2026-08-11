@@ -59,7 +59,7 @@ Ninguna. Este change no toca comportamiento del producto: no modifica lo que hac
 
 Saca el obstáculo mayor —30 errores repartidos en 4 proyectos— pero **no deja el lint del workspace en verde**. Queda pendiente, fuera del alcance de este change:
 
-- `apps/web/src/app/ui/participant-list/participant-list.html:18` — 2 errores de `@angular-eslint/template`: `click-events-have-key-events` e `interactive-supports-focus`. Ya relevados en [known-issues.md](../../../docs/known-issues.md) junto con el resto de la deuda de accesibilidad.
+- `apps/web/src/app/ui/reveal-panel/reveal-panel.html:18` — 2 errores de `@angular-eslint/template`: `click-events-have-key-events` e `interactive-supports-focus`. Ya relevados en [known-issues.md](../../../docs/known-issues.md) junto con el resto de la deuda de accesibilidad.
 
 Mientras eso siga, un PR que toque `web` deja el gate en rojo. La Fase 1.1 depende de **dos** changes, no de uno.
 

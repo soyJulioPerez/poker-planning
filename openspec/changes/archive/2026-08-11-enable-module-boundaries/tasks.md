@@ -2,7 +2,7 @@
 
 > **Criterio de "verde" para todo este change**: cero errores de `@nx/enforce-module-boundaries`.
 > **`nx lint web` va a seguir fallando** por 2 errores de accesibilidad preexistentes
-> (`participant-list.html:18`), fuera de alcance — ver `design.md`, Open Questions.
+> (`reveal-panel.html:18`), fuera de alcance — ver `design.md`, Open Questions.
 > Filtrar por la regla al verificar; el exit code pelado no sirve como criterio.
 >
 > Punto de partida medido: 30 errores de boundaries
@@ -67,7 +67,7 @@ Se hicieron **tres** violaciones deliberadas, no dos, porque las dos primeras no
 - [x] 6.4 `docs/conventions.md` — marcar como hecho el ítem "Definir el esquema de tags y activar los boundaries" en Decisiones pendientes.
 - [x] 6.5 `docs/hardening-roadmap.md` — marcar la Fase 3.1 y actualizar la tabla de Estado.
 - [x] 6.6 `docs/hardening-roadmap.md` — en las Trampas de la Fase 1.1, **actualizar** (no eliminar) la advertencia de que `nx lint` está rojo: los 30 errores de boundaries desaparecen, pero quedan los 2 de accesibilidad en `web`. La Fase 1.1 sigue bloqueada hasta que se resuelvan.
-- [x] 6.7 Dejar anotado en `docs/known-issues.md`, junto a la deuda de ARIA ya relevada, que esos 2 errores de `participant-list.html:18` son ahora **lo único** que impide meter `lint` en el gate de CI. Cambia su prioridad: pasan de mejora de accesibilidad a bloqueante de pipeline.
+- [x] 6.7 Dejar anotado en `docs/known-issues.md`, junto a la deuda de ARIA ya relevada, que esos 2 errores de `reveal-panel.html:18` son ahora **lo único** que impide meter `lint` en el gate de CI. Cambia su prioridad: pasan de mejora de accesibilidad a bloqueante de pipeline.
 
 ## 7. Cierre
 

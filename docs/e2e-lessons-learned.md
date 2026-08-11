@@ -6,11 +6,19 @@ Notas prácticas recogidas durante la implementación de `add-e2e-estimation-rul
 
 - **El formulario de "Crear sala" arranca oculto.** El tab por defecto en Home es "Unirse a sala" (`mode() === 'join'`), no "Crear sala". Cualquier `HomePage.createRoom()` necesita un primer click en el tab antes de poder llenar el formulario — omitir ese click deja el `fill()` corriendo contra un campo que no existe todavía, y falla en silencio o con un timeout confuso más adelante.
 
-- **`title` no siempre es el accessible name.** El botón "Nueva ronda" tiene `title="Nueva ronda"`, pero también tiene contenido de texto visible ("↻"). Cuando ambos están presentes, el contenido de texto gana en el cálculo de accessible name — `getByRole('button', { name: 'Nueva ronda' })` no lo encuentra. Hubo que usar `page.locator('button.reveal-panel__new-round')` como selector por clase. Documentado también como hallazgo de accesibilidad real (no solo de testing) en `docs/known-issues.md`.
+- **`title` no siempre es el accessible name.** El botón "Nueva ronda" tenía `title="Nueva ronda"` y contenido de texto visible ("↻"). Cuando ambos están presentes, el contenido de texto gana en el cálculo de accessible name, así que `getByRole('button', { name: 'Nueva ronda' })` no lo encontraba y el selector tuvo que caer a `page.locator('button.reveal-panel__new-round')`.
+
+  **Resuelto** en el change `fix-room-ui-accessibility` (2026-08-10): el botón ahora tiene `aria-label="Nueva ronda"` y el selector volvió a `getByRole`. La lección que sobrevive es la regla general —el contenido de texto gana sobre `title`—, no el workaround.
+
+  El patrón que dejó esto: **cuando un selector por rol no funciona, la primera pregunta es si el problema es del test o de la accesibilidad de la app.** Acá era de la app. Un `getByRole` que no encuentra nada suele ser un lector de pantalla que tampoco va a encontrar nada.
 
 - **Un checkbox visualmente invisible no es clickeable directamente.** El toggle "moderador vota" usa el patrón estándar de switch custom: `<input type="checkbox">` con `opacity:0; width:0; height:0`, envuelto en un `<label>` que es el elemento realmente interactivo. Playwright rechaza correctamente un click directo sobre el `input` ("element is not visible") — hay que clickear el `<label>`.
 
-- **No todos los controles interactivos son `<button>`.** La resolución de historia con el voto de un participante puntual se implementa como un `<li>` con `(click)`, no un botón semántico. No hay rol ARIA de botón disponible ahí; el selector tuvo que caer a `locator('li.reveal-panel__vote--clickable', { hasText: name })`. Vale la pena documentar esta desviación explícitamente en vez de forzar un `getByRole` que no existe.
+- **Un control que no se puede seleccionar por rol probablemente tampoco se puede usar con teclado.** La resolución de historia con el voto de un participante estaba implementada como un `<li>` con `(click)`, sin rol de botón. El selector tuvo que caer a `locator('li.reveal-panel__vote--clickable', { hasText: name })`, y en su momento se documentó como una desviación aceptable del testing.
+
+  **Era un bug del producto, no una particularidad del test**: ese `<li>` no era focusable ni respondía a Enter, así que la función era inaccesible con teclado. Se corrigió en `fix-room-ui-accessibility` (2026-08-10) convirtiéndolo en `<button>`, y el selector es ahora `getByRole('button', { name: \`Usar el voto de ${name}\` })`.
+
+  **La lección corregida**: cuando un `getByRole` no encuentra un control, no documentes el workaround — investigá por qué el control no tiene rol. Dos veces en este repo la respuesta fue "porque está mal construido".
 
 - **Controles ausentes vs. deshabilitados no son lo mismo.** Los controles de moderación (Revelar votos, panel de resolución, Nueva ronda) no se deshabilitan para un no-moderador ni sin historia asignada — directamente no se renderizan (`@if` en el template). Los asserts correctos son `toHaveCount(0)`, no `toBeDisabled()`.
 
