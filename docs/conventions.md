@@ -135,12 +135,30 @@ El criterio de la separación era defendible en abstracto (tooling vs. producto)
 
 - **Nx para todas las tareas**: `nx build`, `nx test`, `nx lint` — nunca la herramienta subyacente directamente. Ver [../CLAUDE.md](../CLAUDE.md).
 - **Lógica compartida en `packages/`**: si algo lo necesitan web y mobile, va en `packages/room-client-runtime` o `packages/shared-contracts`, no duplicado en cada app. Cada app aporta solo su capa de UI y su persistencia de sesión.
-- **Límites entre proyectos**: hoy la regla `@nx/enforce-module-boundaries` está configurada pero **no aplica a nada** (los proyectos no tienen tags). Ver Fase 3.1 del [roadmap](hardening-roadmap.md). Hasta que se resuelva, el desacople depende de disciplina, no de la herramienta.
+- **Límites entre proyectos**: `@nx/enforce-module-boundaries` está activa y **se aplica de verdad**. Cada proyecto lleva dos tags: uno de `scope:*` (a qué parte del producto pertenece) y uno de `type:*` (qué clase de artefacto es).
+
+  | Proyecto | Tags | Puede depender de |
+  |---|---|---|
+  | `shared-contracts` | `scope:shared`, `type:util` | nadie |
+  | `room-client-runtime` | `scope:client`, `type:feature` | `shared` |
+  | `web` | `scope:web`, `type:app` | `client`, `shared` |
+  | `mobile` | `scope:mobile`, `type:app` | `client`, `shared` |
+  | `realtime-api` | `scope:api`, `type:app` | `shared` |
+  | `e2e` | `scope:e2e`, `type:e2e` | `shared` |
+
+  Las reglas de fondo: **web y mobile no se ven entre sí ni ven la API** (comparten a través de `room-client-runtime`); **la API no ve código de cliente** (el WebSocket es un límite de red, no un import); y **nadie depende de una app**. Configurado en [../eslint.config.mjs](../eslint.config.mjs); el porqué de cada decisión está en el change `enable-module-boundaries`.
+
+- **Proyectos nuevos: siempre con `--tags`**. Los generadores de Nx aceptan el flag pero **no infieren tags** — si se omite, el proyecto queda con `"tags": []` y no puede importar nada, porque la regla lo trata como fuera de toda constraint. Fue exactamente el origen del problema que resolvió la Fase 3.1.
+
+  ```bash
+  npx nx g @nx/js:library packages/lo-que-sea --tags=scope:shared,type:util
+  ```
 - **Tests**: el target es `test` en los 5 proyectos. Jest en `realtime-api`, `mobile` y `packages/*`; Vitest en `web`, vía el builder oficial `@angular/build:unit-test` (no Analog); Playwright para e2e. No mezclar runners dentro de un proyecto. En Windows, ver la nota de casing en [known-issues.md](known-issues.md) antes de pelear con un fallo de `TestBed`.
 
 ## Decisiones pendientes
 
 Resumen de lo marcado arriba, más lo que sale del roadmap:
 
-- [ ] Definir el esquema de tags y activar los boundaries (Fase 3.1 del roadmap)
+- [x] ~~Definir el esquema de tags y activar los boundaries~~ — hecho en la Fase 3.1 (change `enable-module-boundaries`)
+- [ ] Resolver los 2 errores de accesibilidad de `participant-list` — únicos que mantienen `nx lint` en rojo, y por eso bloquean la Fase 1.1 (ver [known-issues.md](known-issues.md))
 - [ ] `CODEOWNERS` y plantilla de PR (Fase 7.2 del roadmap)

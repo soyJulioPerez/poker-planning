@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/room-client-runtime/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:client", "type:feature"],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",

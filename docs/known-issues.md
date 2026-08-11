@@ -19,23 +19,22 @@ aws-actions/setup-sam@v2.
 
 **Recomendación**: subir `node-version: 20` → `24` (o `lts/*`) en los 3 workflows (`deploy-backend.yml`, `build-mobile.yml`, `deploy-web.yml`), en línea con el runtime que ya usan las Lambdas (`nodejs24.x` en `infra/template.yaml`). No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance.
 
-## Lint roto en todo el monorepo: `@nx/enforce-module-boundaries`
+## Accesibilidad de `participant-list`: además, bloquea el lint en CI
 
-**Síntoma**: `nx lint realtime-api` (y, por la misma causa, `nx lint web`/`nx lint mobile`) falla en cada archivo que importa algo de otro proyecto del workspace (ej. `packages/shared-contracts`), con:
-```
-error  A project without tags matching at least one constraint cannot depend on any libraries  @nx/enforce-module-boundaries
-```
+**Actualizado**: 2026-08-10.
 
-**Causa**: `eslint.config.mjs` define `depConstraints` (`scope:shared`, `scope:shop`, `scope:api`, `type:data`) que son boilerplate del generador de Nx, nunca adaptado a la estructura real de este workspace (`scope:shop` no tiene sentido en un proyecto de Planning Poker). Mientras tanto, **todos** los `project.json` del repo (`apps/web`, `apps/mobile`, `apps/realtime-api`, `packages/shared-contracts`, `packages/room-client-runtime`) tienen `"tags": []` — ningún proyecto matchea ninguno de los `sourceTag` configurados, así que la regla cae en su comportamiento por defecto: "un proyecto sin tags que matcheen ninguna constraint no puede depender de ninguna lib".
+Los 2 errores de `@angular-eslint/template` en `apps/web/src/app/ui/participant-list/participant-list.html:18` —`click-events-have-key-events` e `interactive-supports-focus`— dejaron de ser solo deuda de accesibilidad.
 
-**Impacto**: `nx lint` falla en cualquier archivo con un import cross-proyecto, en los 3 proyectos de aplicación. No es un problema de código nuevo — ya existía antes de este change, simplemente ningún change anterior corrió `nx lint` sobre archivos que importan `shared-contracts`/`room-client-runtime` con suficiente atención para notarlo, o se venía tolerando.
+Desde el change `enable-module-boundaries`, que llevó los errores de `@nx/enforce-module-boundaries` de 30 a 0, **son lo único que mantiene `nx lint` en rojo en todo el workspace**:
 
-**Recomendación** (siguiendo la convención real de Nx, no aplicada todavía):
-1. Reemplazar los `depConstraints` boilerplate por unos que reflejen la estructura real: por ejemplo `scope:web`, `scope:mobile`, `scope:api`, `scope:shared` (para `packages/*`).
-2. Etiquetar cada `project.json` con su tag correspondiente (`"tags": ["scope:web"]` en `apps/web`, `"tags": ["scope:shared"]` en `packages/shared-contracts`, etc.).
-3. Definir constraints que reflejen las dependencias reales y deseadas — ej. `apps/web`/`apps/mobile`/`apps/realtime-api` pueden depender de `scope:shared`, pero no entre sí.
+| Proyecto | Estado |
+|---|---|
+| `shared-contracts`, `room-client-runtime`, `mobile`, `realtime-api`, `e2e` | ✅ verde |
+| `web` | ❌ 2 errores de accesibilidad |
 
-No aplicado en `add-multi-environment-deployment` por estar fuera de su alcance (ese change solo tocó `apps/realtime-api/src/handlers/connect.ts` para agregar un log de prueba, sin afectar los imports cross-proyecto que disparan esto).
+Eso los convierte en **bloqueante de la Fase 1.1** del [roadmap](hardening-roadmap.md): el gate de CI corre `nx affected -t lint test build`, así que mientras sigan ahí, todo PR que toque `web` nace en rojo.
+
+El detalle de qué hay que cambiar está más abajo, en "Otros elementos sin ARIA suficiente". Lo que cambia con esta nota es la **prioridad**: no es una mejora deseable, es un prerrequisito de pipeline.
 
 ## Vitest con Angular falla por la casing de la letra de unidad en Windows
 

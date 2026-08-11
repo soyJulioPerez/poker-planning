@@ -15,7 +15,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ⬜ Pendiente | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | ⬜ Pendiente | 1 |
-| 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ⬜ Pendiente | 1 |
+| 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
@@ -85,7 +85,14 @@ El gate completo está en el orden de **~2 minutos**, y mobile es más de la mit
 
 **Trampas**
 
-- **`nx lint` está rojo hoy.** `nx lint web` falla con 10 errores de `@nx/enforce-module-boundaries` (todos los proyectos tienen `"tags": []`, ver [known-issues.md](known-issues.md) y la Fase 3.1). Si el gate incluye `lint` sin resolver eso, **todo PR nace en rojo** y el portón no sirve. Hay que elegir a propósito: adelantar la Fase 3.1, o arrancar el gate sin `lint` y sumarlo después. No es una decisión que se pueda postergar hasta el primer PR.
+- **`nx lint` está rojo hoy, y por dos causas distintas.** Medido sobre los 6 proyectos:
+
+  | Causa | Errores | Dónde | Estado |
+  |---|---|---|---|
+  | `@nx/enforce-module-boundaries` | ~~30~~ → **0** | `realtime-api` 14, `web` 8, `mobile` 7, `room-client-runtime` 1 | ✅ resuelto en la Fase 3.1 |
+  | `@angular-eslint/template` | **2** | `web` — `participant-list.html:18` | ❌ **pendiente**, ver [known-issues.md](known-issues.md) |
+
+  Cinco de los seis proyectos ya quedaron en verde. **`web` sigue rojo**, y con eso alcanza para que todo PR que lo toque falle el gate. Esos 2 errores son hoy el único prerrequisito de lint que queda para esta fase — conviene resolverlos antes de escribir el YAML, no descubrirlo en el primer PR.
 - `nx graph` **no** tiene flag `--affected`, a diferencia de `nx show projects`. En `nx graph` el modo afectado se activa pasando `--base`/`--head`. Conviene confirmar toda flag de Nx con `--help` (o `nx_docs`) antes de meterla en un YAML de CI, donde el error tarda un push en aparecer.
 - El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí se evalúa Nx Cloud o un caché self-hosted — no antes.
 - Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).
@@ -201,9 +208,15 @@ El umbral funciona como **trinquete**: se fija en el valor ya alcanzado y solo s
 
 Fase corta (una tarde) pero de alto retorno: hay tres configuraciones que existen y **no hacen nada**, lo que es peor que no tenerlas — dan una falsa sensación de cobertura.
 
-### 3.1 — Tags de proyecto y module boundaries reales
+### 3.1 — Tags de proyecto y module boundaries reales ✅
 
-**El problema**
+> **Hecha** el 2026-08-10, change `enable-module-boundaries`. Los 30 errores de `@nx/enforce-module-boundaries` bajaron a 0. El esquema de tags vigente está documentado en [conventions.md](conventions.md); el porqué de cada decisión, en el `design.md` del change.
+>
+> Dos matices que quedaron del cierre:
+> - El eje `type:*` quedó configurado pero **no es verificable en aislamiento hoy**: las apps no tienen alias en `tsconfig.base.json`, así que importarlas dispara antes la sub-regla de rutas relativas. Se mantiene igual porque cuesta cero y deja de ser redundante en cuanto aparezca una librería nueva.
+> - `nx lint` **sigue rojo en `web`** por 2 errores de accesibilidad ajenos a esta fase. Ver la trampa de la Fase 1.1.
+
+**El problema** *(estado previo, se conserva como registro)*
 
 [eslint.config.mjs](../eslint.config.mjs) define constraints para `scope:shared`, `scope:api` y `scope:shop`. `scope:shop` es texto de ejemplo del generador de Nx: no tiene nada que ver con esta app. Y los 5 proyectos tienen `"tags": []`. **La regla está prendida pero no aplica a nada**: hoy `apps/web` podría importar de `apps/realtime-api` y ESLint no diría una palabra.
 
