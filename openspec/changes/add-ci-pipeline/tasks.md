@@ -77,7 +77,7 @@ proyectos**, así que no sirve para verificar el acotado por grafo (6.2, 6.6, 6.
 necesita un PR que toque un solo proyecto.
 
 - [x] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
-- [ ] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
+- [x] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
 - [ ] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
 - [ ] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
 - [x] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
@@ -101,3 +101,17 @@ necesita un PR que toque un solo proyecto.
 - [x] 8.1 Confirmar que el diff no toca ningún archivo bajo `src/`. Este change es de pipeline y configuración.
 - [x] 8.2 Confirmar que los tres ambientes de backend siguen desplegables a mano por `workflow_dispatch`.
 - [ ] 8.3 `/opsx:verify` y después `/opsx:archive`.
+
+
+### Verificación en vivo — resultados
+
+| Tarea | Run | Resultado |
+|---|---|---|
+| 6.2 acotado por grafo | 31493858968 | PR tocando solo `shared-contracts`: **15 tareas en 5 proyectos** (shared-contracts, room-client-runtime, web, mobile, realtime-api). `e2e` afuera, correcto. Y `mobile:build` corrió **sin tocar EAS**. |
+| deploy a qa | 31494242265 | Push a `release/1.1.0`: `nx deploy realtime-api --configuration=qa` **success**. Primera corrida del target nuevo. `deploy-web` skipped por la condición de rama. |
+| deploy a prod | 31494729811 | Promoción a `master` con tag `v1.1.0`: `--configuration=prod` **success** y Pages publicado (HTTP 200). |
+
+**Regresión encontrada y corregida durante la promoción**: al pasar `deploy-backend.yml` a solo
+`workflow_dispatch` se renombró el workflow, lo que rompió los cuatro `gh workflow run "Deploy
+backend to AWS"` que la documentación invocaba por display name. Se cambiaron a invocar por
+nombre de archivo (`deploy-backend.yml`), que es estable ante renombres.
