@@ -30,6 +30,34 @@ Notas prácticas recogidas durante la implementación de `add-e2e-estimation-rul
 
 **Lección general**: antes de escribir el assert, leer el componente real (no solo el spec de requirements) para confirmar qué texto/atributo se muestra de verdad. El spec describe el comportamiento observable a alto nivel; los detalles de presentación (qué etiqueta exacta, qué selector) solo están en el código.
 
+## `nx serve` no es la única forma de levantar las apps para Playwright
+
+**Registrado el 2026-08-11, armando el job de e2e en CI (change `add-e2e-to-ci`).**
+
+Durante mucho tiempo este repo dio por sentado que la suite **no podía** levantar su propio entorno. La razón era real pero se generalizó de más: poner `nx serve realtime-api` / `nx serve web` dentro de `webServer.command` choca con el `dependsOn` que el plugin `@nx/playwright` infiere **a partir de ese mismo comando**, y termina en `Recursive task invocation detected`.
+
+La conclusión correcta no era "no se puede orquestar" sino "**no se puede orquestar con `nx serve`**". Las dos apps se levantan sin él:
+
+**La regla es que el comando no puede empezar con `nx`.** El plugin infiere el `dependsOn` a partir de lo que encuentra en `webServer.command`, así que cualquier comando `nx` lo hace levantar la tarea *además* de que Playwright la invoque.
+
+| App | Comando | Por qué funciona |
+|---|---|---|
+| `web` | `npx http-server dist/apps/web/browser -p 4200 --proxy "http://localhost:4200?" -s` | Es el mismo binario que usa `@nx/web:file-server` por debajo; el `--proxy` a sí mismo da el fallback SPA. Opaco para la inferencia. |
+| `realtime-api` | `node dist/apps/realtime-api/main.js` | Es un `ws` plano: no hay nada que "servir". Opaco también. |
+
+Las dos apps se buildean explícitamente antes (`nx run-many -t build -p web realtime-api`).
+
+**`nx run web:serve-static` NO sirve, aunque sea lo que generan los propios generadores de `@nx/playwright`.** Falla con `Task "web:serve-static" was already invoked by a parent Nx process in this chain` — pero de forma **intermitente**, porque `reuseExistingServer` lo tapa: si Playwright encuentra el puerto ya atendido por la tarea que levantó Nx, no ejecuta su comando y no hay conflicto.
+
+Pasó ocho corridas seguidas antes de fallar. Vale la pena registrarlo como lección de método: **un fallo intermitente no se descarta acumulando corridas verdes.** Esas ocho no probaban que no existiera el problema, probaban que la carrera se venía ganando.
+
+Verificado con el comando opaco: tres corridas consecutivas, 13/13, cero recursión.
+
+**Dos detalles que cuestan tiempo si no se saben:**
+
+- **`serve-static` escucha solo en `[::1]:4200`**, no en `127.0.0.1`. El `baseURL` tiene que ser `localhost`; forzar IPv4 no conecta. Es el reflejo exacto del problema inverso de DynamoDB Local, donde `localhost` resuelve a IPv6 y el contenedor no responde (ver `known-issues.md`).
+- **Para el backend se espera por `port`, no por `url`.** Es un WebSocket: no hay status HTTP que chequear, y esperar por puerto evita depender de qué contesta a un GET.
+
 ## Diagnóstico de fallos intermitentes en el entorno local
 
 Esta fue la parte que más tiempo tomó y la que más vale la pena releer antes de asumir que un test es "flaky" o que hay un bug real en la app.

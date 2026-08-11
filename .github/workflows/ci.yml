@@ -70,8 +70,84 @@ jobs:
       - id: affected
         run: echo "projects=$(npx nx show projects --affected --with-target deploy --json)" >> "$GITHUB_OUTPUT"
 
+  e2e:
+    # Corre EN PARALELO con `verify`, no detrás: los e2e son la etapa más lenta del
+    # portón y ponerlos en serie demoraría el feedback de lint/test sin ganar nada.
+    #
+    # Y deliberadamente NO lleva `if:` a nivel de job. En GitHub Actions un job salteado
+    # arrastra a sus dependientes al mismo estado, así que un `if:` acá dejaría a
+    # deploy-backend y deploy-web en `skipped` cada vez que el cambio no tocara los e2e
+    # — un deploy que no corre sin que nada quede en rojo. En vez de eso el job siempre
+    # arranca, calcula su propio alcance y termina en verde sin hacer nada cuando no
+    # corresponde. El costo es un `npm ci` de más; como es paralelo, en tiempo de pared
+    # es cero.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Mismo cálculo de base que `verify`: sin `main-branch-name` la action cae al hash
+      # del árbol vacío y marca todo como afectado.
+      - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: develop
+
+      # `e2e` declara `implicitDependencies: ["web", "realtime-api"]`, así que aparece acá
+      # cuando cambia cualquiera de las dos apps o algo de lo que dependan.
+      - id: scope
+        run: |
+          projects=$(npx nx show projects --affected --with-target e2e --json)
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
+          echo "Proyectos con target e2e afectados: $projects"
+
+      # `npm ci` instala la librería de Playwright, no los navegadores. Sin este paso los
+      # tests fallan con "Executable doesn't exist", que no dice nada sobre la causa.
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
+        run: npx playwright install --with-deps chromium
+
+      # La base de datos queda fuera de `webServer` de Playwright a propósito: es un
+      # contenedor, no un proceso hijo. Se reutiliza el script del repo en vez de duplicar
+      # el comando acá, para que local y CI no se desincronicen.
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
+        run: npm run e2e:db:up
+
+      # Las dos apps se levantan desde sus bundles (ver el modo `ci` de
+      # playwright.config.mts), así que hay que construirlas antes. Los comandos del
+      # `webServer` son a propósito opacos para Nx —`http-server` y `node`, nunca `nx`—
+      # porque el plugin infiere un `dependsOn` de cualquier comando `nx` que encuentre
+      # ahí y termina invocando la misma tarea dos veces.
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
+        run: npx nx run-many -t build -p web realtime-api --outputStyle=static
+
+      # El target no atomizado. `e2e-ci` divide por archivo de spec para repartir entre
+      # agentes de Nx Cloud; sin agentes corren igual de serie y cada uno vuelve a levantar
+      # web y api desde cero.
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'e2e')
+        env:
+          E2E_TARGET: ci
+        run: npx nx e2e e2e --outputStyle=static
+
+      # `always()` y no `failure()`: el reporte de una corrida verde sirve para ver cuánto
+      # tardó cada test, que es el dato con el que después se decide si hace falta subir
+      # `workers`. El preset deja todo bajo dist/.playwright/e2e.
+      - if: always() && contains(fromJSON(steps.scope.outputs.projects), 'e2e')
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: dist/.playwright/e2e/
+          retention-days: 7
+
   deploy-backend:
-    needs: verify
+    needs: [verify, e2e]
     if: >-
       contains(fromJSON(needs.verify.outputs.deployable), 'realtime-api')
       && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))
@@ -103,7 +179,7 @@ jobs:
       - run: npx nx deploy realtime-api --configuration=${{ github.ref == 'refs/heads/master' && 'prod' || 'qa' }} --outputStyle=static
 
   deploy-web:
-    needs: verify
+    needs: [verify, e2e]
     if: >-
       contains(fromJSON(needs.verify.outputs.deployable), 'web')
       && github.ref == 'refs/heads/master'

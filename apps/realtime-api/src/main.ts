@@ -21,6 +21,16 @@ const LOCAL_API_ENDPOINT = 'local://dev';
 
 const connections = new Map<string, WebSocket>();
 
+// Este emulador local reimplementa lo que en AWS hacen los handlers de Lambda, y hasta
+// ahora no logueaba nada: cuando la suite e2e fallaba en CI no habia forma de saber si el
+// mensaje habia llegado, si DynamoDB habia respondido, ni cuanto habia tardado. Se paso
+// tres corridas del pipeline diagnosticando a ciegas antes de agregar esto.
+//
+// JSON de una linea, en la direccion que pide la Fase 4.1 del roadmap.
+function log(event: string, fields: Record<string, unknown> = {}): void {
+  console.log(JSON.stringify({ t: new Date().toISOString(), event, ...fields }));
+}
+
 registerLocalTransport((connectionId, message) => {
   const socket = connections.get(connectionId);
   if (socket && socket.readyState === WebSocket.OPEN) {
@@ -79,7 +89,21 @@ const wss = new WebSocketServer({ port: PORT });
 wss.on('connection', (socket) => {
   const connectionId = randomUUID();
   connections.set(connectionId, socket);
-  void handleConnect(connectionId);
+
+  // `handleConnect` escribe la fila de conexion en DynamoDB y es fire-and-forget: si
+  // fallaba, el error se perdia por completo y el sintoma aparecia mucho despues, como
+  // una accion que nunca responde. Ahora al menos queda registrado, con cuanto tardo.
+  const connectStarted = Date.now();
+  log('connection.open', { connectionId });
+  handleConnect(connectionId).then(
+    () => log('connection.registered', { connectionId, durationMs: Date.now() - connectStarted }),
+    (error) =>
+      log('connection.register_failed', {
+        connectionId,
+        durationMs: Date.now() - connectStarted,
+        error: error instanceof Error ? error.message : String(error),
+      })
+  );
 
   socket.on('message', async (data) => {
     let request: ClientRequest;
@@ -89,6 +113,9 @@ wss.on('connection', (socket) => {
       sendLocal(connectionId, { type: 'error', message: 'Invalid message payload' });
       return;
     }
+
+    const started = Date.now();
+    log('action.received', { connectionId, action: request.action });
 
     try {
       switch (request.action) {
@@ -128,7 +155,19 @@ wss.on('connection', (socket) => {
             message: `Unsupported action: ${(request as { action?: string }).action}`,
           });
       }
+      log('action.done', {
+        connectionId,
+        action: request.action,
+        durationMs: Date.now() - started,
+      });
     } catch (error) {
+      log('action.failed', {
+        connectionId,
+        action: request.action,
+        durationMs: Date.now() - started,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       sendLocal(connectionId, {
         type: 'error',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -138,8 +177,25 @@ wss.on('connection', (socket) => {
 
   socket.on('close', () => {
     connections.delete(connectionId);
-    void handleDisconnect(connectionId);
+    log('connection.close', { connectionId });
+    handleDisconnect(connectionId).catch((error) =>
+      log('connection.cleanup_failed', {
+        connectionId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    );
   });
 });
 
-console.log(`Local WebSocket dev server listening on ws://localhost:${PORT}`);
+// Incluye la config de DynamoDB para poder confirmar que las variables de entorno
+// llegaron al proceso — en CI las inyecta el `webServer` de Playwright.
+// `address` incluye la familia (IPv4/IPv6) a la que quedo bindeado el socket. Importa:
+// el navegador resuelve `localhost` por su cuenta y si elige la familia que el servidor
+// no atiende, la conexion se cuelga sin que al backend le llegue nada.
+log('server.listening', {
+  url: `ws://localhost:${PORT}`,
+  address: wss.address(),
+  table: TABLE_NAME,
+  dynamoEndpoint: process.env.DYNAMODB_ENDPOINT ?? '(default AWS)',
+  region: process.env.AWS_REGION ?? '(sin definir)',
+});

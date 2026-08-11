@@ -49,10 +49,12 @@ npm run dev:api
 
 Esto corre `nx serve realtime-api` (build con `@nx/esbuild` + ejecución con `@nx/js:node`, con recarga automática al guardar cambios), escuchando en `ws://localhost:3001`, apuntando a la tabla `poker-planning-rooms` en DynamoDB Local.
 
-Deberías ver:
+Deberías ver una línea JSON como esta (los logs del backend local son JSON de una línea desde el change `add-e2e-to-ci`, en la dirección que pide la Fase 4.1 del roadmap):
+```json
+{"t":"2026-08-11T16:00:00.000Z","event":"server.listening","url":"ws://localhost:3001","table":"poker-planning-rooms","dynamoEndpoint":"http://127.0.0.1:8000","region":"us-east-2"}
 ```
-Local WebSocket dev server listening on ws://localhost:3001
-```
+
+`dynamoEndpoint` y `table` están ahí para confirmar de un vistazo que las variables de entorno llegaron al proceso — si `dynamoEndpoint` dice `(default AWS)`, el backend va a intentar hablar con DynamoDB en la nube en vez de con el contenedor local.
 
 ### 4. Levantar el frontend Angular
 
@@ -179,9 +181,23 @@ Existe una suite de tests end-to-end con Playwright en el proyecto Nx `e2e/` (`e
 npx playwright install chromium
 ```
 
-### Correr los tests contra el backend local
+### Correr los tests: un comando o cuatro terminales
 
-**Importante**: a diferencia de lo que podría esperarse, esta suite **no levanta el backend ni el frontend automáticamente**. Se intentó que `playwright.config.mts` orquestara todo (`nx serve realtime-api` + `nx serve web` como parte de `webServer`), pero Nx lo detecta como una invocación recursiva del mismo target (`Recursive task invocation detected`) — el plugin `@nx/playwright` ya infiere automáticamente que esos targets deben correr antes de los tests a partir del propio comando, así que declararlo también dentro de `webServer.command` termina invocándolos dos veces. Por eso, en modo local, hay que levantar el entorno manualmente antes de correr los tests — son los mismos pasos 1-4 de arriba, ni más ni menos:
+Hay dos formas, y la elección es entre **arrancar rápido** y **iterar rápido**.
+
+#### Un comando (lo mismo que corre CI)
+
+```bash
+npm run test:e2e:ci
+```
+
+Levanta DynamoDB Local, construye el backend, y deja que Playwright arranque `web` y `realtime-api` por su cuenta. Es exactamente lo que corre el pipeline, así que cuando el job de CI falle podés reproducirlo acá sin adivinar qué levantó el runner.
+
+Cuesta el build de las dos apps en cada corrida, así que para cambiar un spec y volver a correrlo diez veces seguidas conviene la otra forma.
+
+#### Cuatro terminales (iteración rápida)
+
+Con el entorno ya levantado, la suite corre contra él sin reconstruir nada:
 
 ```bash
 # Terminal 1: DynamoDB Local (si no está corriendo)
@@ -197,7 +213,9 @@ npm start
 npx nx e2e e2e
 ```
 
-`npm run test:e2e` existe como atajo, pero **solo** levanta DynamoDB Local (`e2e:db:up`) y corre los tests — igual asume que ya tenés `dev:api` y `npm start` corriendo en otras terminales. Si no lo están, los tests van a fallar intentando conectar a `ws://localhost:3001` / `http://localhost:4200` sin nadie escuchando ahí.
+`npm run test:e2e` es el atajo de este modo: levanta DynamoDB Local y corre los tests, pero **asume** que ya tenés `dev:api` y `npm start` en otras terminales. Si no lo están, los tests fallan intentando conectar a `ws://localhost:3001` / `http://localhost:4200` sin nadie escuchando.
+
+> **Corrección de una versión anterior de este documento.** Acá decía que la suite *no puede* levantar el entorno sola, porque poner `nx serve` dentro de `webServer.command` choca con el `dependsOn` que infiere el plugin de Nx (`Recursive task invocation detected`). Eso es cierto **de `nx serve`**, no de la orquestación en general: `nx run web:serve-static` sirve el bundle con fallback SPA sin disparar la recursión, y el backend es un `ws` plano al que le alcanza `node` sobre su bundle. Es lo que hace el modo `ci`.
 
 ### Correr los tests contra AWS
 

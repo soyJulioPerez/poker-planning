@@ -114,9 +114,11 @@ test('el control de "moderador vota" se bloquea durante una ronda activa', async
 
 // Ver docs/known-issues.md ("Test e2e inestable: reconexión automática") — falla
 // de forma intermitente incluso con --workers=1 (sin contención de otros tests).
-// Pendiente de reproducir manualmente para determinar si es un problema real
-// del flujo de reconexión o solo del entorno/test.
-test.fixme('reconexión automática restaura el voto sin necesidad de re-votar', async ({
+// Estuvo marcado `test.fixme` desde el 2026-08-01: fallaba de forma intermitente en
+// `waitForRoomUrl`, sin causa raíz encontrada. La causa apareció en el change
+// `add-e2e-to-ci`, y no tenía nada que ver con el flujo de reconexión: el page object
+// escribía el nombre en el formulario equivocado (ver home.page.ts). Reactivado.
+test('reconexión automática restaura el voto sin necesidad de re-votar', async ({
   browser,
   homePage: moderatorHome,
   roomPage: moderatorRoom,
