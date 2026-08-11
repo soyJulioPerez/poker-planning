@@ -19,6 +19,11 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const roomId = connection.Item?.['roomId'] as string | undefined;
   const name = connection.Item?.['name'] as string | undefined;
 
+  // `connect` ya loguea cada conexión nueva; sin la contraparte acá no se puede
+  // reconstruir la sesión de una sala a partir de los logs. Incluye roomId para
+  // poder filtrar por sala, que es lo que pide la Fase 4.1 del roadmap.
+  console.log('Connection closed', connectionId, roomId ?? '(sin sala)', name ?? '');
+
   if (roomId && name) {
     await ddb.send(
       new UpdateCommand({
