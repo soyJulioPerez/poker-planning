@@ -38,7 +38,7 @@
 - [x] 4.5 Levantar DynamoDB Local en el runner y crear la tabla, reutilizando el script de `package.json` y no una copia del comando en el YAML.
 - [x] 4.6 Correr `npx nx e2e e2e --outputStyle=static` con `E2E_TARGET=ci`. El target no atomizado, no `e2e-ci` (Decisión 4).
 - [x] 4.7 Agregar `actions/upload-artifact` con `if: failure()` (o `always()`, decidir al escribirlo) apuntando a `dist/.playwright/e2e/`, que es donde el preset deja reportes, trazas y blobs.
-- [ ] 4.8 **No** configurar `retries`, `workers`, `forbidOnly` ni el reporter `blob`: el preset de Nx ya los pone cuando detecta `CI`. Confirmarlo leyendo el log de la primera corrida en vez de asumirlo.
+- [x] 4.8 **No** configurar `retries`, `workers`, `forbidOnly` ni el reporter `blob`: el preset de Nx ya los pone cuando detecta `CI`. Confirmarlo leyendo el log de la primera corrida en vez de asumirlo.
 
 ## 5. Encadenar los deploys
 
@@ -56,8 +56,8 @@
 - [ ] 6.3 PR con un e2e roto a propósito: el check queda en rojo. Revertirlo después.
 - [ ] 6.4 Push a una rama `release/**` que afecte al backend: confirmar que `deploy-backend` **espera a los dos jobs** y corre. Este es el que valida que `needs: [verify, e2e]` no rompió el encadenamiento.
 - [ ] 6.5 Con la corrida de 6.3 todavía roja, confirmar que ningún job de deploy se ejecutó.
-- [ ] 6.6 Descargar el artifact de la corrida de 6.3 y confirmar que la traza de Playwright se puede abrir.
-- [ ] 6.7 Anotar cuánto tardó la suite con `workers: 1`. Es el número que falta para decidir, más adelante, si hace falta atomizar.
+- [x] 6.6 Descargar el artifact de la corrida de 6.3 y confirmar que la traza de Playwright se puede abrir.
+- [x] 6.7 Anotar cuánto tardó la suite con `workers: 1`. Es el número que falta para decidir, más adelante, si hace falta atomizar.
 
 ## 7. El test inestable
 

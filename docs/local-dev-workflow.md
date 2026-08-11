@@ -49,10 +49,12 @@ npm run dev:api
 
 Esto corre `nx serve realtime-api` (build con `@nx/esbuild` + ejecución con `@nx/js:node`, con recarga automática al guardar cambios), escuchando en `ws://localhost:3001`, apuntando a la tabla `poker-planning-rooms` en DynamoDB Local.
 
-Deberías ver:
+Deberías ver una línea JSON como esta (los logs del backend local son JSON de una línea desde el change `add-e2e-to-ci`, en la dirección que pide la Fase 4.1 del roadmap):
+```json
+{"t":"2026-08-11T16:00:00.000Z","event":"server.listening","url":"ws://localhost:3001","table":"poker-planning-rooms","dynamoEndpoint":"http://127.0.0.1:8000","region":"us-east-2"}
 ```
-Local WebSocket dev server listening on ws://localhost:3001
-```
+
+`dynamoEndpoint` y `table` están ahí para confirmar de un vistazo que las variables de entorno llegaron al proceso — si `dynamoEndpoint` dice `(default AWS)`, el backend va a intentar hablar con DynamoDB en la nube en vez de con el contenedor local.
 
 ### 4. Levantar el frontend Angular
 
