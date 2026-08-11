@@ -55,11 +55,32 @@
 
 > Lo anterior prueba que los comandos son correctos. Esto prueba que el pipeline lo es.
 
-- [ ] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
+### Primera corrida real — PR #3 a `develop` (run 31490462624)
+
+```
+✓ verify          success (2m47s)
+- deploy-backend  skipped
+- deploy-web      skipped
+```
+
+`nx-set-shas@v5` seteó `NX_BASE`/`NX_HEAD` y Nx los tomó. Los dos deploys se saltearon
+por ser un PR — el `if:` de rama funciona.
+
+**Hallazgo**: la anotación de Node 20 **siguió apareciendo** pese a `node-version: 24`.
+Son cosas distintas: `node-version` controla el Node de los scripts; la anotación la
+disparan las **actions mismas** según su versión mayor. Se corrigió subiendo
+`actions/checkout` y `actions/setup-node` a `@v5` en `ci.yml`, que son los primeros
+majors sobre Node 24. Ver `known-issues.md`.
+
+Este PR toca `nx.json` y `project.json`, o sea configuración raíz: **afecta a todos los
+proyectos**, así que no sirve para verificar el acotado por grafo (6.2, 6.6, 6.7). Eso
+necesita un PR que toque un solo proyecto.
+
+- [x] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
 - [ ] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
 - [ ] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
 - [ ] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
-- [ ] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
+- [x] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
 - [ ] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
 - [ ] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
 - [ ] 6.8 Disparar `deploy-backend.yml` a mano con un `ref` de un tag viejo y confirmar que despliega ese tag sin correr la verificación de la rama actual.

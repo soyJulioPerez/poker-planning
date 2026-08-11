@@ -19,7 +19,23 @@ aws-actions/setup-sam@v2.
 
 **Recomendación**: subir `node-version: 20` → `24` (o `lts/*`) en los 3 workflows (`deploy-backend.yml`, `build-mobile.yml`, `deploy-web.yml`), en línea con el runtime que ya usan las Lambdas (`nodejs24.x` en `infra/template.yaml`).
 
-**Estado (2026-08-11)**: `ci.yml` —el workflow nuevo del change `add-ci-pipeline`— nace ya en **24**. Los tres viejos siguen en 20 a propósito: migrarlos quedó como Non-Goal de ese change para no mezclar. Ahora esos tres solo corren por `workflow_dispatch` o para builds de mobile, así que el ruido es mucho menor — pero la deuda sigue.
+**Ojo — `node-version: 24` NO hace desaparecer la anotación.** Son dos cosas distintas:
+
+| Qué | Se controla con | Efecto en la anotación |
+|---|---|---|
+| El Node que corre `npm ci`, `nx`, `sam build` | `node-version:` en `setup-node` | ninguno |
+| El Node que corre **las actions mismas** | la **versión mayor** de cada action | es lo que la dispara |
+
+Verificado en la primera corrida de `ci.yml`, que ya usaba `node-version: 24` y **igual** anotó:
+
+```
+Node.js 20 is deprecated. The following actions target Node.js 20 but are being
+forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4
+```
+
+`actions/checkout@v5` y `actions/setup-node@v5` son los primeros majors que corren en Node 24 (así lo dicen sus release notes). `ci.yml` ya está en v5.
+
+**Pendiente**: `deploy-backend.yml`, `deploy-web.yml` y `build-mobile.yml` siguen con las actions en `@v4` y `node-version: 20`. Migrarlos quedó como Non-Goal del change `add-ci-pipeline` para no mezclar. El ruido bajó mucho —esos tres ahora solo corren por `workflow_dispatch` o para builds de mobile— pero la deuda sigue. Nota al pasar: al 2026-08-11 esas actions van por **v7**, así que el salto pendiente es de más de un major.
 
 ## Los tabs no comunican cuál está activo fuera del CSS
 
