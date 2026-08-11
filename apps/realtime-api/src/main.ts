@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
-import { PutCommand, DeleteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME, connectionKey, participantKey, nowPlusTtl } from './lib/dynamo-client';
 import { buildRoomState, maskRoomForViewer } from './lib/room-repository';
 import { registerLocalTransport, broadcastRoomState } from './lib/broadcast';
@@ -16,9 +16,6 @@ import { handleSetModeratorIsVoter } from './actions/set-moderator-is-voter';
 import { handleCloseRoom } from './actions/close-room';
 import { ClientRequest, ServerMessage } from 'shared-contracts';
 
-// Toque deliberado para la verificacion 6.5: hace que `realtime-api` quede afectado y
-// que el job de deploy sea elegible, de modo que si NO corre sea por el e2e roto y no
-// porque el grafo no lo alcanzaba. Se revierte junto con el resto.
 const PORT = Number(process.env.PORT ?? 3001);
 const LOCAL_API_ENDPOINT = 'local://dev';
 
@@ -41,11 +38,32 @@ registerLocalTransport((connectionId, message) => {
   }
 });
 
+// `UpdateCommand` y no `PutCommand`: acá había una carrera real, visible en los logs de
+// una corrida que pasa.
+//
+// Esta función es fire-and-forget (`handleConnect(...)` sin await en el `connection`), y
+// el cliente encola su primer mensaje y lo manda apenas abre el socket. O sea que
+// `handleCreateRoom` puede correr ANTES de que esto termine — medido: el `createRoom`
+// llega 38ms después de abrir y esta escritura tarda ~200ms la primera vez.
+//
+// `handleCreateRoom` hace un `UpdateCommand` sobre esta misma fila para grabarle `roomId`
+// y `name`. Con un `Put`, que reemplaza el item entero, si esta escritura aterrizaba
+// segunda **borraba esos dos campos**. Y sin ellos `handleDisconnect` no encuentra a qué
+// sala pertenece la conexión, así que no marca al participante como desconectado ni avisa
+// a la sala: el participante se queda "conectado" para siempre.
+//
+// Con `Update` las dos escrituras componen en vez de pisarse, en cualquier orden.
+//
+// En AWS no aplica: API Gateway garantiza que `$connect` termine antes de entregar
+// mensajes. Es un problema propio de este emulador, donde esa garantía no existe.
 async function handleConnect(connectionId: string): Promise<void> {
   await ddb.send(
-    new PutCommand({
+    new UpdateCommand({
       TableName: TABLE_NAME,
-      Item: { ...connectionKey(connectionId), connectedAt: Date.now(), ttl: nowPlusTtl() },
+      Key: connectionKey(connectionId),
+      UpdateExpression: 'SET connectedAt = :connectedAt, #ttl = :ttl',
+      ExpressionAttributeNames: { '#ttl': 'ttl' },
+      ExpressionAttributeValues: { ':connectedAt': Date.now(), ':ttl': nowPlusTtl() },
     })
   );
 }
