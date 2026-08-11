@@ -51,11 +51,11 @@
 > Los tres primeros son el criterio de aceptación del roadmap. El cuarto es el que prueba
 > que la Decisión 3 funciona, y es el único que no se puede deducir leyendo el YAML.
 
-- [ ] 6.1 PR que toca solo `docs/`: el job `e2e` corre, no encuentra nada que hacer y **termina en verde, no en gris**. Verificar el estado exacto en la UI de Actions.
+- [x] 6.1 PR que toca solo `docs/`: el job `e2e` corre, no encuentra nada que hacer y **termina en verde, no en gris**. Verificar el estado exacto en la UI de Actions.
 - [x] 6.2 PR que toca `apps/web`: los 3 specs corren y pasan.
-- [ ] 6.3 PR con un e2e roto a propósito: el check queda en rojo. Revertirlo después.
-- [ ] 6.4 Push a una rama `release/**` que afecte al backend: confirmar que `deploy-backend` **espera a los dos jobs** y corre. Este es el que valida que `needs: [verify, e2e]` no rompió el encadenamiento.
-- [ ] 6.5 Con la corrida de 6.3 todavía roja, confirmar que ningún job de deploy se ejecutó.
+- [x] 6.3 PR con un e2e roto a propósito: el check queda en rojo. Revertirlo después.
+- [x] 6.4 Push a una rama `release/**` que afecte al backend: confirmar que `deploy-backend` **espera a los dos jobs** y corre. Este es el que valida que `needs: [verify, e2e]` no rompió el encadenamiento.
+- [x] 6.5 Con la corrida de 6.3 todavía roja, confirmar que ningún job de deploy se ejecutó.
 - [x] 6.6 Descargar el artifact de la corrida de 6.3 y confirmar que la traza de Playwright se puede abrir.
 - [x] 6.7 Anotar cuánto tardó la suite con `workers: 1`. Es el número que falta para decidir, más adelante, si hace falta atomizar.
 
@@ -69,7 +69,7 @@
 
 ## 8. Documentación
 
-- [ ] 8.1 `docs/hardening-roadmap.md`: marcar la 1.2 como hecha, con la nota de qué quedó distinto de lo anticipado (la recomendación se invirtió a la opción 2, y por qué).
+- [x] 8.1 `docs/hardening-roadmap.md`: marcar la 1.2 como hecha, con la nota de qué quedó distinto de lo anticipado (la recomendación se invirtió a la opción 2, y por qué).
 - [x] 8.2 `docs/hardening-roadmap.md`: sacar de "Deuda menor detectada de paso" el ítem de `docs/e2e-tests.md`, ya resuelto en 3.5.
 - [x] 8.3 `docs/known-issues.md`: cerrar la entrada de Playwright sin binarios (queda resuelta en CI; sigue aplicando en local, aclararlo) y la de `localhost`/IPv6, resuelta en 3.1.
 - [x] 8.4 `docs/local-dev-workflow.md`: documentar `npm run test:e2e:ci` como la forma de correr la suite sin levantar tres terminales a mano.

@@ -13,7 +13,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
-| 1 | [Portón de CI](#fase-1--portón-de-ci) | 🟡 1.1 hecha · 1.2 y 1.3 pendientes | — |
+| 1 | [Portón de CI](#fase-1--portón-de-ci) | 🟡 1.1 y 1.2 hechas · 1.3 pendiente | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | ⬜ Pendiente | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
@@ -107,9 +107,19 @@ El gate completo está en el orden de **~2 minutos**, y mobile es más de la mit
 - El caché de Nx local no se comparte con CI. Sin remote cache, CI recompila todo cada vez. Está bien para empezar; si el pipeline se pone lento, ahí se evalúa Nx Cloud o un caché self-hosted — no antes.
 - Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).
 
-### 1.2 — E2E en CI
+### 1.2 — E2E en CI ✅
 
-> **Punto de partida que dejó la 1.1**: el generador de Nx emitió `npx playwright install --with-deps` y `e2e` en la lista de targets porque detecta el proyecto. Ambas cosas **se sacaron** de `ci.yml` por estar fuera del alcance de la 1.1 — pero ese es exactamente el par que hay que reponer acá. Sin el `playwright install`, los e2e fallan con `Executable doesn't exist`, que no dice nada sobre la causa (ver [known-issues.md](known-issues.md)).
+> **Hecha** el 2026-08-11, change `add-e2e-to-ci`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **Se eligió la opción 2, no la 1.** Este documento recomendaba orquestar desde el YAML por simplicidad. La recomendación se invirtió al descubrir que ninguna de las dos apps necesita `nx serve`: `web` se sirve con `http-server` sobre `dist/`, y `realtime-api` es un `ws` plano al que le alcanza `node`. El modo `E2E_TARGET=ci` se reproduce en local con `npm run test:e2e:ci`.
+> - **El comando del `webServer` no puede empezar con `nx`.** El plugin infiere un `dependsOn` de lo que encuentra ahí y termina invocando la misma tarea dos veces. Con `nx run web:serve-static` pasó **ocho corridas seguidas** antes de fallar: `reuseExistingServer` tapa el conflicto cuando Playwright encuentra el puerto ya atendido. Lección de método: un fallo intermitente no se descarta acumulando corridas verdes.
+> - **El job de e2e no lleva `if:` a nivel de job.** En GitHub Actions un job salteado arrastra a sus dependientes, así que un `if:` ahí habría apagado los deploys en silencio. Calcula su alcance adentro y termina en verde sin trabajo. Como resultado los `if:` de los deploys quedaron sin tocar: ni `always()`, ni `!cancelled()`, ni `needs.<job>.result`.
+> - **Apareció un bug de la suite de 10 días de antigüedad.** Los dos tests que `known-issues.md` documentaba como "inestables, sin causa raíz" eran el mismo problema: el page object escribía el nombre en el formulario equivocado, aprovechando que Angular zoneless *agenda* la detección de cambios. Los dos volvieron a la suite. Y de paso apareció una carrera real en el emulador local del backend, que dejaba participantes "conectados" para siempre.
+> - **El diagnóstico costó seis corridas** porque el emulador local no logueaba nada y Playwright ignora el `stdout` de los `webServer`. La instrumentación que se agregó (logs JSON del backend, eventos del navegador, `trace: retain-on-failure`, reporter `list`) quedó permanente.
+>
+> Resultado: **13 tests en 14.7s, cero flaky**. Antes eran 12 activos + 1 apagado, con 8 a 12 flaky por corrida.
+
+> **Punto de partida que dejó la 1.1** *(se conserva como registro)*: el generador de Nx emitió `npx playwright install --with-deps` y `e2e` en la lista de targets porque detecta el proyecto. Ambas cosas **se sacaron** de `ci.yml` por estar fuera del alcance de la 1.1 — pero ese es exactamente el par que hay que reponer acá. Sin el `playwright install`, los e2e fallan con `Executable doesn't exist`, que no dice nada sobre la causa (ver [known-issues.md](known-issues.md)).
 >
 > Y sigue abierto lo que ya estaba anotado: `e2e` **no depende de `web` en el grafo**, así que `nx affected` no lo marca cuando cambia la web. Si el job se resuelve por `affected` sin arreglar eso, no va a correr casi nunca.
 
@@ -126,10 +136,10 @@ La opción 1 es más simple de arrancar; la 2 deja el repo reproducible en local
 
 **Criterio de aceptación**
 
-- [ ] Los 3 specs corren en CI y pasan.
-- [ ] Un e2e roto deja el PR en rojo.
-- [ ] En caso de fallo, el trace de Playwright queda subido como artifact (`actions/upload-artifact`) — `trace: 'on-first-retry'` ya está configurado, pero sin subir el artifact no se puede ver.
-- [ ] El job de e2e no bloquea el feedback rápido: separado del job de lint/test, no en serie con él.
+- [x] Los 3 specs corren en CI y pasan.
+- [x] Un e2e roto deja el PR en rojo.
+- [x] En caso de fallo, el trace de Playwright queda subido como artifact (`actions/upload-artifact`) — `trace: 'on-first-retry'` ya está configurado, pero sin subir el artifact no se puede ver.
+- [x] El job de e2e no bloquea el feedback rápido: separado del job de lint/test, no en serie con él.
 
 ### 1.3 — Branch protection
 
