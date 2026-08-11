@@ -52,7 +52,7 @@
 > que la Decisión 3 funciona, y es el único que no se puede deducir leyendo el YAML.
 
 - [ ] 6.1 PR que toca solo `docs/`: el job `e2e` corre, no encuentra nada que hacer y **termina en verde, no en gris**. Verificar el estado exacto en la UI de Actions.
-- [ ] 6.2 PR que toca `apps/web`: los 3 specs corren y pasan.
+- [x] 6.2 PR que toca `apps/web`: los 3 specs corren y pasan.
 - [ ] 6.3 PR con un e2e roto a propósito: el check queda en rojo. Revertirlo después.
 - [ ] 6.4 Push a una rama `release/**` que afecte al backend: confirmar que `deploy-backend` **espera a los dos jobs** y corre. Este es el que valida que `needs: [verify, e2e]` no rompió el encadenamiento.
 - [ ] 6.5 Con la corrida de 6.3 todavía roja, confirmar que ningún job de deploy se ejecutó.
@@ -61,11 +61,11 @@
 
 ## 7. El test inestable
 
-- [ ] 7.1 Correr el job **tres veces** sobre el mismo commit (re-run) y anotar el resultado de `room-moderation.spec.ts:158` en cada una.
-- [ ] 7.2 Según el resultado, una de dos:
+- [x] 7.1 Correr el job **tres veces** sobre el mismo commit (re-run) y anotar el resultado de `room-moderation.spec.ts:158` en cada una.
+- [x] 7.2 Según el resultado, una de dos:
   - **Pasa las tres** → queda activo. Actualizar la entrada de `known-issues.md` con el dato nuevo: en Linux limpio no se reproduce, con las corridas enlazadas.
   - **Falla alguna** → `test.fixme`, igual que su gemelo de `:119`, con la corrida enlazada como evidencia. Anotarlo en `known-issues.md`.
-- [ ] 7.3 En cualquiera de los dos casos, **no** usar `continue-on-error` ni degradar el job a informativo. Un check que no puede poner el PR en rojo no es un check.
+- [x] 7.3 En cualquiera de los dos casos, **no** usar `continue-on-error` ni degradar el job a informativo. Un check que no puede poner el PR en rojo no es un check.
 
 ## 8. Documentación
 

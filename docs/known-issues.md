@@ -203,9 +203,28 @@ Con eso, el modo de falla dejó de ser un error críptico de `TestBed` y pasó a
 
 **Lo que no funciona** (para no volver a intentarlo): un `.env` en la raíz, una opción en `nx.json`, o `env` en el target de `project.json`. Los tres corren **después** de que `workspaceRoot` quedó fijado — el valor se evalúa al cargar el módulo, cuando arranca el CLI de Nx.
 
-## Test e2e inestable: reconexión automática (marcado `test.fixme`)
+## Tests e2e inestables: el nombre se escribía en el formulario equivocado ✅
 
-**Síntoma**: el test `reconexión automática restaura el voto sin necesidad de re-votar` (`e2e/room-moderation.spec.ts`) falla de forma intermitente con `TimeoutError: page.waitForURL: Timeout 10000ms exceeded`, esperando la navegación a `/room/<código>` justo después de que el **moderador** crea la sala — es decir, falla en el paso más básico del test, antes incluso de llegar a la lógica de reconexión en sí.
+**RESUELTO** el 2026-08-11, change `add-e2e-to-ci`. Esta entrada y la de *"participante desconectado"* más abajo eran **el mismo problema**, como se sospechaba: misma firma, misma causa.
+
+**La causa**: la home arranca en modo `join` y **los dos formularios tienen un campo "Tu nombre"** ([home.html:27 y :66](../apps/web/src/app/pages/home/home.html)). Angular 21 corre zoneless, así que el click en el tab "Crear sala" solo **agenda** la detección de cambios: durante un instante el DOM sigue mostrando el formulario de join.
+
+```
+1. click tab "Crear sala"  → setMode('create') → CD agendada, DOM sin cambiar
+2. fill "Tu nombre"        → escribe en el input del formulario de JOIN
+3. corre la CD             → el @if destruye ese input y crea el de create, VACÍO
+4. click submit            → createRoom() → nombre vacío → return silencioso
+```
+
+Ese `if (!this.moderatorName.trim()) return;` de [home.ts:131](../apps/web/src/app/pages/home/home.ts) no loguea nada: sin error, sin WebSocket, sin navegación. El test moría 10s después en `waitForRoomUrl`, apuntando a un paso que no tenía la culpa.
+
+**El arreglo**: acotar el locator al formulario de creación en `e2e/pages/home.page.ts`, para que el auto-wait de Playwright espere al formulario correcto en vez de escribir en el que está de paso. Los dos tests volvieron a la suite.
+
+**Por qué costó tanto encontrarlo**: en una máquina de desarrollo la carrera se gana casi siempre. Apareció recién al meter la suite en CI, donde el runner es más lento y fallaban 8 a 12 tests por corrida — el gate quedaba verde solo por `retries: 2`. Lo que lo destrabó fue instrumentar: logs del backend, eventos del navegador y `trace: retain-on-failure`. Con eso quedó a la vista que el navegador **nunca creaba el WebSocket**, lo que descartó de un saque el backend, DynamoDB y la red.
+
+> Lo de abajo se conserva como registro de la investigación original.
+
+**Síntoma** *(histórico)*: el test `reconexión automática restaura el voto sin necesidad de re-votar` (`e2e/room-moderation.spec.ts`) falla de forma intermitente con `TimeoutError: page.waitForURL: Timeout 10000ms exceeded`, esperando la navegación a `/room/<código>` justo después de que el **moderador** crea la sala — es decir, falla en el paso más básico del test, antes incluso de llegar a la lógica de reconexión en sí.
 
 **Lo que se descartó como causa** (confirmado durante `openspec/changes/add-e2e-room-moderation-coverage`):
 - No es contención de otros tests corriendo en paralelo: falla incluso con `nx e2e e2e -- -g "reconexión"` (`--workers=1`, un solo test, sin ningún otro compitiendo por recursos).
@@ -264,9 +283,9 @@ rejoinIfNeeded(roomId: string): void {
 
 **Confirmado que no lo causó `uncouple-client-logic`**: se hizo `git stash` de todos los cambios de ese refactor (volviendo al `RoomSocketService` original basado en `signal()`/`sessionStorage` directo) y se corrió el mismo test 5 veces seguidas contra el código original — **falló las 5 veces**, en el mismo punto exacto. El resto de la suite (11/11 tests restantes) pasa consistentemente en ambas versiones del código.
 
-**No investigado a fondo**: no se determinó la causa raíz. Hipótesis sin confirmar: el test abre un segundo `browser.newContext()` (proceso Chromium adicional) antes de que el moderador termine de crear la sala, lo que podría introducir contención de recursos o una condición de carrera con el WebSocket local de desarrollo.
+**RESUELTO** el 2026-08-11, change `add-e2e-to-ci`. La recomendación de investigarlo junto con *"reconexión automática"* estaba bien encaminada: **era la misma causa**. Ver la entrada de arriba para el mecanismo completo.
 
-**Recomendación** (futuro change): investigar en conjunto con "Test e2e inestable: reconexión automática" más arriba — mismo punto de falla, mismo archivo, probablemente la misma causa. No bloquear changes no relacionados por estos flakes.
+La hipótesis que figuraba acá —contención de recursos por el segundo `browser.newContext()`— era **incorrecta**. El segundo contexto no tenía nada que ver: el fallo estaba en el primero, escribiendo el nombre en el formulario equivocado antes de que Angular terminara de cambiar de tab.
 
 ## Mobile (Expo): el ícono y el splash no cargan, error ENOENT en `assets/images`
 
