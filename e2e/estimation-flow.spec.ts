@@ -34,7 +34,7 @@ test('crear sala, votar, revelar y resolver una historia', async ({
   await moderatorRoom.vote('5');
   await participantRoom.vote('5');
 
-  await expect(moderatorRoom.voteProgressText()).toHaveText('2 de 2 votaron');
+  await expect(moderatorRoom.voteProgressText()).toHaveText('99 de 99 votaron') // ROTO A PROPOSITO — verificacion 6.3/6.5;
 
   await moderatorRoom.reveal();
   await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (5)');
