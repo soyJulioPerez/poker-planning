@@ -67,7 +67,10 @@ jobs:
 
       # Mismo target que usa ci.yml, para que el camino manual y el automático
       # desplieguen exactamente igual.
+      # Sin override de PATH: `${{ env.PATH }}` no resuelve al PATH del runner sino
+      # al contexto `env` del workflow, que está vacío — dejaba el PATH en solo
+      # "node_modules/.bin:" y npx no encontraba ni `sh`. Nx ya antepone
+      # node_modules/.bin al ejecutar run-commands, así que esbuild queda accesible
+      # para `sam build`.
       - name: Deploy
         run: npx nx deploy realtime-api --configuration=${{ github.event.inputs.environment }} --outputStyle=static
-        env:
-          PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}
