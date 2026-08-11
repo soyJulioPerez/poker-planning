@@ -1,3 +1,5 @@
+// Comentario temporal para verificar el acotado de nx affected en CI (tarea 6.2
+// del change add-ci-pipeline). Se revierte al terminar la verificacion.
 import { DeckOption } from './domain';
 
 export const FIBONACCI_DECK: DeckOption = {
