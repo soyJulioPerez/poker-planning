@@ -78,11 +78,11 @@ necesita un PR que toque un solo proyecto.
 
 - [x] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
 - [x] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
-- [ ] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
-- [ ] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
+- [x] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
+- [x] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
 - [x] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
-- [ ] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
-- [ ] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
+- [x] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
+- [x] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
 - [x] 6.8 Disparar `deploy-backend.yml` a mano con un `ref` de un tag viejo y confirmar que despliega ese tag sin correr la verificación de la rama actual.
 
 ## 7. Documentación
@@ -168,7 +168,7 @@ de rollback es exactamente lo contrario.
 
 Verificado tras la corrección: run 31497873506, `v1.0.0` desplegado a `dev`, success.
 
-### Estado de 6.6 y 6.7 — no verificadas
+### Estado de 6.6 y 6.7 — VERIFICADAS (ver cierre al final)
 
 Requieren un push a `master` donde **solo un** proyecto resulte afectado. Los tres pushes a
 `master` de esta sesión cambiaron `ci.yml`, que está en `sharedGlobals` y por diseño
@@ -185,3 +185,55 @@ Lo que sí quedó demostrado del mecanismo de acotado:
 
 Falta ver el `if:` de `affected` evaluando en falso **sobre master**. Se va a verificar solo
 en el primer release que toque un solo lado del producto.
+
+
+### Cierre de 6.6 y 6.7 — el acotado por grafo, verificado sobre master
+
+Las dos tareas que habían quedado abiertas se cerraron con cambios reales, uno por lado.
+
+**6.6 — backend solo** (run 31499202546, tag `v1.2.0`). Se agregó el log de cierre de conexión
+en `disconnect.ts`: `connect` ya logueaba cada conexión nueva y sin la contraparte no se podía
+reconstruir la sesión de una sala desde los logs. Incluye `roomId`, como pide la Fase 4.1.
+
+```
+verify:         success
+deploy-backend: success
+deploy-web:     skipped     ← por el grafo, no por la rama
+```
+
+**6.7 — web solo** (run 31500297113, tag `v1.3.0`). Se corrigió el texto de ayuda del panel de
+revelado: decía *"Click en un voto"* cuando desde `fix-room-ui-accessibility` los votos también
+se eligen con teclado. Verificado en el bundle publicado: `Elegí un voto para usarlo…`.
+
+```
+verify:         success
+deploy-web:     success
+deploy-backend: skipped
+```
+
+**Lo que esto demuestra y antes faltaba**: el `if: contains(fromJSON(...))` evaluando en
+**falso sobre master**, donde la condición de rama no lo tapa. Es la garantía de que nada se
+redespliega sin haber cambiado.
+
+**Nota sobre el pedido original**: cambiar un ícono de mascota no servía para aislar `web`.
+Los íconos viven en `packages/shared-contracts/src/lib/icon-groups.ts`, que afecta a los
+5 proyectos —`realtime-api` incluido— así que habría desplegado ambos lados. Por eso se usó
+un cambio contenido en `apps/web`.
+
+
+### Cierre de 6.3 y 6.4 — el gate detiene el deploy (run 31491583353)
+
+Se rompió a propósito una aserción de `card.spec.ts` y se pusheó al PR #3:
+
+```
+run:            failure
+verify:         failure
+deploy-backend: skipped
+deploy-web:     skipped
+```
+
+Con la verificación en rojo, **ningún deploy corrió**. Es el punto del change. Se restauró
+después y el PR volvió a verde.
+
+(Este registro se había anotado antes del squash merge de #3 y se perdió en el camino; se
+repone acá con los datos de la corrida.)
