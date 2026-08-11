@@ -3,35 +3,52 @@
 ## Purpose
 
 TBD
-
 ## Requirements
-
 ### Requirement: Automated build and deploy to AWS on relevant changes
-The system SHALL automatically run `sam build` and `sam deploy` for the `realtime-api` backend whenever changes are pushed to `master` (ambiente `prod`) or to any branch matching `release/**` (ambiente `qa`) that touch `apps/realtime-api/**`, `packages/shared-contracts/**`, or `infra/**`. Pushes to `develop` (ambiente `dev`) SHALL NOT trigger an automatic deploy. The system SHALL also support manual re-deployment on demand to any of the three environments, including `dev`.
+
+El sistema SHALL ejecutar `sam build` y `sam deploy` del backend `realtime-api` cuando se pushea a `master` (ambiente `prod`) o a una rama `release/**` (ambiente `qa`), **siempre que la verificación de `lint`, `test` y `build` haya pasado primero** y que `realtime-api` resulte afectado según el grafo de dependencias de Nx. Los pushes a `develop` (ambiente `dev`) SHALL NOT disparar un deploy automático. El sistema SHALL seguir soportando el re-despliegue manual bajo demanda a cualquiera de los tres ambientes, incluido `dev`.
+
+**Qué cambia respecto de la versión anterior**: qué se despliega deja de decidirse por una lista de rutas escrita a mano (`apps/realtime-api/**`, `packages/shared-contracts/**`, `infra/**`) y pasa a decidirse por el grafo real. La lista era una aproximación que había que mantener: si `realtime-api` empezara a depender de otro paquete del workspace, el filtro no se enteraría y el deploy se saltearía en silencio.
+
+Y el deploy pasa a estar **encadenado detrás de la verificación**, no en paralelo con ella.
 
 #### Scenario: Push to master touching backend code triggers a prod deployment
-- **WHEN** a commit pushed to `master` modifies a file under `apps/realtime-api/`
-- **THEN** a GitHub Actions workflow runs `sam build` and `sam deploy --config-env prod`
+- **WHEN** un commit pusheado a `master` modifica un archivo bajo `apps/realtime-api/`
+- **AND** las tareas de `lint`, `test` y `build` de los proyectos afectados pasan
+- **THEN** el workflow ejecuta `sam build` y `sam deploy --config-env prod`
+
+#### Scenario: La verificación en rojo impide el deploy
+- **WHEN** un commit pusheado a `master` modifica el backend y rompe un test
+- **THEN** el deploy no se ejecuta, y el stack de `prod` queda como estaba
 
 #### Scenario: Push to a release branch touching backend code triggers a qa deployment
-- **WHEN** a commit pushed to a branch matching `release/**` modifies a file under `apps/realtime-api/`
-- **THEN** the same backend deploy workflow runs `sam build` and `sam deploy --config-env qa`, overwriting whatever was previously deployed to the qa stack
+- **WHEN** un commit pusheado a una rama `release/**` modifica un archivo bajo `apps/realtime-api/`
+- **AND** la verificación pasa
+- **THEN** el mismo flujo ejecuta `sam build` y `sam deploy --config-env qa`, sobrescribiendo lo que hubiera en el stack de qa
 
 #### Scenario: Push to develop does not trigger an automatic deployment
-- **WHEN** a commit is pushed to `develop`
-- **THEN** the backend deploy workflow does not run automatically
+- **WHEN** se pushea un commit a `develop`
+- **THEN** la verificación corre, pero el deploy de backend no se ejecuta
 
 #### Scenario: Push touching shared contracts triggers deployment
-- **WHEN** a commit pushed to `master` or to a `release/**` branch modifies a file under `packages/shared-contracts/`
-- **THEN** the same backend deploy workflow runs against the corresponding environment, so the Lambda functions (which depend on `shared-contracts` for validation) pick up the change
+- **WHEN** un commit pusheado a `master` o a una rama `release/**` modifica un archivo bajo `packages/shared-contracts/`
+- **THEN** el grafo marca a `realtime-api` como afectado —depende de `shared-contracts` para validación— y el deploy corre contra el ambiente correspondiente
 
 #### Scenario: Push touching only frontend code does not trigger backend deployment
-- **WHEN** a commit pushed to `master`, a `release/**` branch, or `develop` only modifies files under `apps/web/`
-- **THEN** the backend deploy workflow does not run
+- **WHEN** un commit pusheado a `master`, a una rama `release/**` o a `develop` modifica únicamente archivos bajo `apps/web/`
+- **THEN** el grafo no marca a `realtime-api` como afectado y el deploy de backend no corre
+
+#### Scenario: Una dependencia nueva del backend entra al alcance sola
+- **WHEN** `realtime-api` pasa a depender de un proyecto del workspace del que no dependía
+- **THEN** un cambio en ese proyecto marca a `realtime-api` como afectado y dispara su deploy, sin que nadie haya tenido que actualizar una lista de rutas
 
 #### Scenario: Manual deploy to any environment
-- **WHEN** a maintainer triggers the backend deploy workflow manually (`workflow_dispatch`) selecting an `environment` input (`dev`, `qa`, or `prod`)
-- **THEN** the same build-and-deploy process runs against the selected environment's stack without requiring a new commit
+- **WHEN** alguien dispara el workflow de deploy de backend manualmente (`workflow_dispatch`) eligiendo un `environment` (`dev`, `qa` o `prod`)
+- **THEN** el proceso de build y deploy corre contra el stack del ambiente elegido, sin necesidad de un commit nuevo
+
+#### Scenario: El deploy manual no corre la verificación
+- **WHEN** alguien despliega un tag anterior a `prod` mediante `workflow_dispatch` con el input `ref`, para hacer rollback
+- **THEN** se despliega ese ref y nada más: no se ejecuta la verificación del código actual de la rama, que no es el que se está desplegando
 
 ### Requirement: Ambientes de backend aislados por stack de CloudFormation
 El sistema SHALL mantener tres stacks de CloudFormation independientes — uno por ambiente (`dev`, `qa`, `prod`) — cada uno con su propia tabla DynamoDB, WebSocket API Gateway y funciones Lambda, de forma que los datos y cambios de infraestructura de un ambiente NO SHALL afectar a otro.
@@ -68,3 +85,4 @@ The system SHALL provide a written setup guide describing the one-time manual st
 #### Scenario: New maintainer follows the guide to bootstrap a fresh AWS account
 - **WHEN** a maintainer with AWS console/CLI access but no prior OIDC setup follows `docs/aws-oidc-setup.md`
 - **THEN** they end up with an IAM OIDC Identity Provider for `token.actions.githubusercontent.com` and an IAM Role trusted only for this repository, with permissions scoped to the resources in `infra/template.yaml`
+

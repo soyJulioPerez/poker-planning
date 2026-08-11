@@ -100,7 +100,7 @@ necesita un PR que toque un solo proyecto.
 
 - [x] 8.1 Confirmar que el diff no toca ningún archivo bajo `src/`. Este change es de pipeline y configuración.
 - [x] 8.2 Confirmar que los tres ambientes de backend siguen desplegables a mano por `workflow_dispatch`.
-- [ ] 8.3 `/opsx:verify` y después `/opsx:archive`.
+- [x] 8.3 `/opsx:verify` y después `/opsx:archive`.
 
 
 ### Verificación en vivo — resultados
