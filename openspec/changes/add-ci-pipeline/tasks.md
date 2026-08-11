@@ -115,3 +115,29 @@ necesita un PR que toque un solo proyecto.
 `workflow_dispatch` se renombró el workflow, lo que rompió los cuatro `gh workflow run "Deploy
 backend to AWS"` que la documentación invocaba por display name. Se cambiaron a invocar por
 nombre de archivo (`deploy-backend.yml`), que es estable ante renombres.
+
+
+### Bug encontrado en la verificación en vivo: `nx-set-shas` sin rama base
+
+Un commit de **solo documentación** en `release/1.1.0` disparó un deploy de backend a qa
+(run 31495249129). No debía: nada del backend había cambiado.
+
+```
+NX_BASE: 4b825dc642cb6eb9a060e54bf8d69288fbee4904   ← hash del árbol vacío de git
+Successfully ran targets lint, test, build for 6 projects
+```
+
+**Causa**: el input `main-branch-name` de `nrwl/nx-set-shas` tiene default `main`, rama
+que no existe en este repo. Sin encontrarla, la action cae al árbol vacío y `affected`
+marca **todos** los proyectos.
+
+Es la misma causa raíz que el `defaultBase` de `nx.json` —Nx y sus actions asumen `main`—
+pero en un lugar distinto y con peores consecuencias: en un pipeline con deploys significa
+desplegar producción sin que haya cambiado nada.
+
+**Corregido** pasando `main-branch-name: develop`. Verificado en el run 31495672524:
+`NX_BASE` pasó a ser un commit real (`9105e5f`) y desaparecieron las ocurrencias del
+árbol vacío.
+
+**Sin la insistencia en probar el caso "sin cambios no se redespliega", este bug habría
+llegado a producción disfrazado de comportamiento normal.**
