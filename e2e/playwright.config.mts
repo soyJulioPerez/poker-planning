@@ -73,8 +73,12 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    // `retain-on-failure` y no `on-first-retry`: este último graba **el reintento**, no el
+    // intento que falló. Cuando el reintento pasa —que es el caso interesante— quedaba una
+    // traza de una corrida exitosa y nada del fallo. Verificado en la primera corrida del
+    // job de CI, donde 11 de 12 tests fallaron el primer intento y las 11 trazas subidas
+    // eran de reintentos verdes.
+    trace: 'retain-on-failure',
   },
   webServer:
     target === 'aws'
@@ -96,6 +100,10 @@ export default defineConfig({
               cwd: workspaceRoot,
               // Incluye el build de `web`, que en una caché fría no es inmediato.
               timeout: 180_000,
+              // Playwright ignora el stdout de los webServer por defecto (solo pipea
+              // stderr). Sin esto, los console.log del backend no aparecen en el log del
+              // job y un fallo en CI se diagnostica a ciegas.
+              stdout: 'pipe',
             },
             {
               // Requiere `nx build realtime-api` previo — lo hace `npm run test:e2e:ci`.
@@ -107,6 +115,7 @@ export default defineConfig({
               cwd: workspaceRoot,
               timeout: 30_000,
               env: localBackendEnv,
+              stdout: 'pipe',
             },
           ]
         : undefined,
