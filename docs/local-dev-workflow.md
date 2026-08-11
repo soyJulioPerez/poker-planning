@@ -144,10 +144,30 @@ El SDK de Expo del proyecto (`expo` en `package.json`, hoy `~54.0.36`) tiene que
 Para confirmar que la app compila y que Metro resuelve correctamente `shared-contracts`/`room-client-runtime` sin necesitar un dispositivo ni Expo Go:
 
 ```bash
-npx nx export mobile
+npx nx build mobile
 ```
 
-Genera un bundle de producción real para web/iOS/Android en `apps/mobile/dist` (gitignored). Sirve como chequeo rápido de que no hay nada roto en la resolución de módulos del monorepo antes de probar en un dispositivo.
+Genera un bundle de producción real para web/iOS/Android en `apps/mobile/dist` (gitignored) — bytecode Hermes para android e ios más el bundle web. Sirve como chequeo rápido de que no hay nada roto en la resolución de módulos del monorepo antes de probar en un dispositivo.
+
+> Este target **antes se llamaba `export`**, y `build` era el que disparaba un build en la nube de EAS. Se invirtieron los nombres en el change `add-ci-pipeline`: `nx build mobile` bundlea local (es lo que corre en CI) y el de EAS pasó a llamarse **`nx eas-build mobile`**.
+
+## Reproducir en local lo que corre el CI
+
+El gate de CI corre exactamente esto sobre los proyectos afectados:
+
+```bash
+npx nx affected -t lint test build
+```
+
+Funciona sin `--base`: `nx.json` define `"defaultBase": "develop"`, así que compara tu rama contra `develop`. Correrlo antes de pushear evita descubrir un fallo recién en el PR.
+
+Para ver solo qué proyectos entrarían en juego, sin ejecutar nada:
+
+```bash
+npx nx show projects --affected
+```
+
+> **Los targets `deploy` no son para uso local.** `realtime-api` y `web` tienen uno, pero existen para que `nx affected -t deploy` acote desde CI qué se despliega. En local el equivalente de "desplegar" es levantar la app en `localhost` con los pasos de más arriba.
 
 ## Verificar sin abrir el navegador manualmente (suite e2e)
 

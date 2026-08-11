@@ -1,0 +1,82 @@
+# Tareas — Portón de CI con el deploy encadenado
+
+> **El orden importa.** Los grupos 1 y 2 son prerrequisitos: sin ellos el gate nace roto
+> y `nx affected` no se puede probar en local antes de escribirlo en el YAML.
+>
+> **Antes de cada grupo, `git status` limpio.** El grupo 1 corre un generador y el 2 un
+> executor que ya demostró ensuciar el árbol de trabajo.
+
+## 1. Mobile: que `build` deje de llamar a la nube
+
+- [x] 1.1 Confirmar el punto de partida: `npx nx show project mobile --json` y verificar que `build` usa `@nx/expo:build`.
+- [x] 1.2 ~~Correr `npx nx g @nx/expo:convert-to-inferred`~~ → **no aplica**. El generador devuelve `Could not find any targets to migrate` porque `apps/mobile/project.json` tiene `"targets": {}`: todo ya es inferido por el plugin. En su lugar, renombrar en `nx.json` los targets del plugin de expo: `buildTargetName: "eas-build"` y `exportTargetName: "build"`. Ver `design.md`, Decisión 1.
+- [x] 1.3 Confirmar que el diff se limita al bloque del plugin de expo en `nx.json`.
+- [x] 1.4 Verificar que `npx nx build mobile` **bundlea local**: produce `.hbc` para android e ios más el bundle web bajo `apps/mobile/dist`, sin pedir `EXPO_TOKEN` ni contactar Expo.
+- [x] 1.5 Verificar que después de correr el build, `git status` no muestra `apps/mobile/package.json` ni `apps/mobile/package-lock.json` modificados. Era el efecto colateral del executor viejo.
+- [x] 1.6 Confirmar que el build de EAS sigue disponible con otro nombre de target, y que `build-mobile.yml` —que invoca el CLI de `eas` directamente, sin pasar por Nx— sigue funcionando igual.
+
+## 2. `defaultBase`
+
+- [x] 2.1 Confirmar que hoy falla: `npx nx affected -t lint` sin argumentos debe dar error de revisión de git.
+- [x] 2.2 Agregar `"defaultBase": "develop"` a `nx.json`.
+- [x] 2.3 Confirmar que ahora corre sin `--base` y lista proyectos coherentes con la rama actual.
+
+## 3. El workflow de CI
+
+- [x] 3.1 `npx nx generate ci-workflow --ci=github` y revisar qué generó antes de tocarlo.
+- [x] 3.2 Podar las líneas de Nx Cloud (`nx-cloud start-ci-run`, `npx nx-cloud fix-ci`): este workspace no tiene `nxCloudId` ni token.
+- [x] 3.3 Ajustar `node-version` a **24**. El generador pone 22 y los workflows existentes usan 20, que ya está deprecado.
+- [x] 3.4 Confirmar que el checkout lleva `fetch-depth: 0` **y** `filter: tree:0`.
+- [x] 3.5 Confirmar que usa `nrwl/nx-set-shas@v4`.
+- [x] 3.6 Confirmar que los triggers son `pull_request` y push a `develop`, `release/**` y `master`.
+- [x] 3.7 Agregar `--outputStyle=static` al comando de Nx: el default reescribe líneas y deja los logs de Actions ilegibles.
+- [x] 3.8 Agregar `concurrency` con `cancel-in-progress: true`. Sin eso, tres pushes seguidos a una rama corren tres pipelines completos.
+
+## 4. Targets de deploy y jobs condicionales
+
+- [x] 4.1 Agregar un target `deploy` a `apps/realtime-api/project.json` con `dependsOn: ["build"]`, que ejecute `sam build` y `sam deploy --config-env <ambiente>`. El ambiente se resuelve por variable, no hardcodeado.
+- [x] 4.2 Agregar un target `deploy` a `apps/web/project.json` con `dependsOn: ["build"]`, que haga el build con `--base-href` y `--configuration=aws` **y el `cp` del `404.html`**. Ese `cp` hoy vive suelto como step del workflow, invisible para quien buildee `web` a mano.
+- [x] 4.3 En `ci.yml`, hacer que el job `verify` exponga como **output** la lista de proyectos afectados (`nx show projects --affected --with-target deploy`). Se calcula una sola vez y lo consumen los dos jobs de deploy.
+- [x] 4.4 Agregar el job `deploy-backend` a `ci.yml`: `needs: verify`, con `if:` que exija que `realtime-api` esté afectado **y** que la rama sea `master` o `release/**`. Incluye el paso de credenciales OIDC y `setup-sam`.
+- [x] 4.5 Agregar el job `deploy-web` a `ci.yml`: `needs: verify`, con `if:` que exija que `web` esté afectada **y** que la rama sea `master`. Los pasos de `upload-pages-artifact` y `deploy-pages` van acá; el build y el `cp` los hace el target.
+- [x] 4.6 **Si `web` no está afectada, no debe correr ni el build, ni la subida, ni el deployment.** Dejar que los jobs corran siempre argumentando idempotencia **no** es una salida aceptable: el requisito es que no se reejecute sin cambios (ver `design.md`, Open Questions).
+- [x] 4.7 Reducir `deploy-backend.yml` a **solo `workflow_dispatch`**: se le quitan el trigger de `push` y el filtro `paths`. Conservar intactos sus inputs de `environment` y `ref`.
+- [x] 4.8 Reducir `deploy-web.yml` a **solo `workflow_dispatch`**.
+- [x] 4.9 Verificar que el camino manual **no** corre la verificación. Al desplegar un tag viejo para rollback, se despliega ese tag y nada más — verificar el código actual de la rama sería incorrecto.
+
+## 5. Verificación local
+
+- [x] 5.1 `npx nx affected -t lint test build --base=<algo> --outputStyle=static` con un cambio acotado a `apps/web`: confirmar que **no** corre nada de `realtime-api` ni `mobile`.
+- [x] 5.2 Lo mismo tocando `packages/shared-contracts`: confirmar que **sí** corre `web`, `mobile` y `realtime-api`.
+- [x] 5.3 Lo mismo tocando solo `docs/`: confirmar que no corre ninguna tarea (el único afectado es el proyecto raíz, que no tiene targets).
+- [x] 5.4 `npx nx run-many -t lint test build --all` completo en verde, ahora **incluyendo mobile**, que después del grupo 1 ya se puede buildear sin la nube.
+
+## 6. Verificación en GitHub
+
+> Lo anterior prueba que los comandos son correctos. Esto prueba que el pipeline lo es.
+
+- [ ] 6.1 Abrir un PR que toque solo `apps/web` y confirmar en el log del job que no corrieron los tests de `realtime-api`.
+- [ ] 6.2 Abrir un PR que toque `packages/shared-contracts` y confirmar que sí corrieron los de web, mobile y realtime-api.
+- [ ] 6.3 Romper un test a propósito en un PR y confirmar que el check queda **en rojo**. Revertir.
+- [ ] 6.4 Confirmar que en ese PR en rojo **no se disparó ningún deploy**. Es el punto del change.
+- [ ] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
+- [ ] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
+- [ ] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
+- [ ] 6.8 Disparar `deploy-backend.yml` a mano con un `ref` de un tag viejo y confirmar que despliega ese tag sin correr la verificación de la rama actual.
+
+## 7. Documentación
+
+- [x] 7.1 `docs/hardening-roadmap.md` — marcar la Fase 1.1 y actualizar la tabla de Estado.
+- [x] 7.2 `docs/hardening-roadmap.md` — en la Fase 1.2, anotar que el e2e va a necesitar `npx playwright install` explícito (ver `known-issues.md`).
+- [x] 7.3 `docs/known-issues.md` — eliminar la entrada de `nx build mobile` que borra el lockfile: queda resuelta por el grupo 1.
+- [x] 7.4 `docs/known-issues.md` — actualizar la entrada de `node-version: 20`: sigue vigente para los workflows viejos, pero el nuevo nace en 24.
+- [x] 7.5 `docs/conventions.md` — documentar que el deploy se dispara por el grafo de Nx y no por filtros de ruta, para que nadie agregue un `paths:` "por las dudas".
+- [x] 7.6 `docs/local-dev-workflow.md` — revisar la sección de mobile: hoy documenta `npx nx export mobile` como el chequeo local de bundle. Después de `convert-to-inferred` ese target puede haber cambiado de nombre; ajustar al que quede, o pasar a `nx build mobile` si es el que bundlea local.
+- [x] 7.7 `docs/local-dev-workflow.md` — agregar cómo reproducir en local lo que corre el gate: `npx nx affected -t lint test build`, que ahora funciona sin `--base` gracias a `defaultBase`. Es la forma de no descubrir un fallo recién en el PR.
+- [x] 7.8 `docs/local-dev-workflow.md` — aclarar que los targets `deploy` **no son para uso local**: existen para que `nx affected -t deploy` acote qué se despliega desde CI. En local el equivalente es levantar la app en `localhost`.
+
+## 8. Cierre
+
+- [x] 8.1 Confirmar que el diff no toca ningún archivo bajo `src/`. Este change es de pipeline y configuración.
+- [x] 8.2 Confirmar que los tres ambientes de backend siguen desplegables a mano por `workflow_dispatch`.
+- [ ] 8.3 `/opsx:verify` y después `/opsx:archive`.

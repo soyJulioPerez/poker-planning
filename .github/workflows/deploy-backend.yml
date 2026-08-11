@@ -1,12 +1,13 @@
-name: Deploy backend to AWS
+name: Deploy backend to AWS (manual)
+
+# Solo manual. El deploy automático vive en ci.yml, detrás de la verificación y
+# acotado por el grafo de Nx.
+#
+# Este workflow existe para el camino que NO debe verificar la rama actual:
+# desplegar un tag anterior para hacer rollback, o forzar un ambiente puntual.
+# Verificar el código de la rama sería incorrecto — no es el que se despliega.
 
 on:
-  push:
-    branches: [master, 'release/**']
-    paths:
-      - 'apps/realtime-api/**'
-      - 'packages/shared-contracts/**'
-      - 'infra/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -43,16 +44,8 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.sha }}
 
-      - name: Determinar ambiente
-        id: env
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref_name }}" = "master" ]; then
-            echo "name=prod" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=qa" >> "$GITHUB_OUTPUT"
-          fi
+      # Ya no hace falta deducir el ambiente de la rama: este workflow es solo manual,
+      # así que siempre viene del input.
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -72,12 +65,9 @@ jobs:
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      - name: sam build
-        working-directory: infra
-        run: sam build
+      # Mismo target que usa ci.yml, para que el camino manual y el automático
+      # desplieguen exactamente igual.
+      - name: Deploy
+        run: npx nx deploy realtime-api --configuration=${{ github.event.inputs.environment }} --outputStyle=static
         env:
           PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}
-
-      - name: sam deploy
-        working-directory: infra
-        run: sam deploy --config-env ${{ steps.env.outputs.name }} --no-confirm-changeset --no-fail-on-empty-changeset

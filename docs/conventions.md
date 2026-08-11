@@ -153,6 +153,8 @@ El criterio de la separación era defendible en abstracto (tooling vs. producto)
   ```bash
   npx nx g @nx/js:library packages/lo-que-sea --tags=scope:shared,type:util
   ```
+- **CI y deploy los decide el grafo, no filtros de ruta.** `ci.yml` corre `nx affected -t lint test build`, y los jobs de deploy se activan con un `if:` que consulta `nx show projects --affected --with-target deploy`. **No agregar `paths:` a los workflows**: una lista de globs es una aproximación manual del grafo que se desactualiza en silencio cuando aparece una dependencia nueva. Ese era el bug que la Fase 1.1 vino a corregir.
+- **El deploy automático vive en `ci.yml`**, detrás de la verificación. `deploy-backend.yml` y `deploy-web.yml` quedaron solo con `workflow_dispatch`, para rollback y despliegue manual de un ambiente — ese camino **no** verifica la rama actual a propósito, porque el ref que se despliega no es el de la rama.
 - **Tests**: el target es `test` en los 5 proyectos. Jest en `realtime-api`, `mobile` y `packages/*`; Vitest en `web`, vía el builder oficial `@angular/build:unit-test` (no Analog); Playwright para e2e. No mezclar runners dentro de un proyecto. En Windows, ver la nota de casing en [known-issues.md](known-issues.md) antes de pelear con un fallo de `TestBed`.
 
 ## Decisiones pendientes

@@ -55,6 +55,7 @@
           ]
         },
         "aws": {
+          "baseHref": "/poker-planning/",
           "budgets": [
             {
               "type": "initial",
@@ -91,6 +92,16 @@
         "aws": {
           "buildTarget": "web:build:aws"
         }
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "nx build web --configuration=aws",
+          "cp dist/apps/web/browser/index.html dist/apps/web/browser/404.html"
+        ]
       }
     },
     "check-workspace-root": {

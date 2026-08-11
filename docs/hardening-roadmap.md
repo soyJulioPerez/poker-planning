@@ -13,7 +13,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
-| 1 | [Portón de CI](#fase-1--portón-de-ci) | ⬜ Pendiente | — |
+| 1 | [Portón de CI](#fase-1--portón-de-ci) | 🟡 1.1 hecha · 1.2 y 1.3 pendientes | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | ⬜ Pendiente | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
@@ -31,7 +31,15 @@ Los tres workflows en `.github/workflows/` son **todos de deploy**. Ninguno corr
 
 Además el repo nunca usa `nx affected`, que es la razón técnica principal para tener un monorepo: sin él, o se corre todo siempre (lento) o no se corre nada (lo que pasa hoy).
 
-### 1.1 — Workflow de CI en pull requests
+### 1.1 — Workflow de CI en pull requests ✅
+
+> **Hecha** el 2026-08-11, change `add-ci-pipeline`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El deploy quedó dentro de `ci.yml`, no en workflows separados.** Un `ci.yml` suelto habría corrido *en paralelo* con los deploys, no antes: el check se ponía rojo después de que prod ya se había actualizado. Ahora `deploy-backend` y `deploy-web` son jobs con `needs: verify` y un `if:` acotado por el grafo.
+> - **`deploy-backend.yml` y `deploy-web.yml` quedaron solo con `workflow_dispatch`**, para rollback y despliegue manual de ambientes. El camino manual no debe verificar la rama actual: cuando desplegás un tag viejo, ese tag es lo que va.
+> - **`deploy-web.yml` no tenía filtro de rutas.** Republicaba Pages en cada push a `master`, incluso en commits de solo `docs/` — verificado en el historial de Actions. Ahora depende del grafo.
+> - **`nrwl/nx-set-shas@v5`**, no v4: es lo que emite el generador de Nx.
+> - **`convert-to-inferred` no aplicaba**: los targets de mobile ya eran inferidos. Se resolvió renombrando los del plugin (`buildTargetName: "eas-build"`, `exportTargetName: "build"`).
 
 Crear `.github/workflows/ci.yml` que corra en `pull_request` y en push a `develop`, `release/**` y `master`.
 
@@ -100,6 +108,10 @@ El gate completo está en el orden de **~2 minutos**, y mobile es más de la mit
 - Pasar `--outputStyle=static` en CI. El default (TUI dinámico) reescribe líneas y deja los logs de GitHub Actions ilegibles; `static` es el modo que Nx recomienda explícitamente para CI (`npx nx affected --help`).
 
 ### 1.2 — E2E en CI
+
+> **Punto de partida que dejó la 1.1**: el generador de Nx emitió `npx playwright install --with-deps` y `e2e` en la lista de targets porque detecta el proyecto. Ambas cosas **se sacaron** de `ci.yml` por estar fuera del alcance de la 1.1 — pero ese es exactamente el par que hay que reponer acá. Sin el `playwright install`, los e2e fallan con `Executable doesn't exist`, que no dice nada sobre la causa (ver [known-issues.md](known-issues.md)).
+>
+> Y sigue abierto lo que ya estaba anotado: `e2e` **no depende de `web` en el grafo**, así que `nx affected` no lo marca cuando cambia la web. Si el job se resuelve por `affected` sin arreglar eso, no va a correr casi nunca.
 
 **Qué hacer**
 

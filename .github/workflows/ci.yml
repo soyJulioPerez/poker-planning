@@ -1,0 +1,125 @@
+name: CI
+
+# Portón de verificación y, detrás de él, los deploys.
+#
+# Todo pasa por un mismo workflow a propósito: los jobs de deploy dependen del de
+# verificación (`needs:`) y se acotan con `if:` al grafo de Nx. Así nada se despliega
+# sin haber pasado lint/test/build, y nada se redespliega si no cambió.
+#
+# El camino manual (rollback, elegir ambiente) vive en deploy-backend.yml y
+# deploy-web.yml, que quedaron solo con workflow_dispatch: al desplegar un tag viejo
+# no corresponde verificar el código actual de la rama.
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+      - 'release/**'
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      # Proyectos afectados que además tienen target `deploy`. Se calcula una sola
+      # vez acá y lo consumen los dos jobs de abajo.
+      deployable: ${{ steps.affected.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `affected` necesita historia de git completa; tree:0 la trae sin blobs.
+          filter: tree:0
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Calcula el SHA base contra el último commit verificado con éxito.
+      - uses: nrwl/nx-set-shas@v5
+
+      - run: npx nx affected -t lint test build --outputStyle=static
+
+      - id: affected
+        run: echo "projects=$(npx nx show projects --affected --with-target deploy --json)" >> "$GITHUB_OUTPUT"
+
+  deploy-backend:
+    needs: verify
+    if: >-
+      contains(fromJSON(needs.verify.outputs.deployable), 'realtime-api')
+      && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - uses: aws-actions/setup-sam@v2
+
+      # master → prod, release/** → qa
+      - run: npx nx deploy realtime-api --configuration=${{ github.ref == 'refs/heads/master' && 'prod' || 'qa' }} --outputStyle=static
+
+  deploy-web:
+    needs: verify
+    if: >-
+      contains(fromJSON(needs.verify.outputs.deployable), 'web')
+      && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # El target hace el build con la configuración `aws` (que ya trae el baseHref)
+      # y agrega el 404.html del fallback SPA.
+      - run: npx nx deploy web --outputStyle=static
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/apps/web/browser
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

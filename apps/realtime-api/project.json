@@ -84,6 +84,34 @@
       "options": {
         "passWithNoTests": true
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "defaultConfiguration": "dev",
+      "options": {
+        "cwd": "infra",
+        "parallel": false
+      },
+      "configurations": {
+        "dev": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env dev --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        },
+        "qa": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env qa --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        },
+        "prod": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env prod --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        }
+      }
     }
   }
 }
