@@ -189,6 +189,21 @@ jobs:
 
 Esto no es solo prolijidad: **el camino manual no debe correr la verificación**. Cuando desplegás el tag `v1.4.0` a prod para hacer rollback, no querés que se verifique el código actual de la rama — querés desplegar ese tag y nada más. Meter el `workflow_dispatch` dentro del pipeline lo rompería.
 
+**Corolario descubierto al implementar: el camino manual tampoco puede usar el target de Nx.**
+
+La primera versión de este change hacía que `deploy-backend.yml` invocara `nx deploy realtime-api`, para que el camino manual y el automático desplegaran igual. Falla:
+
+```
+$ gh workflow run deploy-backend.yml -f environment=dev -f ref=v1.0.0
+NX  Cannot find configuration for task realtime-api:deploy
+```
+
+El workflow hace checkout de un **ref arbitrario**, y ese código puede no tener el target — se agregó en `v1.1.0`. Un rollback a cualquier tag anterior lo invoca sobre un `project.json` que no lo define.
+
+O sea: **el camino manual tiene que ser agnóstico a la versión que despliega**, y `sam build`/`sam deploy` lo son porque solo dependen de `infra/`.
+
+Es la contracara exacta del acierto de la Decisión 2. Convertir el deploy en target de Nx es correcto para el camino automático, que siempre despliega el código actual del pipeline. Para el camino de rollback, cuyo propósito es desplegar código *viejo*, es justo lo contrario.
+
 ### Decisión 5: el YAML se genera, no se escribe
 
 ```bash

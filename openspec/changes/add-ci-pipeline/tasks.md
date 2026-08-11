@@ -83,7 +83,7 @@ necesita un PR que toque un solo proyecto.
 - [x] 6.5 Confirmar que un PR de solo documentación pasa en verde sin ejecutar tareas.
 - [ ] 6.6 **Push a `master` tocando solo el backend**: confirmar que corre el deploy de backend y que el job de `deploy-web` queda **skipped**, no ejecutado. Es la regresión concreta que este change corrige — hoy ese caso republica Pages (verificado en el historial de Actions: commits de solo `docs/` dispararon `deploy-web` con éxito).
 - [ ] 6.7 **Push a `master` tocando solo `apps/web`**: confirmar el caso inverso — `deploy-web` corre, `deploy-backend` queda skipped.
-- [ ] 6.8 Disparar `deploy-backend.yml` a mano con un `ref` de un tag viejo y confirmar que despliega ese tag sin correr la verificación de la rama actual.
+- [x] 6.8 Disparar `deploy-backend.yml` a mano con un `ref` de un tag viejo y confirmar que despliega ese tag sin correr la verificación de la rama actual.
 
 ## 7. Documentación
 
@@ -141,3 +141,47 @@ desplegar producción sin que haya cambiado nada.
 
 **Sin la insistencia en probar el caso "sin cambios no se redespliega", este bug habría
 llegado a producción disfrazado de comportamiento normal.**
+
+
+### Bug encontrado en la verificación en vivo: el rollback manual no podía usar el target de Nx
+
+Probar la tarea 6.8 (`workflow_dispatch` con `ref=v1.0.0`) falló **dos veces**, por dos
+causas distintas:
+
+**1. `spawn sh ENOENT`** (run 31497033081). El step traía `env: PATH: ${{ github.workspace }}/node_modules/.bin:${{ env.PATH }}`.
+`${{ env.PATH }}` no resuelve al PATH del runner sino al contexto `env` del workflow, que
+está vacío — el PATH quedaba en `node_modules/.bin:` y `npx` no encontraba ni `sh`. El
+linter del IDE lo había marcado como *"Context access might be invalid: env"*. Corregido
+extendiendo el PATH con `GITHUB_PATH`, que es la forma documentada.
+
+**2. `Cannot find configuration for task realtime-api:deploy`** (run 31497440548). Este es
+de diseño, no de sintaxis.
+
+El workflow hace checkout de un **ref arbitrario** — típicamente un tag anterior, para
+rollback. Ese código puede no tener el target `deploy`: se agregó en `v1.1.0`, así que
+`nx deploy` falla en cualquier ref previo. **El camino manual tiene que ser agnóstico a la
+versión que despliega**, y `sam build`/`sam deploy` lo son.
+
+Es la contracara del acierto de la Decisión 2: convertir el deploy en target de Nx es
+correcto para el camino automático, que siempre despliega el código actual. Para el camino
+de rollback es exactamente lo contrario.
+
+Verificado tras la corrección: run 31497873506, `v1.0.0` desplegado a `dev`, success.
+
+### Estado de 6.6 y 6.7 — no verificadas
+
+Requieren un push a `master` donde **solo un** proyecto resulte afectado. Los tres pushes a
+`master` de esta sesión cambiaron `ci.yml`, que está en `sharedGlobals` y por diseño
+invalida todos los proyectos — así que ambos deploys corrieron, correctamente.
+
+Lo que sí quedó demostrado del mecanismo de acotado:
+
+| Evidencia | Run |
+|---|---|
+| PR de `shared-contracts`: 5 proyectos, `e2e` afuera | 31493858968 |
+| `release/**`: `deploy-web` skipped | 31494242265 |
+| `develop`: ambos deploys skipped | (push de sync) |
+| Local: `docs/` → `[]` deployables | tarea 5.3 |
+
+Falta ver el `if:` de `affected` evaluando en falso **sobre master**. Se va a verificar solo
+en el primer release que toque un solo lado del producto.
