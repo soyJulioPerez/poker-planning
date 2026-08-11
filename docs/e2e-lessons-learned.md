@@ -108,3 +108,9 @@ Un caso particular (`reconexión automática restaura el voto`) resultó reprodu
 3. Reiniciar limpio y correr una sola vez para diagnosticar — no acumular corridas de diagnóstico sobre el mismo proceso backend.
 4. Documentar cualquier selector no obvio (clase CSS en vez de rol ARIA, click en `label` en vez de `input`) con un comentario corto explicando el porqué, para que el próximo test no repita la misma investigación.
 5. Si un fallo resulta genuinamente intermitente sin causa raíz clara tras un esfuerzo razonable de diagnóstico, usar `test.fixme()` y documentar en `known-issues.md` en vez de forzar un ajuste sin evidencia (ampliar timeouts a ciegas, agregar retries) que solo esconde el síntoma.
+
+---
+
+*Nota de verificación: este párrafo se agregó en un PR de solo documentación, para
+comprobar que el job de e2e detecta que no le corresponde trabajo y termina en verde en
+vez de quedar salteado. Ver la Decisión 3 del change `add-e2e-to-ci`.*
