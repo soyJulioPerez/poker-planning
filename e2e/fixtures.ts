@@ -19,6 +19,15 @@ function attachBrowserDiagnostics(page: Page, label: string): void {
     ws.on('socketerror', (error) => console.log(`[browser:ws:error] ${label} ${error}`));
     ws.on('close', () => console.log(`[browser:ws:close] ${label} ${ws.url()}`));
   });
+  // Una navegación de más es la firma del submit nativo: si el click llega antes de que
+  // Angular bindee el `(ngSubmit)` del formulario, el navegador lo envía él mismo y
+  // recarga la página. La app arranca de cero, no queda rastro de error, y el test se
+  // queda mirando el mismo formulario.
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      console.log(`[browser:navigated] ${label} ${frame.url()}`);
+    }
+  });
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') {
       console.log(`[browser:${message.type()}] ${label} ${message.text()}`);
