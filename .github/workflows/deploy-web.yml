@@ -1,8 +1,12 @@
-name: Deploy web to GitHub Pages
+name: Deploy web to GitHub Pages (manual)
+
+# Solo manual. La publicación automática vive en ci.yml, detrás de la verificación
+# y condicionada a que `web` esté afectada según el grafo de Nx.
+#
+# Antes este workflow corría en cada push a master sin filtro alguno, así que
+# republicaba el sitio aunque el cambio hubiera sido solo del backend o de docs.
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -15,8 +19,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,24 +37,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web
-        run: npx nx build web --base-href=/poker-planning/ --configuration=aws
-
-      - name: Add SPA fallback (404.html)
-        run: cp dist/apps/web/browser/index.html dist/apps/web/browser/404.html
+      # El target hace el build con la configuración `aws` y agrega el 404.html.
+      - name: Build y preparar artefacto
+        run: npx nx deploy web --outputStyle=static
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist/apps/web/browser
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

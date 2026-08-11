@@ -8,16 +8,29 @@
   <ul class="reveal-panel__votes">
     @if (isModerator()) {
       <li>
-        <button type="button" class="reveal-panel__new-round" (click)="newRound.emit()" title="Nueva ronda">
+        <button
+          type="button"
+          class="reveal-panel__new-round"
+          title="Nueva ronda"
+          aria-label="Nueva ronda"
+          (click)="newRound.emit()"
+        >
           ↻
         </button>
       </li>
     }
     @for (entry of result().votes | keyvalue; track entry.key) {
       @if (isModerator() && voteAsNumber(entry.value); as numericVote) {
-        <li class="reveal-panel__vote--clickable" (click)="resolveVote.emit(numericVote)">
-          <span class="reveal-panel__name">{{ entry.key }}</span>
-          <span class="reveal-panel__value">{{ entry.value }}</span>
+        <li class="reveal-panel__vote-slot">
+          <button
+            type="button"
+            class="reveal-panel__vote--clickable"
+            [attr.aria-label]="'Usar el voto de ' + entry.key + ' (' + entry.value + ') como puntuación final'"
+            (click)="resolveVote.emit(numericVote)"
+          >
+            <span class="reveal-panel__name">{{ entry.key }}</span>
+            <span class="reveal-panel__value">{{ entry.value }}</span>
+          </button>
         </li>
       } @else {
         <li>

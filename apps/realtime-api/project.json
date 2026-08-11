@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/realtime-api/src",
   "projectType": "application",
-  "tags": [],
+  "tags": ["scope:api", "type:app"],
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
@@ -83,6 +83,34 @@
     "test": {
       "options": {
         "passWithNoTests": true
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "defaultConfiguration": "dev",
+      "options": {
+        "cwd": "infra",
+        "parallel": false
+      },
+      "configurations": {
+        "dev": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env dev --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        },
+        "qa": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env qa --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        },
+        "prod": {
+          "commands": [
+            "sam build",
+            "sam deploy --config-env prod --no-confirm-changeset --no-fail-on-empty-changeset"
+          ]
+        }
       }
     }
   }

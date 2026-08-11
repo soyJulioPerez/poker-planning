@@ -29,7 +29,7 @@ Ver el proceso completo de diseño en `openspec/changes/archive/` (proposal, des
 
 - **Identidad de reconexión por nombre + sala**: un participante se identifica únicamente por su nombre dentro de la sala, no por un token de sesión. Si dos personas intentan usar el mismo nombre en la misma sala mientras una está conectada, la segunda es rechazada. Esto es una limitación aceptada para el MVP — la evolución natural sería generar un token de sesión persistido en el navegador (`localStorage`) al unirse, para desambiguar identidad sin depender del nombre. Ver `openspec/changes/archive/2026-07-05-planning-poker-mvp/design.md` (Decisión 3) para el detalle completo.
 - **Sin historial entre sesiones**: las salas son efímeras (TTL en DynamoDB); no hay cuentas de usuario ni comparación de velocity entre sprints.
-- Ver también [docs/known-issues.md](docs/known-issues.md) (incompatibilidad de versiones en el test runner de componentes Angular) y [docs/future-ideas.md](docs/future-ideas.md) (ideas para futuras iteraciones, aún no implementadas).
+- Ver también [docs/known-issues.md](docs/known-issues.md) (entre otros, la casing de la letra de unidad que rompe Vitest en Windows) y [docs/future-ideas.md](docs/future-ideas.md) (ideas para futuras iteraciones, aún no implementadas).
 
 ## Desarrollo local
 
@@ -99,6 +99,7 @@ openspec/
                           (MVP original, extracción de room-client-runtime, agregado de mobile)
   specs/                  Specs vigentes por capability (fuente de verdad del comportamiento actual)
 docs/
+  conventions.md                Lineamientos del repo: ramas, commits, idioma, dónde va cada documento
   local-dev-workflow.md         Cómo levantar y probar el entorno local paso a paso (web y mobile)
   mobile-preview-builds.md      Cómo generar y distribuir un build instalable de mobile (EAS) a QA/stakeholders remotos
   aws-deployment.md             Cómo desplegar, verificar y eliminar un stack de AWS por ambiente (flujo manual)
@@ -106,7 +107,7 @@ docs/
   git-branching-strategy.md     Convención de ramas (develop/release/master), su mapeo a ambientes, y rollback
   sam-local-dynamodb-local.md   Notas de debugging de SAM local + DynamoDB Local
   hardening-roadmap.md          Plan progresivo para cerrar los huecos del repo (CI, tests de backend,
-                                observabilidad, seguridad, release) — con objetivo de aprendizaje por fase
+                                observabilidad, seguridad, release), con criterios de aceptación por fase
   known-issues.md               Problemas conocidos
   future-ideas.md               Backlog de ideas para futuras iteraciones
 ```

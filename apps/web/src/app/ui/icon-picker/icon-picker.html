@@ -1,9 +1,13 @@
 <div class="icon-picker">
   @for (icon of iconGroup().icons; track icon) {
+    <!-- Sin aria-label a propósito: los íconos no tienen nombre en el catálogo y
+         el lector de pantalla ya anuncia el emoji. Lo que faltaba era el estado:
+         cuál está elegido solo existía como clase CSS. -->
     <button
       type="button"
       class="icon-picker__item"
       [class.icon-picker__item--selected]="icon === selectedIcon()"
+      [attr.aria-pressed]="icon === selectedIcon()"
       (click)="iconSelected.emit(icon)"
     >
       {{ icon }}

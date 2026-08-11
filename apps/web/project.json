@@ -4,7 +4,7 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/web/src",
-  "tags": [],
+  "tags": ["scope:web", "type:app"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
@@ -55,6 +55,7 @@
           ]
         },
         "aws": {
+          "baseHref": "/poker-planning/",
           "budgets": [
             {
               "type": "initial",
@@ -91,6 +92,31 @@
         "aws": {
           "buildTarget": "web:build:aws"
         }
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "nx build web --configuration=aws",
+          "cp dist/apps/web/browser/index.html dist/apps/web/browser/404.html"
+        ]
+      }
+    },
+    "check-workspace-root": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/check-workspace-root.mjs"
+      }
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "dependsOn": ["check-workspace-root"],
+      "options": {
+        "buildTarget": "web:build:development",
+        "runner": "vitest"
       }
     },
     "lint": {

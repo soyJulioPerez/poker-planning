@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "develop",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
@@ -12,7 +13,7 @@
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
   "targetDefaults": {
     "@angular/build:application": {
@@ -41,7 +42,7 @@
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
     },
-    "@nx/vitest:test": {
+    "@angular/build:unit-test": {
       "cache": true,
       "inputs": ["default", "^production"]
     }
@@ -74,25 +75,6 @@
       }
     },
     {
-      "plugin": "@nx/vite/plugin",
-      "options": {
-        "buildTargetName": "build",
-        "serveTargetName": "serve",
-        "devTargetName": "dev",
-        "previewTargetName": "preview",
-        "serveStaticTargetName": "serve-static",
-        "typecheckTargetName": "typecheck",
-        "buildDepsTargetName": "build-deps",
-        "watchDepsTargetName": "watch-deps"
-      }
-    },
-    {
-      "plugin": "@nx/vitest",
-      "options": {
-        "testTargetName": "vite:test"
-      }
-    },
-    {
       "plugin": "@nx/jest/plugin",
       "options": {
         "targetName": "test"
@@ -102,11 +84,11 @@
       "plugin": "@nx/expo/plugin",
       "options": {
         "startTargetName": "start",
-        "buildTargetName": "build",
         "prebuildTargetName": "prebuild",
         "serveTargetName": "serve",
         "installTargetName": "install",
-        "exportTargetName": "export",
+        "buildTargetName": "eas-build",
+        "exportTargetName": "build",
         "submitTargetName": "submit",
         "runIosTargetName": "run-ios",
         "runAndroidTargetName": "run-android",
@@ -120,11 +102,11 @@
       "e2eTestRunner": "playwright",
       "linter": "eslint",
       "style": "css",
-      "unitTestRunner": "vitest-analog"
+      "unitTestRunner": "vitest-angular"
     },
     "@nx/angular:library": {
       "linter": "eslint",
-      "unitTestRunner": "vitest-analog"
+      "unitTestRunner": "vitest-angular"
     },
     "@nx/angular:component": {
       "style": "css"
