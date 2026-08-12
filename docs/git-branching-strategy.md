@@ -53,7 +53,7 @@ feature/z ──╯                         ▲                      │        
    ```
    `--ff-only` falla en vez de crear un merge commit si `master` divergió — es la señal de que algo salió mal en el flujo, no algo a resolver mergeando de todos modos. El push a `master` dispara el deploy automático a `prod`.
 
-5. **Sync de vuelta a `develop`**: si hubo bugfixes en `release/1.5.0` durante la estabilización, `develop` los necesita (si no, el próximo release cortado desde `develop` los pierde):
+5. **Sync de vuelta a `develop`** — **después** de promover a `master`, nunca antes (ver la nota de abajo): si hubo bugfixes en `release/1.5.0` durante la estabilización, `develop` los necesita (si no, el próximo release cortado desde `develop` los pierde):
    ```bash
    git checkout develop
    git merge release/1.5.0
@@ -62,6 +62,24 @@ feature/z ──╯                         ▲                      │        
    Este sí puede ser un merge commit real (`develop` probablemente avanzó con features nuevos mientras tanto) — es el único merge aceptado en todo el flujo, y cae en `develop`, nunca en `master`.
 
 6. **Limpieza de `release/1.5.0`**: a criterio de cada developer, sin política automática. El tag (`v1.5.0`) queda como referencia permanente aunque la rama se borre.
+
+> ### El orden de los pasos 4 y 5 no es cosmético
+>
+> **Promover a `master` va primero. Sincronizar `develop` va después.** Al revés, el deploy a producción no ocurre y la corrida de CI queda en verde.
+>
+> El motivo está en cómo `nx affected` elige contra qué comparar. `nrwl/nx-set-shas` recibe `main-branch-name: develop`, así que para `master` —que no es la rama principal a sus ojos— calcula la base como el **merge-base contra `develop`**. Si `develop` ya absorbió el release, las dos ramas apuntan al mismo commit:
+>
+> ```
+> master      32aee6c
+> develop     32aee6c
+> merge-base  32aee6c    →  NX_BASE == NX_HEAD, diff vacío
+> ```
+>
+> Sin diff no hay proyectos afectados, los jobs de deploy no se ejecutan, y nada queda en rojo.
+>
+> **Pasó de verdad** promoviendo `v1.4.0` el 2026-08-11: producción se quedó en `v1.3.1` con el check verde.
+>
+> `ci.yml` ahora se defiende de esto —en `master` usa `github.event.before` como base, que no depende de dónde esté `develop`— así que el orden invertido ya no rompe el deploy. Pero el orden documentado sigue siendo el correcto: es el que mantiene `master` como la referencia de lo que está en producción.
 
 ## Rollback
 

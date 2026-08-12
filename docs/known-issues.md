@@ -37,6 +37,25 @@ forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4
 
 **Pendiente**: `deploy-backend.yml`, `deploy-web.yml` y `build-mobile.yml` siguen con las actions en `@v4` y `node-version: 20`. Migrarlos quedó como Non-Goal del change `add-ci-pipeline` para no mezclar. El ruido bajó mucho —esos tres ahora solo corren por `workflow_dispatch` o para builds de mobile— pero la deuda sigue. Nota al pasar: al 2026-08-11 esas actions van por **v7**, así que el salto pendiente es de más de un major.
 
+## Un release a `master` puede quedar verde sin desplegar ✅
+
+**Detectado**: 2026-08-11, promoviendo `v1.4.0`. **Resuelto** el mismo día.
+
+**Síntoma**: el push a `master` corre `ci.yml`, `verify` y `e2e` pasan, los jobs `deploy-backend` y `deploy-web` quedan **`skipped`**, y producción se queda en la versión anterior. La corrida figura en verde y nada indica que el deploy no ocurrió.
+
+**Causa**: `nrwl/nx-set-shas` recibe `main-branch-name: develop`, así que para `master` calcula la base como el merge-base contra `develop`. Si el sync de vuelta a `develop` se hace **antes** de promover a `master` —el orden inverso al que documenta [git-branching-strategy.md](git-branching-strategy.md)— las dos ramas apuntan al mismo commit y el merge-base es el propio HEAD:
+
+```
+NX_BASE  32aee6c
+NX_HEAD  32aee6c    → diff vacío → nada afectado → deploys salteados
+```
+
+**Solución aplicada**: en push a `master`, `ci.yml` usa `github.event.before` como `NX_BASE`. Como `master` solo avanza por fast-forward desde una rama de release, `before..after` es exactamente el contenido nuevo, sin depender de dónde esté `develop`.
+
+**Lo que se pierde**: la propiedad de "último commit verificado con éxito" que da la action. Si un push a `master` falla y el siguiente lo corrige, el contenido del primero no se reevalúa. Es aceptable —`master` se mueve pocas veces y de forma deliberada— y el camino manual (`deploy-backend.yml` / `deploy-web.yml` por `workflow_dispatch`) cubre el hueco.
+
+**Cómo detectarlo si vuelve a pasar**: en el log del job `verify`, comparar `NX_BASE` y `NX_HEAD`. Si son iguales, el diff está vacío y ningún deploy va a correr.
+
 ## Los tabs no comunican cuál está activo fuera del CSS
 
 **Detectado**: 2026-08-10, verificando el change `fix-room-ui-accessibility`.

@@ -65,6 +65,38 @@ jobs:
         with:
           main-branch-name: develop
 
+      # En push a `master`, la base que calcula la action no sirve.
+      #
+      # Para `nx-set-shas`, `master` no es la rama principal —`main-branch-name` es
+      # `develop`— así que le calcula la base como el **merge-base contra `develop`**. Eso
+      # se rompe con el propio flujo de release del repo: si el sync de vuelta a `develop`
+      # ocurre antes de promover a `master`, las dos ramas apuntan al mismo commit, el
+      # merge-base ES el HEAD, y el diff queda vacío. `affected` no devuelve nada, los
+      # deploys se saltean y **la corrida queda verde sin desplegar** — el peor modo de
+      # falla posible para un release.
+      #
+      # Pasó de verdad al promover v1.4.0: NX_BASE == NX_HEAD == 32aee6c y producción se
+      # quedó en v1.3.1 con el check en verde.
+      #
+      # `master` solo avanza por fast-forward desde una rama de release, así que
+      # `github.event.before` —el commit al que apuntaba antes del push— es exactamente la
+      # base correcta, y no depende de dónde esté `develop`.
+      #
+      # Se pierde la propiedad de "último commit verificado con éxito" que da la action: si
+      # un push a `master` falla y el siguiente lo arregla, el contenido del primero no se
+      # reevalúa. Es aceptable porque `master` se mueve pocas veces y de forma deliberada, y
+      # porque el camino manual (`deploy-backend.yml`, `deploy-web.yml`) cubre ese hueco.
+      - name: Base correcta en master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          before="${{ github.event.before }}"
+          if [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "Sin commit previo utilizable en master; se conserva la base de nx-set-shas ($NX_BASE)"
+          else
+            echo "NX_BASE=$before" >> "$GITHUB_ENV"
+            echo "Base en master: $before (era $NX_BASE)"
+          fi
+
       - run: npx nx affected -t lint test build --outputStyle=static
 
       - id: affected
@@ -100,6 +132,38 @@ jobs:
       - uses: nrwl/nx-set-shas@v5
         with:
           main-branch-name: develop
+
+      # En push a `master`, la base que calcula la action no sirve.
+      #
+      # Para `nx-set-shas`, `master` no es la rama principal —`main-branch-name` es
+      # `develop`— así que le calcula la base como el **merge-base contra `develop`**. Eso
+      # se rompe con el propio flujo de release del repo: si el sync de vuelta a `develop`
+      # ocurre antes de promover a `master`, las dos ramas apuntan al mismo commit, el
+      # merge-base ES el HEAD, y el diff queda vacío. `affected` no devuelve nada, los
+      # deploys se saltean y **la corrida queda verde sin desplegar** — el peor modo de
+      # falla posible para un release.
+      #
+      # Pasó de verdad al promover v1.4.0: NX_BASE == NX_HEAD == 32aee6c y producción se
+      # quedó en v1.3.1 con el check en verde.
+      #
+      # `master` solo avanza por fast-forward desde una rama de release, así que
+      # `github.event.before` —el commit al que apuntaba antes del push— es exactamente la
+      # base correcta, y no depende de dónde esté `develop`.
+      #
+      # Se pierde la propiedad de "último commit verificado con éxito" que da la action: si
+      # un push a `master` falla y el siguiente lo arregla, el contenido del primero no se
+      # reevalúa. Es aceptable porque `master` se mueve pocas veces y de forma deliberada, y
+      # porque el camino manual (`deploy-backend.yml`, `deploy-web.yml`) cubre ese hueco.
+      - name: Base correcta en master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          before="${{ github.event.before }}"
+          if [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "Sin commit previo utilizable en master; se conserva la base de nx-set-shas ($NX_BASE)"
+          else
+            echo "NX_BASE=$before" >> "$GITHUB_ENV"
+            echo "Base en master: $before (era $NX_BASE)"
+          fi
 
       # `e2e` declara `implicitDependencies: ["web", "realtime-api"]`, así que aparece acá
       # cuando cambia cualquiera de las dos apps o algo de lo que dependan.
