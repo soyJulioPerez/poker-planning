@@ -6,19 +6,26 @@ TBD
 ## Requirements
 ### Requirement: Automated build and deploy to AWS on relevant changes
 
-El sistema SHALL ejecutar `sam build` y `sam deploy` del backend `realtime-api` cuando se pushea a `master` (ambiente `prod`) o a una rama `release/**` (ambiente `qa`), **siempre que la verificación de `lint`, `test` y `build` haya pasado primero** y que `realtime-api` resulte afectado según el grafo de dependencias de Nx. Los pushes a `develop` (ambiente `dev`) SHALL NOT disparar un deploy automático. El sistema SHALL seguir soportando el re-despliegue manual bajo demanda a cualquiera de los tres ambientes, incluido `dev`.
+El sistema SHALL ejecutar `sam build` y `sam deploy` del backend `realtime-api` cuando se pushea a `master` (ambiente `prod`) o a una rama `release/**` (ambiente `qa`), **siempre que la verificación haya pasado primero** —`lint`, `test`, `build` y, cuando el cambio la alcance, la suite end-to-end— y que `realtime-api` resulte afectado según el grafo de dependencias de Nx. Los pushes a `develop` (ambiente `dev`) SHALL NOT disparar un deploy automático. El sistema SHALL seguir soportando el re-despliegue manual bajo demanda a cualquiera de los tres ambientes, incluido `dev`.
 
-**Qué cambia respecto de la versión anterior**: qué se despliega deja de decidirse por una lista de rutas escrita a mano (`apps/realtime-api/**`, `packages/shared-contracts/**`, `infra/**`) y pasa a decidirse por el grafo real. La lista era una aproximación que había que mantener: si `realtime-api` empezara a depender de otro paquete del workspace, el filtro no se enteraría y el deploy se saltearía en silencio.
+**Qué cambia respecto de la versión anterior**: la verificación previa incluye ahora los tests end-to-end. Un cambio que compila, lintea y pasa los unitarios pero rompe el flujo de una sala **no llega a producción**.
 
-Y el deploy pasa a estar **encadenado detrás de la verificación**, no en paralelo con ella.
+Que la suite end-to-end no se haya ejecutado —porque el cambio no la alcanzaba— SHALL NOT impedir el deploy. Solo un fallo lo impide.
+
+**Qué se conserva de la versión anterior**: qué se despliega lo decide el grafo real y no una lista de rutas escrita a mano; y el deploy está encadenado detrás de la verificación, no en paralelo con ella.
 
 #### Scenario: Push to master touching backend code triggers a prod deployment
 - **WHEN** un commit pusheado a `master` modifica un archivo bajo `apps/realtime-api/`
 - **AND** las tareas de `lint`, `test` y `build` de los proyectos afectados pasan
+- **AND** la suite end-to-end pasa
 - **THEN** el workflow ejecuta `sam build` y `sam deploy --config-env prod`
 
 #### Scenario: La verificación en rojo impide el deploy
 - **WHEN** un commit pusheado a `master` modifica el backend y rompe un test
+- **THEN** el deploy no se ejecuta, y el stack de `prod` queda como estaba
+
+#### Scenario: Un e2e roto impide el deploy
+- **WHEN** un commit pusheado a `master` modifica el backend y rompe un test end-to-end
 - **THEN** el deploy no se ejecuta, y el stack de `prod` queda como estaba
 
 #### Scenario: Push to a release branch touching backend code triggers a qa deployment
