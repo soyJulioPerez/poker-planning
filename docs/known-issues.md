@@ -43,12 +43,17 @@ forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4
 
 **Síntoma**: el push a `master` corre `ci.yml`, `verify` y `e2e` pasan, los jobs `deploy-backend` y `deploy-web` quedan **`skipped`**, y producción se queda en la versión anterior. La corrida figura en verde y nada indica que el deploy no ocurrió.
 
-**Causa**: `nrwl/nx-set-shas` recibe `main-branch-name: develop`, así que para `master` calcula la base como el merge-base contra `develop`. Si el sync de vuelta a `develop` se hace **antes** de promover a `master` —el orden inverso al que documenta [git-branching-strategy.md](git-branching-strategy.md)— las dos ramas apuntan al mismo commit y el merge-base es el propio HEAD:
+**Causa**: `nrwl/nx-set-shas` recibe `main-branch-name: develop`, y para cualquier rama que no sea esa usa el SHA de **la última corrida exitosa del workflow sobre `develop`**. Si el sync de vuelta a `develop` se hace **antes** de promover a `master` —el orden inverso al que documenta [git-branching-strategy.md](git-branching-strategy.md)— `develop` ya construyó con éxito ese mismo commit, y la base termina siendo el propio HEAD:
 
 ```
+develop  32aee6c  ✅ corrida exitosa   ← base elegida
+master   32aee6c  ← promovido después
+
 NX_BASE  32aee6c
 NX_HEAD  32aee6c    → diff vacío → nada afectado → deploys salteados
 ```
+
+> **Corrección**: la primera versión de esta entrada atribuía la base al *merge-base* contra `develop`. Es incorrecto. Se verificó mirando `NX_BASE` en una rama de release cortada sin commits propios: si fuera merge-base habría dado `NX_BASE == NX_HEAD`, y dio el commit anterior — el de la última corrida exitosa de `develop`.
 
 **Solución aplicada**: en push a `master`, `ci.yml` usa `github.event.before` como `NX_BASE`. Como `master` solo avanza por fast-forward desde una rama de release, `before..after` es exactamente el contenido nuevo, sin depender de dónde esté `develop`.
 

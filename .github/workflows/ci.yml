@@ -67,13 +67,13 @@ jobs:
 
       # En push a `master`, la base que calcula la action no sirve.
       #
-      # Para `nx-set-shas`, `master` no es la rama principal —`main-branch-name` es
-      # `develop`— así que le calcula la base como el **merge-base contra `develop`**. Eso
-      # se rompe con el propio flujo de release del repo: si el sync de vuelta a `develop`
-      # ocurre antes de promover a `master`, las dos ramas apuntan al mismo commit, el
-      # merge-base ES el HEAD, y el diff queda vacío. `affected` no devuelve nada, los
-      # deploys se saltean y **la corrida queda verde sin desplegar** — el peor modo de
-      # falla posible para un release.
+      # Para una rama que no es la principal —acá `main-branch-name` es `develop`—
+      # `nx-set-shas` usa el SHA de **la última corrida exitosa del workflow sobre
+      # `develop`**. Eso choca con el propio flujo de release del repo: si el sync de
+      # vuelta a `develop` ocurre antes de promover a `master`, `develop` ya construyó con
+      # éxito ese mismo commit, así que la base queda igual al HEAD. El diff es vacío,
+      # `affected` no devuelve nada, los deploys se saltean y **la corrida queda verde sin
+      # desplegar** — el peor modo de falla posible para un release.
       #
       # Pasó de verdad al promover v1.4.0: NX_BASE == NX_HEAD == 32aee6c y producción se
       # quedó en v1.3.1 con el check en verde.
@@ -135,13 +135,13 @@ jobs:
 
       # En push a `master`, la base que calcula la action no sirve.
       #
-      # Para `nx-set-shas`, `master` no es la rama principal —`main-branch-name` es
-      # `develop`— así que le calcula la base como el **merge-base contra `develop`**. Eso
-      # se rompe con el propio flujo de release del repo: si el sync de vuelta a `develop`
-      # ocurre antes de promover a `master`, las dos ramas apuntan al mismo commit, el
-      # merge-base ES el HEAD, y el diff queda vacío. `affected` no devuelve nada, los
-      # deploys se saltean y **la corrida queda verde sin desplegar** — el peor modo de
-      # falla posible para un release.
+      # Para una rama que no es la principal —acá `main-branch-name` es `develop`—
+      # `nx-set-shas` usa el SHA de **la última corrida exitosa del workflow sobre
+      # `develop`**. Eso choca con el propio flujo de release del repo: si el sync de
+      # vuelta a `develop` ocurre antes de promover a `master`, `develop` ya construyó con
+      # éxito ese mismo commit, así que la base queda igual al HEAD. El diff es vacío,
+      # `affected` no devuelve nada, los deploys se saltean y **la corrida queda verde sin
+      # desplegar** — el peor modo de falla posible para un release.
       #
       # Pasó de verdad al promover v1.4.0: NX_BASE == NX_HEAD == 32aee6c y producción se
       # quedó en v1.3.1 con el check en verde.

@@ -67,12 +67,12 @@ feature/z ──╯                         ▲                      │        
 >
 > **Promover a `master` va primero. Sincronizar `develop` va después.** Al revés, el deploy a producción no ocurre y la corrida de CI queda en verde.
 >
-> El motivo está en cómo `nx affected` elige contra qué comparar. `nrwl/nx-set-shas` recibe `main-branch-name: develop`, así que para `master` —que no es la rama principal a sus ojos— calcula la base como el **merge-base contra `develop`**. Si `develop` ya absorbió el release, las dos ramas apuntan al mismo commit:
+> El motivo está en cómo `nx affected` elige contra qué comparar. `nrwl/nx-set-shas` recibe `main-branch-name: develop`, y para cualquier rama que no sea esa usa el SHA de **la última corrida exitosa del workflow sobre `develop`**. Si `develop` ya absorbió el release y su CI pasó, ese SHA es el mismo commit que estás promoviendo:
 >
 > ```
-> master      32aee6c
-> develop     32aee6c
-> merge-base  32aee6c    →  NX_BASE == NX_HEAD, diff vacío
+> develop  32aee6c  ✅ corrida exitosa      ← nx-set-shas toma esta como base
+> master   32aee6c  ← se promueve después
+>                       NX_BASE == NX_HEAD, diff vacío
 > ```
 >
 > Sin diff no hay proyectos afectados, los jobs de deploy no se ejecutan, y nada queda en rojo.
