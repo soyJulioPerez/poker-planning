@@ -90,21 +90,13 @@ No debería pasar seguido. La regla del squash existe porque la mayoría de las 
 
 *Ejemplo real*: la rama `docs/hardening-roadmap` se mergeó con `--ff-only` porque traía un `docs:` y un `chore:` deliberadamente separados, ambos con mensaje definitivo.
 
-### Commit directo a `develop` — excepción temporal
+### Commit directo a `develop` — derogada
 
-**Aceptable** para cambios que no pueden romper un build ni un test —documentación, configuración de tooling— hechos por quien mantiene el repo.
+Existió una excepción que permitía commitear directo a `develop` cambios que no pudieran romper un build ni un test. Estaba escrita con vencimiento en la Fase 1.3 del [roadmap](hardening-roadmap.md), y **venció el 2026-08-13**: `develop` está protegida, así que el push directo ya no es posible.
 
-**Esta excepción vence con la Fase 1.3 del [roadmap](hardening-roadmap.md).** Cuando GitHub exija PR para mergear a `develop`, deja de ser una decisión y pasa a ser imposible. No hay que acordarse de derogarla: se deroga sola.
+Su razonamiento se sostenía en que **el control no existía**: con fast-forward, ramificar y no ramificar producen una historia idéntica, así que la rama no valía por los commits que deja sino por ser el punto donde se engancha un control —un pull request con CI corriendo, un diff revisable—. Sin CI ni branch protection, la rama no anclaba nada y era ceremonia.
 
-El razonamiento, para que no se lea como pereza disfrazada de regla:
-
-Con fast-forward, **ramificar y no ramificar producen una historia idéntica**. Cortar una rama desde `develop`, commitear y hacer `--ff-only` deja exactamente los mismos commits, en el mismo orden, que commitear directo. La rama no deja rastro de haber existido.
-
-Entonces la rama no vale por la historia que produce, sino por ser **el punto donde se engancha un control**: un PR con CI corriendo, un diff que alguien revisa, una aprobación. Hoy ese control no existe —no hay CI (Fase 1.1), ni e2e en PRs (1.2), ni branch protection (1.3)— así que la rama no ancla nada.
-
-La pregunta correcta no es *"¿esta rama va a vivir lo suficiente?"* sino **"¿este cambio necesita pasar por un control antes de aterrizar?"**. Mientras la respuesta sea "no existe el control", la rama es ceremonia. Cuando exista, será "sí" para casi todo y la pregunta desaparece.
-
-Lo que sí sigue justificando una rama hoy: trabajo que se extiende por varias sesiones, que acumula commits de naturaleza distinta, o que puede necesitar abandonarse a mitad de camino.
+Hoy ese control existe: `verify` y `e2e` corren en cada pull request y bloquean el merge si fallan. La pregunta *"¿este cambio necesita pasar por un control antes de aterrizar?"* pasó a tener una sola respuesta.
 
 ## Flujo de trabajo
 

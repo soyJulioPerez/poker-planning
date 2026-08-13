@@ -2,7 +2,31 @@
 
 Guía de cómo se usan las ramas `develop`, `release/*` y `master` en este repo, y cómo se relacionan con los tres ambientes de backend (`dev`, `qa`, `prod`). Ver el diseño completo en `openspec/changes/add-multi-environment-deployment/design.md`.
 
-Esto es una **convención de trabajo**, no algo forzado por herramientas (no hay branch protection rules configuradas todavía) — depende de seguir estos pasos, no de que Git lo impida.
+Desde el 2026-08-13 (Fase 1.3 del [roadmap](hardening-roadmap.md)) esto **está forzado por GitHub**, no depende de que cada uno recuerde los pasos. `develop` y `master` están protegidas:
+
+| Regla | Qué significa en la práctica |
+|---|---|
+| Pull request obligatorio | `git push origin develop` y `git push origin master` son rechazados |
+| `verify` y `e2e` obligatorios | El botón de merge queda gris hasta que los dos estén en verde |
+| Rama al día antes de mergear | Si la rama base avanzó, GitHub pide actualizar y volver a verificar |
+| Sin excepción para administradores | Las reglas aplican también a quien mantiene el repositorio |
+| 0 aprobaciones requeridas | Provisorio: GitHub no permite aprobar el propio pull request, y hoy hay una sola persona con acceso de escritura. **Sube a 1 en cuanto entre la segunda.** |
+
+`release/*` **no** está protegida: es efímera y ahí caen los fixes de estabilización. El riesgo está acotado porque nada llega a producción sin pasar por el pull request a `master`.
+
+Para leer la configuración vigente sin entrar a Settings:
+
+```bash
+gh api repos/:owner/:repo/branches/develop/protection --jq '{
+  pr_obligatorio: (.required_pull_request_reviews != null),
+  aprobaciones: .required_pull_request_reviews.required_approving_review_count,
+  checks: .required_status_checks.contexts,
+  rama_al_dia: .required_status_checks.strict,
+  aplica_a_admins: .enforce_admins.enabled
+}'
+```
+
+Vale la pena tenerlo a mano: la protección vive en GitHub, no en el repositorio, así que un cambio en Settings no deja rastro en la historia del proyecto.
 
 ## Mapeo rama → ambiente
 
@@ -44,14 +68,27 @@ feature/z ──╯                         ▲                      │        
 
 3. **Estabilización en QA**: los bugs que aparecen se corrigen con commits directos sobre `release/1.5.0`. Cada push redeploya y pisa QA.
 
-4. **Promoción a `master`** — solo fast-forward, nunca merge commit:
+4. **Promoción a `master`** — por pull request, con **merge commit**:
+
    ```bash
-   git checkout master
-   git merge --ff-only release/1.5.0
-   git tag v1.5.0
-   git push origin master --tags
+   gh pr create --base master --head release/1.5.0 --title "release 1.5.0"
    ```
-   `--ff-only` falla en vez de crear un merge commit si `master` divergió — es la señal de que algo salió mal en el flujo, no algo a resolver mergeando de todos modos. El push a `master` dispara el deploy automático a `prod`.
+
+   En la interfaz: esperar a que `verify` y `e2e` estén en verde, y mergear con **Create a merge commit** (no *Squash*, no *Rebase*). Después:
+
+   ```bash
+   git checkout master && git pull
+   git tag v1.5.0
+   git push origin v1.5.0
+   ```
+
+   El merge dispara el deploy automático a `prod`.
+
+   **Tres cosas que conviene entender de este paso:**
+
+   - **Por qué merge commit y no las otras dos opciones.** De las tres que ofrece GitHub, solo *Create a merge commit* conserva tal cual los commits que pasaron por QA. *Squash* los colapsa en uno nuevo y *Rebase* los reescribe con otro identificador, así que el tag estaría marcando código que nunca existió en QA.
+   - **El merge commit no es ruido, es el marcador del release.** `git log --first-parent master` da una línea por release, y el pull request queda como acta de qué entró.
+   - **Qué reemplazó al `--ff-only`.** Antes este paso era `git merge --ff-only` + `git push`, y el valor de `--ff-only` era que **fallaba** si `master` había avanzado por otro lado. Esa alarma ahora la da GitHub: si la rama de release quedó desactualizada, el merge no se habilita hasta que la actualices.
 
 5. **Sync de vuelta a `develop`** — **después** de promover a `master`, nunca antes (ver la nota de abajo): si hubo bugfixes en `release/1.5.0` durante la estabilización, `develop` los necesita (si no, el próximo release cortado desde `develop` los pierde):
    ```bash
