@@ -38,6 +38,9 @@ function escenarioBase(metaOverrides: Record<string, unknown> = {}) {
   ddbMock
     .on(GetCommand, { TableName: TABLE_NAME, Key: { PK: `ROOM#${ROOM_ID}`, SK: 'META' } })
     .resolves({ Item: meta(metaOverrides) });
+  ddbMock
+    .on(GetCommand, { TableName: TABLE_NAME, Key: { PK: `ROOM#${ROOM_ID}`, SK: 'PARTICIPANT#beto' } })
+    .resolves({ Item: { name: 'beto', isVoter: true } });
   ddbMock.on(QueryCommand).resolves({ Items: [] });
   ddbMock.on(UpdateCommand).resolves({});
 }
@@ -180,14 +183,62 @@ describe('handleVote', () => {
     });
   });
 
-  // Huecos de validación encontrados al escribir estos tests. Se dejan como `todo` y NO
-  // como aserciones del comportamiento actual: escribir `expect(...).toHaveLength(1)` acá
-  // fijaría el hueco como si fuera la regla, y el día que se cierre parecería una
-  // regresión. Ver docs/known-issues.md.
-  describe('validaciones que el servidor no hace', () => {
-    it.todo(
-      'debería rechazar el voto de quien no está habilitado como votante (spec: "participante habilitado para votar")'
-    );
-    it.todo('debería definirse si se puede votar después del revelado — hoy se acepta');
+  // Las dos guardas de abajo también las cumple la interfaz: el mazo no se pinta con la
+  // ronda revelada, y va `disabled` para quien no es votante. Se validan igual en el
+  // servidor porque la interfaz no es una garantía — un cliente desactualizado o una
+  // regresión en la web vuelven a abrir el camino. Mismo criterio que el change
+  // `2026-07-11-fix-mode-numeric-only` aplicó al puntaje final.
+  describe('el servidor no confía en la interfaz', () => {
+    it('rechaza el voto de quien no está habilitado como votante', async () => {
+      escenarioBase();
+      ddbMock
+        .on(GetCommand, {
+          TableName: TABLE_NAME,
+          Key: { PK: `ROOM#${ROOM_ID}`, SK: 'PARTICIPANT#beto' },
+        })
+        .resolves({ Item: { name: 'beto', isVoter: false } });
+
+      await handleVote(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'vote',
+        roomId: ROOM_ID,
+        value: '5',
+      });
+
+      expect(mensajesDeError()).toEqual([
+        { type: 'error', message: 'Only participants marked as voters can vote' },
+      ]);
+      expect(escriturasDeVoto()).toHaveLength(0);
+    });
+
+    it('rechaza el voto una vez revelada la ronda', async () => {
+      escenarioBase({ roundPhase: 'revealed' });
+
+      await handleVote(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'vote',
+        roomId: ROOM_ID,
+        value: '5',
+      });
+
+      expect(mensajesDeError()).toEqual([
+        { type: 'error', message: 'Voting is closed for this round' },
+      ]);
+      expect(escriturasDeVoto()).toHaveLength(0);
+    });
+
+    // La guarda de fase NO debe alcanzar al caso legítimo de cambiar de opinión: mientras
+    // la ronda sigue abierta, revotar es parte del juego. Está cubierto arriba, pero se
+    // deja explícito acá porque es justo lo que una guarda mal puesta rompería.
+    it('sigue aceptando cambiar el voto mientras la ronda no fue revelada', async () => {
+      escenarioBase({ roundPhase: 'voting' });
+
+      await handleVote(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'vote',
+        roomId: ROOM_ID,
+        value: '8',
+      });
+
+      expect(mensajesDeError()).toEqual([]);
+      expect(escriturasDeVoto()).toHaveLength(1);
+    });
   });
 });
