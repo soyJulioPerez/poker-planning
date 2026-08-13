@@ -26,28 +26,28 @@
 
 ## 3. `set-moderator-is-voter`
 
-- [ ] 3.1 Camino feliz: el moderador cambia su estado de votante.
-- [ ] 3.2 Rechaza si quien pide no es el moderador.
-- [ ] 3.3 Rechaza **durante una ronda activa** (`Cannot change voter status while a round is active`). Mirarlo junto con la guarda del grupo 1: las dos protegen el mismo estado y no deberían contradecirse.
-- [ ] 3.4 Rechaza si la sala no existe.
+- [x] 3.1 Camino feliz: el moderador cambia su estado de votante.
+- [x] 3.2 Rechaza si quien pide no es el moderador.
+- [x] 3.3 Rechaza **durante una ronda activa** (`Cannot change voter status while a round is active`). Mirarlo junto con la guarda del grupo 1: las dos protegen el mismo estado y no deberían contradecirse.
+- [x] 3.4 Rechaza si la sala no existe.
 
 ## 4. Las cinco mecánicas
 
-- [ ] 4.1 `create-room` — la sala queda con el moderador como participante, y el ícono se valida contra el grupo del mazo.
-- [ ] 4.2 `new-round` — descarta los votos de la ronda; rechaza si no es el moderador o si la sala no existe.
-- [ ] 4.3 `next-story` — registra el avance; rechaza si no es el moderador o si la sala no existe.
-- [ ] 4.4 `close-room` — produce el resumen; rechaza si no es el moderador o si la sala no existe.
-- [ ] 4.5 `resolve-story` — completar lo que faltó de la primera vuelta: que la ronda vuelva a `idle`, que se limpie `currentStoryTitle` y que se reseteen los votos.
+- [x] 4.1 `create-room` — la sala queda con el moderador como participante, y el ícono se valida contra el grupo del mazo.
+- [x] 4.2 `new-round` — descarta los votos de la ronda; rechaza si no es el moderador o si la sala no existe.
+- [x] 4.3 `next-story` — registra el avance; rechaza si no es el moderador o si la sala no existe.
+- [x] 4.4 `close-room` — produce el resumen; rechaza si no es el moderador o si la sala no existe.
+- [x] 4.5 `resolve-story` — completar lo que faltó de la primera vuelta: que la ronda vuelva a `idle`, que se limpie `currentStoryTitle` y que se reseteen los votos.
 
 ## 5. `get-room-info`
 
-- [ ] 5.1 Sala inexistente: responde `room-not-found`.
-- [ ] 5.2 **Que no filtre de más**: la respuesta contiene exactamente `roomId`, `deckId` e `iconGroupId` — ni participantes, ni votos, ni el nombre del moderador. Es el único endpoint llamable **sin estar en la sala**, así que quien conoce el código no debería poder averiguar quién está adentro. Enumerar las claves de la respuesta, no solo comprobar las tres que interesan.
+- [x] 5.1 Sala inexistente: responde `room-not-found`.
+- [x] 5.2 **Que no filtre de más**: la respuesta contiene exactamente `roomId`, `deckId` e `iconGroupId` — ni participantes, ni votos, ni el nombre del moderador. Es el único endpoint llamable **sin estar en la sala**, así que quien conoce el código no debería poder averiguar quién está adentro. Enumerar las claves de la respuesta, no solo comprobar las tres que interesan.
 
 ## 6. Cierre
 
-- [ ] 6.1 `nx test realtime-api` en verde, sin ningún `todo` pendiente.
-- [ ] 6.2 Verificar el negativo: romper una aserción de una acción nueva, confirmar el rojo, revertir.
-- [ ] 6.3 `docs/known-issues.md`: cerrar la entrada *"El servidor no valida quién está habilitado para votar"* — las dos mitades quedaron resueltas, y la segunda además quedó especificada.
-- [ ] 6.4 `docs/hardening-roadmap.md`: cerrar la Fase 2.1 completa y anotar qué se encontró en la segunda vuelta.
-- [ ] 6.5 Anotar que la Fase 2.3 (umbral de cobertura) ya tiene sobre qué fijarse, que era lo que faltaba.
+- [x] 6.1 `nx test realtime-api` en verde, sin ningún `todo` pendiente.
+- [x] 6.2 Verificar el negativo: romper una aserción de una acción nueva, confirmar el rojo, revertir.
+- [x] 6.3 `docs/known-issues.md`: cerrar la entrada *"El servidor no valida quién está habilitado para votar"* — las dos mitades quedaron resueltas, y la segunda además quedó especificada.
+- [x] 6.4 `docs/hardening-roadmap.md`: cerrar la Fase 2.1 completa y anotar qué se encontró en la segunda vuelta.
+- [x] 6.5 Anotar que la Fase 2.3 (umbral de cobertura) ya tiene sobre qué fijarse, que era lo que faltaba.

@@ -14,7 +14,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
-| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 primera vuelta · 2.2 y 2.3 pendientes | 1 |
+| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
@@ -180,7 +180,7 @@ En GitHub → Settings → Branches, para `master` y `develop`:
 
 Los 4 tests unitarios que existen hoy están en las piezas más fáciles del repo.
 
-### 2.1 — Unitarios de las acciones 🟡
+### 2.1 — Unitarios de las acciones ✅
 
 > **Primera vuelta hecha** el 2026-08-13, change `add-backend-unit-tests`. 41 tests, 39 en verde y 2 `todo` que documentan huecos encontrados. Lo que quedó distinto de lo que este documento anticipaba:
 >
@@ -190,7 +190,12 @@ Los 4 tests unitarios que existen hoy están en las piezas más fáciles del rep
 > - **No hizo falta mockear el repositorio ni `broadcast`**, como sugería este documento. `broadcast.ts` ya trae una salida (`local://`) que evita hablar con API Gateway, y para DynamoDB se usó **`aws-sdk-client-mock`**, la librería estándar para el SDK v3.
 > - **Se encontró un hueco de validación**: el servidor no comprueba `isVoter` al votar, aunque el spec lo exige. Ver [known-issues.md](known-issues.md).
 >
-> **Segunda vuelta pendiente**: las 8 acciones restantes (`create-room`, `join-room`, `new-round`, `next-story`, `set-moderator-is-voter`, `close-room`, `get-room-info`, y el camino feliz completo de `resolve-story`). El patrón de mockeo ya está montado en `reveal.spec.ts`, así que deberían ser mecánicas.
+> **Segunda vuelta hecha** el 2026-08-13, change `complete-backend-unit-tests`. **87 tests, 12 suites.** Lo que dejó:
+>
+> - **Dos guardas nuevas en `handleVote`**, que la interfaz ya cumplía y el servidor no: rechaza a quien no está habilitado como votante, y rechaza todo voto una vez revelada la ronda. La primera era conformidad con el spec; la segunda era una regla que no estaba escrita en ningún lado y se decidió acá.
+> - **`join-room` resultó la de más contenido**, no las que este documento listaba: su lógica de reconexión —preservar voto, rol e ícono de quien vuelve— es exactamente lo que cubría el e2e que estuvo doce días marcado `test.fixme`. Ahora está cubierta en milisegundos.
+> - **`get-room-info` entró por una razón distinta al resto**: casi no tiene reglas, pero es el único endpoint llamable **sin estar en la sala**. El test enumera las claves de la respuesta, para que agregar un campo que filtre participantes o votos rompa con ruido.
+> - **Las fixtures se extrajeron** a `actions/action.fixtures.ts`, excluido del bundle en `tsconfig.app.json`. Sin eso, ocho archivos repetían cuarenta líneas de armado idénticas y cada spec escondía lo que tenía de propio.
 
 
 **Qué hacer**
