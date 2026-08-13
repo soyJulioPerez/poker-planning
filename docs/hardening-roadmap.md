@@ -14,7 +14,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
-| 2 | [Tests del backend](#fase-2--tests-del-backend) | ⬜ Pendiente | 1 |
+| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 primera vuelta · 2.2 y 2.3 pendientes | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
@@ -180,24 +180,37 @@ En GitHub → Settings → Branches, para `master` y `develop`:
 
 Los 4 tests unitarios que existen hoy están en las piezas más fáciles del repo.
 
-### 2.1 — Unitarios de las acciones
+### 2.1 — Unitarios de las acciones 🟡
+
+> **Primera vuelta hecha** el 2026-08-13, change `add-backend-unit-tests`. 41 tests, 39 en verde y 2 `todo` que documentan huecos encontrados. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El orden de abajo estaba mal, y el primer ítem es el error principal.** `resolve-story` **no calcula nada**: recibe `finalScore` del cliente y lo guarda. El promedio y la moda están en `reveal.ts`, en una función `computeRevealResult` que era **pura y no estaba exportada**. Se extrajo a `lib/reveal-result.ts` y se testeó sin un solo mock.
+> - **`fix-mode-numeric-only` no toca el cálculo de la moda.** La moda de un grupo que votó mayoritariamente `☕` **es** `☕`, y eso es correcto. Lo que ese change agregó es que no se pueda *resolver* con ese valor, y esa defensa vive en `handleResolveStory`. Está cubierta.
+> - **Lo más barato resultó ser lo que no estaba en la lista**: `maskRoomForViewer` es pura, no necesita mocks, y es la regla que hace que el planning poker funcione como juego — si se rompe, todos ven los votos antes del revelado.
+> - **No hizo falta mockear el repositorio ni `broadcast`**, como sugería este documento. `broadcast.ts` ya trae una salida (`local://`) que evita hablar con API Gateway, y para DynamoDB se usó **`aws-sdk-client-mock`**, la librería estándar para el SDK v3.
+> - **Se encontró un hueco de validación**: el servidor no comprueba `isVoter` al votar, aunque el spec lo exige. Ver [known-issues.md](known-issues.md).
+>
+> **Segunda vuelta pendiente**: las 8 acciones restantes (`create-room`, `join-room`, `new-round`, `next-story`, `set-moderator-is-voter`, `close-room`, `get-room-info`, y el camino feliz completo de `resolve-story`). El patrón de mockeo ya está montado en `reveal.spec.ts`, así que deberían ser mecánicas.
+
 
 **Qué hacer**
 
 Empezar por las acciones con reglas de negocio puras, en este orden:
 
-1. **`resolve-story`** — promedio, moda, resolución manual. Hay reglas sutiles ya documentadas en el archive: la moda solo aplica a mazos numéricos (`2026-07-11-fix-mode-numeric-only`) y T-Shirt tiene resolución numérica propia (`2026-07-19-tshirt-numeric-resolution`). Esos dos changes son casos de test listos para escribir.
-2. **`vote`** — votar dos veces, votar después del reveal, votar siendo moderador no-votante.
-3. **`reveal`** / **`new-round`** / **`next-story`** — transiciones de estado y quién tiene permiso.
+*(Orden original, corregido por la primera vuelta — se conserva como registro.)*
+
+1. ~~**`resolve-story`** — promedio, moda, resolución manual.~~ **No calcula nada.** El cálculo está en `reveal`.
+2. **`vote`** — votar dos veces, votar después del reveal, votar siendo moderador no-votante. ✅ Hecho, y las dos últimas resultaron ser huecos de validación, no reglas implementadas.
+3. **`reveal`** ✅ / **`new-round`** / **`next-story`** — transiciones de estado y quién tiene permiso.
 4. **`close-room`** — el resumen final.
 
-Mockear el repositorio (`lib/room-repository.ts`) y `lib/broadcast.ts`; no tocar DynamoDB en este nivel.
+~~Mockear el repositorio y `lib/broadcast.ts`~~ → **No hace falta.** `broadcast.ts` ya trae la salida `local://` y para DynamoDB se usa `aws-sdk-client-mock`.
 
 **Criterio de aceptación**
 
-- [ ] Sacar `passWithNoTests: true` de `project.json` — el target debe fallar si no hay tests.
+- [x] Sacar `passWithNoTests: true` de `project.json` — el target debe fallar si no hay tests.
 - [ ] Cada acción con lógica de decisión tiene tests de camino feliz **y** de camino de error (permiso denegado, estado inválido).
-- [ ] Los casos de los changes `fix-mode-numeric-only` y `tshirt-numeric-resolution` están cubiertos explícitamente.
+- [x] Los casos de los changes `fix-mode-numeric-only` y `tshirt-numeric-resolution` están cubiertos explícitamente.
 
 **Trampas**
 
@@ -224,6 +237,8 @@ Cubrir sobre todo el diseño single-table: PK/SK, el TTL, y las lecturas de sala
 **Qué hacer**
 
 Activar reporte de cobertura y fijar un umbral mínimo que falle el build si baja.
+
+> **Conviene fijarlo después de la segunda vuelta de la 2.1**, no antes. El umbral se fija en el valor ya alcanzado, y con solo tres handlers cubiertos mediría poco y habría que rehacerlo.
 
 El umbral funciona como **trinquete**: se fija en el valor ya alcanzado y solo sube. Un 80% impuesto de golpe genera tests basura escritos para el número; un umbral que sube de a poco genera cobertura real.
 

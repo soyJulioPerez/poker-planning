@@ -61,6 +61,22 @@ NX_HEAD  32aee6c    → diff vacío → nada afectado → deploys salteados
 
 **Cómo detectarlo si vuelve a pasar**: en el log del job `verify`, comparar `NX_BASE` y `NX_HEAD`. Si son iguales, el diff está vacío y ningún deploy va a correr.
 
+## El servidor no valida quién está habilitado para votar
+
+**Detectado**: 2026-08-13, escribiendo los tests de `handleVote` (change `add-backend-unit-tests`).
+
+**Síntoma**: `handleVote` acepta el voto de cualquier participante de la sala, sin comprobar su `isVoter`. Un moderador marcado como no-votante puede emitir un voto si el mensaje llega al servidor sin pasar por la interfaz.
+
+**Qué dice el spec**: `estimation-session`, requirement *"Votación oculta"* — *"El sistema SHALL permitir que **cada participante habilitado para votar** emita un voto"*. Y el escenario de *"Historia con título como precondición"* habla de *"un participante **habilitado como votante**"*. La regla está especificada; la validación no existe del lado del servidor.
+
+**Por qué importa aunque la interfaz lo impida**: hay un precedente exacto en este mismo repositorio. El change `2026-07-11-fix-mode-numeric-only` corrigió la interfaz **y además** agregó la validación de `finalScore` en el servidor, textual: *"como defensa adicional independiente de la UI"*. La misma lógica aplica acá y todavía no se aplicó.
+
+**Segundo hueco, distinto**: tampoco hay validación de la fase de la ronda. Hoy se puede votar **después del revelado**. A diferencia del anterior, esto **no está especificado**: el spec no dice si debería permitirse. Antes de "arreglarlo" hay que decidir cuál es la regla — puede ser deliberado, para permitir corregir un voto mientras el moderador todavía no resolvió.
+
+**Dónde quedó anotado**: `apps/realtime-api/src/actions/vote.spec.ts`, como dos `it.todo`. Se dejaron así a propósito y no como aserciones del comportamiento actual: fijar el hueco con un `expect` lo convertiría en la regla, y el día que se cierre parecería una regresión.
+
+**Recomendación** (futuro change): agregar la validación de `isVoter` en `handleVote`, y decidir explícitamente la regla sobre votar después del revelado — actualizando `estimation-session` en ambos casos.
+
 ## Los tabs no comunican cuál está activo fuera del CSS
 
 **Detectado**: 2026-08-10, verificando el change `fix-room-ui-accessibility`.

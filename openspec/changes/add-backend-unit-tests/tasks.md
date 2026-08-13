@@ -29,33 +29,33 @@
 
 ## 3. Montar el mockeo del SDK
 
-- [ ] 3.1 Agregar `aws-sdk-client-mock` como devDependency.
-- [ ] 3.2 Escribir un primer test de `reveal` que solo verifique el camino feliz, para validar que el patrón `mockClient(DynamoDBDocumentClient).on(GetCommand).resolves(...)` funciona en este workspace.
-- [ ] 3.3 Si mockear resulta difícil, **parar y mirar el diseño** antes de forzarlo: esa dificultad suele ser señal de acoplamiento mal puesto en el código, no de un problema del test.
+- [x] 3.1 Agregar `aws-sdk-client-mock` como devDependency.
+- [x] 3.2 Escribir un primer test de `reveal` que solo verifique el camino feliz, para validar que el patrón `mockClient(DynamoDBDocumentClient).on(GetCommand).resolves(...)` funciona en este workspace.
+- [x] 3.3 Si mockear resulta difícil, **parar y mirar el diseño** antes de forzarlo: esa dificultad suele ser señal de acoplamiento mal puesto en el código, no de un problema del test.
 
 ## 4. Handler `reveal`
 
-- [ ] 4.1 Camino feliz: el moderador revela con una historia asignada → se escribe `roundPhase: 'revealed'` con el resultado calculado, y se difunde.
-- [ ] 4.2 Camino de error — **sala inexistente**: responde `Room not found` y no escribe nada.
-- [ ] 4.3 Camino de error — **no es el moderador**: responde `Only the moderator can reveal votes` y no escribe nada.
-- [ ] 4.4 Camino de error — **sin historia asignada**: responde `No story assigned yet` y no escribe nada.
-- [ ] 4.5 Confirmar que en los tres caminos de error **no** hay `UpdateCommand`. Que no escriba es tan parte de la regla como el mensaje.
+- [x] 4.1 Camino feliz: el moderador revela con una historia asignada → se escribe `roundPhase: 'revealed'` con el resultado calculado, y se difunde.
+- [x] 4.2 Camino de error — **sala inexistente**: responde `Room not found` y no escribe nada.
+- [x] 4.3 Camino de error — **no es el moderador**: responde `Only the moderator can reveal votes` y no escribe nada.
+- [x] 4.4 Camino de error — **sin historia asignada**: responde `No story assigned yet` y no escribe nada.
+- [x] 4.5 Confirmar que en los tres caminos de error **no** hay `UpdateCommand`. Que no escriba es tan parte de la regla como el mensaje.
 
 ## 5. Handlers `vote` y la defensa de `resolve-story`
 
-- [ ] 5.1 Leer `vote.ts` y enumerar sus reglas antes de escribir el primer test.
-- [ ] 5.2 Camino feliz: un participante votante emite su voto y queda registrado.
-- [ ] 5.3 Camino de error: votar cuando el estado de la ronda no lo permite.
-- [ ] 5.4 Camino de error: votar siendo moderador no-votante.
-- [ ] 5.5 Votar dos veces: confirmar cuál es el comportamiento real —pisa el voto anterior o lo rechaza— y **especificarlo en el test**. Si el código y `estimation-session` no coinciden, parar: es un hallazgo, no un detalle.
+- [x] 5.1 Leer `vote.ts` y enumerar sus reglas antes de escribir el primer test.
+- [x] 5.2 Camino feliz: un participante votante emite su voto y queda registrado.
+- [x] 5.3 ~~Camino de error: votar cuando el estado de la ronda no lo permite.~~ **No existe esa validación**: el servidor acepta votos después del revelado. Queda como `it.todo` y en known-issues, porque el spec no dice cuál debería ser la regla.
+- [x] 5.4 ~~Camino de error: votar siendo moderador no-votante.~~ **No existe esa validación**, y acá el spec sí la exige (*"participante habilitado para votar"*). Es un hueco real, anotado en known-issues con el precedente de fix-mode-numeric-only.
+- [x] 5.5 Votar dos veces: confirmar cuál es el comportamiento real —pisa el voto anterior o lo rechaza— y **especificarlo en el test**. Si el código y `estimation-session` no coinciden, parar: es un hallazgo, no un detalle.
 
-- [ ] 5.6 `resolve-story.spec.ts` — **la defensa de `2026-07-11-fix-mode-numeric-only`**: resolver con un `finalScore` no finito responde error y no escribe nada. Es el único test fuera del alcance declarado en el proposal, y entra porque cierra uno de los dos bugs que motivan el change. Descubierto al hacer 2.5.
-- [ ] 5.7 `resolve-story.spec.ts` — camino feliz y permiso denegado, que vienen casi gratis con el mock ya montado.
+- [x] 5.6 `resolve-story.spec.ts` — **la defensa de `2026-07-11-fix-mode-numeric-only`**: resolver con un `finalScore` no finito responde error y no escribe nada. Es el único test fuera del alcance declarado en el proposal, y entra porque cierra uno de los dos bugs que motivan el change. Descubierto al hacer 2.5.
+- [x] 5.7 `resolve-story.spec.ts` — camino feliz y permiso denegado, que vienen casi gratis con el mock ya montado.
 
 ## 6. Cierre
 
-- [ ] 6.1 `nx test realtime-api` en verde, y confirmar en el log que **corrió tests de verdad** (no un `passWithNoTests` disfrazado).
-- [ ] 6.2 Verificar el negativo: romper una aserción a propósito, confirmar que el target falla, y revertir.
-- [ ] 6.3 `docs/hardening-roadmap.md`: **corregir la Fase 2.1** — dice de empezar por `resolve-story` por el promedio y la moda, y esa acción no calcula nada; el cálculo está en `reveal`.
-- [ ] 6.4 `docs/hardening-roadmap.md`: anotar la segunda vuelta con las 8 acciones restantes y que el patrón de mockeo ya está montado.
-- [ ] 6.5 Anotar en el roadmap que la Fase 2.3 (umbral de cobertura) conviene fijarla **después** de la segunda vuelta, no ahora: el trinquete se fija en el valor alcanzado, y con dos handlers cubiertos mediría poco.
+- [x] 6.1 `nx test realtime-api` en verde, y confirmar en el log que **corrió tests de verdad** (no un `passWithNoTests` disfrazado).
+- [x] 6.2 Verificar el negativo: romper una aserción a propósito, confirmar que el target falla, y revertir.
+- [x] 6.3 `docs/hardening-roadmap.md`: **corregir la Fase 2.1** — dice de empezar por `resolve-story` por el promedio y la moda, y esa acción no calcula nada; el cálculo está en `reveal`.
+- [x] 6.4 `docs/hardening-roadmap.md`: anotar la segunda vuelta con las 8 acciones restantes y que el patrón de mockeo ya está montado.
+- [x] 6.5 Anotar en el roadmap que la Fase 2.3 (umbral de cobertura) conviene fijarla **después** de la segunda vuelta, no ahora: el trinquete se fija en el valor alcanzado, y con dos handlers cubiertos mediría poco.
