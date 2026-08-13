@@ -13,7 +13,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
-| 1 | [Portón de CI](#fase-1--portón-de-ci) | 🟡 1.1 y 1.2 hechas · 1.3 pendiente | — |
+| 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | ⬜ Pendiente | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
@@ -141,7 +141,18 @@ La opción 1 es más simple de arrancar; la 2 deja el repo reproducible en local
 - [x] En caso de fallo, el trace de Playwright queda subido como artifact (`actions/upload-artifact`) — `trace: 'on-first-retry'` ya está configurado, pero sin subir el artifact no se puede ver.
 - [x] El job de e2e no bloquea el feedback rápido: separado del job de lint/test, no en serie con él.
 
-### 1.3 — Branch protection
+### 1.3 — Branch protection ✅
+
+> **Hecha** el 2026-08-13, change `enable-branch-protection`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **Los checks obligatorios son dos, no uno.** `verify` y `e2e`. Y los de deploy (`deploy-backend`, `deploy-web`) **no** se marcan: aparecen como `Skipped` en todo pull request, y exigirlos dejaría el botón de merge gris esperando un resultado que nunca llega.
+> - **"Require linear history" quedó descartada.** Este documento la sugería para `master` por analogía con el `--ff-only`. Prohíbe el merge commit de la promoción, que es lo que identifica cada release en la historia. Su garantía real —fallar si `master` avanzó por otro lado— la da *"Require branches to be up to date before merging"*.
+> - **La promoción a `master` dejó de ser un push.** Pasa a ser un pull request desde `release/*` con **Create a merge commit**, y el tag va después sobre ese merge. `git merge --ff-only` + `git push origin master --tags` ya no es posible.
+> - **Las aprobaciones requeridas quedaron en 0.** GitHub no permite aprobar el propio pull request, y hoy hay una sola persona con acceso de escritura: con 1, ningún pull request se podría mergear. **Sube a 1 en cuanto entre la segunda persona** — es lo primero a cambiar, no una duda pendiente.
+> - **`release/*` no se protege.** Ahí caen los fixes de estabilización, donde la ceremonia de un pull request cuesta más de lo que aporta. Nada llega a producción sin pasar por el pull request a `master`.
+>
+> Se usó protección clásica y no *rulesets*. La única limitación: qué botones de merge aparecen se configura por repositorio y no por rama, así que "Squash en `develop`, Merge commit en `master`" queda como convención escrita y no forzada.
+
 
 [docs/git-branching-strategy.md](git-branching-strategy.md) dice explícitamente: *"no hay branch protection rules configuradas todavía"*. La convención existe solo en la cabeza de quien la sigue.
 
@@ -154,10 +165,10 @@ En GitHub → Settings → Branches, para `master` y `develop`:
 
 **Criterio de aceptación**
 
-- [ ] Un push directo a `master` es rechazado por GitHub.
-- [ ] Un PR con CI en rojo no se puede mergear.
-- [ ] `docs/git-branching-strategy.md` actualizado: sacar la frase de que no hay protección y documentar qué reglas quedaron.
-- [ ] **Eliminar la excepción "commit directo a `develop`" de [conventions.md](conventions.md)** — está escrita con vencimiento en esta fase. A partir de acá deja de ser una decisión y pasa a ser imposible, así que la excepción sobra.
+- [x] Un push directo a `master` es rechazado por GitHub.
+- [x] Un PR con CI en rojo no se puede mergear.
+- [x] `docs/git-branching-strategy.md` actualizado: sacar la frase de que no hay protección y documentar qué reglas quedaron.
+- [x] **Eliminar la excepción "commit directo a `develop`" de [conventions.md](conventions.md)** — está escrita con vencimiento en esta fase. A partir de acá deja de ser una decisión y pasa a ser imposible, así que la excepción sobra.
 
 ---
 
