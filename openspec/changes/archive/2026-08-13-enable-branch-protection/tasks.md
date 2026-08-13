@@ -16,8 +16,8 @@
 - [x] 2.1 Aplicar la protección: pull request obligatorio, checks `verify` y `e2e` requeridos, ramas al día antes de mergear, `enforce_admins` activo, 0 aprobaciones requeridas.
 - [x] 2.2 Confirmar que quedó: `gh api repos/:owner/:repo/branches/develop/protection` y revisar que los checks listados sean exactamente los dos.
 - [x] 2.3 **Verificar el negativo**: intentar un push directo a `develop` y confirmar que GitHub lo rechaza. Es la prueba de que la excepción de `conventions.md` dejó de ser posible.
-- [ ] 2.4 Abrir un pull request cualquiera y confirmar que el botón de merge se habilita **solo** cuando `verify` y `e2e` están en verde.
-- [ ] 2.5 **Verificar que un deploy salteado no bloquea**: el mismo pull request tiene `deploy-backend` y `deploy-web` en `skipped`. Confirmar que se puede mergear igual. Es la trampa de la Decisión 2.
+- [x] 2.4 Abrir un pull request cualquiera y confirmar que el botón de merge se habilita **solo** cuando `verify` y `e2e` están en verde.
+- [x] 2.5 **Verificar que un deploy salteado no bloquea**: el mismo pull request tiene `deploy-backend` y `deploy-web` en `skipped`. Confirmar que se puede mergear igual. Es la trampa de la Decisión 2.
 
 ## 3. Proteger `master`
 
@@ -42,5 +42,5 @@
 
 ## 6. Cierre
 
-- [ ] 6.1 Confirmar que el flujo completo sigue funcionando de punta a punta: un pull request a `develop` que se mergea con las reglas puestas.
-- [ ] 6.2 Confirmar que la Fase 1 queda cerrada entera (1.1, 1.2 y 1.3) en la tabla de estado del roadmap.
+- [x] 6.1 Confirmar que el flujo completo sigue funcionando de punta a punta: un pull request a `develop` que se mergea con las reglas puestas.
+- [x] 6.2 Confirmar que la Fase 1 queda cerrada entera (1.1, 1.2 y 1.3) en la tabla de estado del roadmap.
