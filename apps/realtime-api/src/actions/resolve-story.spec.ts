@@ -78,6 +78,74 @@ describe('handleResolveStory', () => {
     ]);
   });
 
+  // Resolver no es solo anotar el puntaje: cierra la historia y deja la sala lista para la
+  // siguiente. Si algo de esto no se limpia, la historia próxima arranca contaminada.
+  it('cierra la ronda y limpia la historia actual', async () => {
+    escenarioBase();
+
+    await handleResolveStory(LOCAL_ENDPOINT, CONNECTION_ID, {
+      action: 'resolveStory',
+      roomId: ROOM_ID,
+      finalScore: 8,
+    });
+
+    expect(escrituraDeResolucion()?.args[0].input.ExpressionAttributeValues).toMatchObject({
+      ':idle': 'idle',
+      ':null': null,
+    });
+  });
+
+  it('borra los votos de todos los participantes', async () => {
+    escenarioBase();
+    ddbMock.on(QueryCommand).resolves({
+      Items: [
+        { PK: `ROOM#${ROOM_ID}`, SK: 'PARTICIPANT#ana', name: 'ana', vote: '8' },
+        { PK: `ROOM#${ROOM_ID}`, SK: 'PARTICIPANT#beto', name: 'beto', vote: '5' },
+      ],
+    });
+
+    await handleResolveStory(LOCAL_ENDPOINT, CONNECTION_ID, {
+      action: 'resolveStory',
+      roomId: ROOM_ID,
+      finalScore: 8,
+    });
+
+    const votos = ddbMock
+      .commandCalls(UpdateCommand)
+      .filter((call) => claveDe(call).startsWith('PARTICIPANT#'));
+    expect(votos.map(claveDe).sort()).toEqual(['PARTICIPANT#ana', 'PARTICIPANT#beto']);
+  });
+
+  it('usa un título por defecto si la historia no tenía uno', async () => {
+    escenarioBase({ currentStoryTitle: null });
+
+    await handleResolveStory(LOCAL_ENDPOINT, CONNECTION_ID, {
+      action: 'resolveStory',
+      roomId: ROOM_ID,
+      finalScore: 8,
+    });
+
+    expect(escrituraDeResolucion()?.args[0].input.ExpressionAttributeValues?.[':story']).toEqual([
+      { title: 'Historia sin título', finalScore: 8 },
+    ]);
+  });
+
+  it('rechaza si la sala no existe', async () => {
+    escenarioBase();
+    ddbMock
+      .on(GetCommand, { TableName: TABLE_NAME, Key: { PK: `ROOM#${ROOM_ID}`, SK: 'META' } })
+      .resolves({});
+
+    await handleResolveStory(LOCAL_ENDPOINT, CONNECTION_ID, {
+      action: 'resolveStory',
+      roomId: ROOM_ID,
+      finalScore: 8,
+    });
+
+    expect(mensajesDeError()).toEqual([{ type: 'error', message: 'Room not found' }]);
+    expect(escrituraDeResolucion()).toBeUndefined();
+  });
+
   it('rechaza si quien pide no es el moderador', async () => {
     escenarioBase();
     ddbMock

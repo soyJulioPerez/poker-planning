@@ -61,21 +61,24 @@ NX_HEAD  32aee6c    → diff vacío → nada afectado → deploys salteados
 
 **Cómo detectarlo si vuelve a pasar**: en el log del job `verify`, comparar `NX_BASE` y `NX_HEAD`. Si son iguales, el diff está vacío y ningún deploy va a correr.
 
-## El servidor no valida quién está habilitado para votar
+## El servidor no validaba quién puede votar ni cuándo ✅
 
-**Detectado**: 2026-08-13, escribiendo los tests de `handleVote` (change `add-backend-unit-tests`).
+**Detectado**: 2026-08-13, escribiendo los tests de `handleVote`. **Resuelto** el mismo día, change `complete-backend-unit-tests`.
 
-**Síntoma**: `handleVote` acepta el voto de cualquier participante de la sala, sin comprobar su `isVoter`. Un moderador marcado como no-votante puede emitir un voto si el mensaje llega al servidor sin pasar por la interfaz.
+**Síntoma**: `handleVote` aceptaba el voto de cualquier participante de la sala, sin comprobar su `isVoter` ni la fase de la ronda. Un moderador marcado como no-votante podía votar, y se podían emitir votos con la ronda ya revelada.
 
-**Qué dice el spec**: `estimation-session`, requirement *"Votación oculta"* — *"El sistema SHALL permitir que **cada participante habilitado para votar** emita un voto"*. Y el escenario de *"Historia con título como precondición"* habla de *"un participante **habilitado como votante**"*. La regla está especificada; la validación no existe del lado del servidor.
+**Lo que hacía difícil de ver el problema**: la interfaz cumple las dos reglas. El mazo no se pinta cuando `roundPhase` es `revealed`, y va `disabled` para quien no es votante. O sea que **ningún usuario podía provocarlo usando la aplicación** — el agujero se abría para cualquier otra cosa que hablara el mismo protocolo: un cliente viejo con una pestaña abierta, una reconexión con estado desfasado, o una regresión futura en la web.
 
-**Por qué importa aunque la interfaz lo impida**: hay un precedente exacto en este mismo repositorio. El change `2026-07-11-fix-mode-numeric-only` corrigió la interfaz **y además** agregó la validación de `finalScore` en el servidor, textual: *"como defensa adicional independiente de la UI"*. La misma lógica aplica acá y todavía no se aplicó.
+**Las dos mitades no eran iguales**, y conviene registrar la diferencia:
 
-**Segundo hueco, distinto**: tampoco hay validación de la fase de la ronda. Hoy se puede votar **después del revelado**. A diferencia del anterior, esto **no está especificado**: el spec no dice si debería permitirse. Antes de "arreglarlo" hay que decidir cuál es la regla — puede ser deliberado, para permitir corregir un voto mientras el moderador todavía no resolvió.
+| | `isVoter` | Votar tras el revelado |
+|---|---|---|
+| ¿El spec lo exigía? | **Sí** — *"cada participante habilitado para votar"* | **No decía nada** |
+| Qué fue el arreglo | Conformidad: el código no cumplía lo escrito | Decisión nueva, que había que tomar |
 
-**Dónde quedó anotado**: `apps/realtime-api/src/actions/vote.spec.ts`, como dos `it.todo`. Se dejaron así a propósito y no como aserciones del comportamiento actual: fijar el hueco con un `expect` lo convertiría en la regla, y el día que se cierre parecería una regresión.
+Para la segunda se decidió **rechazar**: después del revelado el sesgo de anclaje que la votación oculta busca evitar ya ocurrió, y para volver a votar existe la nueva ronda. Quedó escrito en `estimation-session`.
 
-**Recomendación** (futuro change): agregar la validación de `isVoter` en `handleVote`, y decidir explícitamente la regla sobre votar después del revelado — actualizando `estimation-session` en ambos casos.
+**El precedente que ordenó el criterio**: el change `2026-07-11-fix-mode-numeric-only` corrigió la interfaz **y además** agregó la validación de `finalScore` en el servidor, textual: *"como defensa adicional independiente de la UI"*. Este change aplicó la misma regla a las dos guardas que faltaban.
 
 ## Los tabs no comunican cuál está activo fuera del CSS
 
