@@ -1,0 +1,54 @@
+name: CodeQL
+
+# Análisis estático de seguridad (Fase 5.3 del roadmap de hardening).
+#
+# Un solo lenguaje ("javascript-typescript") cubre tanto apps/web (Angular)
+# como apps/realtime-api (Node): CodeQL analiza por lenguaje, no por proyecto
+# de Nx, así que no hace falta un job por app ni un matrix.
+#
+# Sin paso de build/instalación: a diferencia de lenguajes compilados, el
+# extractor de JS/TS de CodeQL parsea el código fuente directamente. No
+# necesita node_modules ni un bundle.
+#
+# Los hallazgos van a Security > Code scanning alerts, no al check de CI —
+# este workflow informa, no bloquea. Ver design.md del change
+# `add-codeql-scanning` para el resto de las decisiones (query suite por
+# defecto, por qué no release/**, etc).
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+  pull_request:
+    branches:
+      - develop
+      - master
+  schedule:
+    # Lunes 04:00 UTC. Corre sobre la rama por defecto del repo, no sobre la
+    # rama donde vive este archivo — empieza a activarse recién cuando este
+    # workflow llegue ahí.
+    - cron: '0 4 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
