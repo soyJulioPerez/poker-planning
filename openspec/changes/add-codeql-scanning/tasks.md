@@ -35,6 +35,6 @@
 
 ## 6. Cierre
 
-- [ ] 6.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
-- [ ] 6.2 Abrir el PR contra `develop`, con el checklist de la sección 5 visible en la descripción para quien lo revise.
-- [ ] 6.3 `/opsx:verify` y después `/opsx:archive` (la tarea 5 queda sin marcar en el archivo — es correcto, no un olvido).
+- [x] 6.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
+- [x] 6.2 Abrir el PR contra `develop`, con el checklist de la sección 5 visible en la descripción para quien lo revise. → [PR #19](https://github.com/soyJulioPerez/poker-planning/pull/19).
+- [ ] 6.3 `/opsx:verify` y después `/opsx:archive` (la tarea 5 queda sin marcar en el archivo — es correcto, no un olvido). **Pendiente hasta que el PR se mergee** — archivar antes dejaría el change sin corresponderse con develop.
