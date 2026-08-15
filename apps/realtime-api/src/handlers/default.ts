@@ -1,5 +1,6 @@
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { apiEndpointFromEvent, sendToConnection } from '../lib/broadcast';
+import { logger } from '../lib/logger';
 import { handleCreateRoom } from '../actions/create-room';
 import { handleJoinRoom } from '../actions/join-room';
 import { handleGetRoomInfo } from '../actions/get-room-info';
@@ -20,6 +21,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   try {
     request = JSON.parse(event.body ?? '{}');
   } catch {
+    logger.warn('action.invalid_payload', { connectionId });
     await sendToConnection(apiEndpoint, connectionId, {
       type: 'error',
       message: 'Invalid message payload',
@@ -27,10 +29,17 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     return { statusCode: 200, body: 'OK' };
   }
 
+  // `createRoom` es la unica accion sin `roomId` en el request: la sala todavia no
+  // existe cuando llega el mensaje. Se completa mas abajo con lo que devuelve
+  // handleCreateRoom, para que el log de salida de esa accion tambien lo incluya.
+  let roomId = 'roomId' in request ? request.roomId : undefined;
+  const started = Date.now();
+  logger.info('action.received', { connectionId, action: request.action, roomId });
+
   try {
     switch (request.action) {
       case 'createRoom':
-        await handleCreateRoom(apiEndpoint, connectionId, request);
+        roomId = await handleCreateRoom(apiEndpoint, connectionId, request);
         break;
       case 'joinRoom':
         await handleJoinRoom(apiEndpoint, connectionId, request);
@@ -65,7 +74,22 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
           message: `Unsupported action: ${(request as { action?: string }).action}`,
         });
     }
+    logger.info('action.done', {
+      connectionId,
+      action: request.action,
+      roomId,
+      durationMs: Date.now() - started,
+    });
   } catch (error) {
+    // Se loguea ANTES de intentar avisarle al cliente: si sendToConnection tambien
+    // fallara, la causa original no debe depender de que ese envio funcione.
+    logger.error('action.failed', {
+      connectionId,
+      action: request.action,
+      roomId,
+      durationMs: Date.now() - started,
+      error,
+    });
     await sendToConnection(apiEndpoint, connectionId, {
       type: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

@@ -8,6 +8,7 @@ import {
 } from '../lib/dynamo-client';
 import { apiEndpointFromEvent, broadcastToRoom } from '../lib/broadcast';
 import { buildRoomState } from '../lib/room-repository';
+import { logger } from '../lib/logger';
 
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionId = event.requestContext.connectionId;
@@ -22,7 +23,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // `connect` ya loguea cada conexión nueva; sin la contraparte acá no se puede
   // reconstruir la sesión de una sala a partir de los logs. Incluye roomId para
   // poder filtrar por sala, que es lo que pide la Fase 4.1 del roadmap.
-  console.log('Connection closed', connectionId, roomId ?? '(sin sala)', name ?? '');
+  logger.info('connection.close', { connectionId, roomId, name });
 
   if (roomId && name) {
     await ddb.send(
@@ -40,8 +41,11 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         const apiEndpoint = apiEndpointFromEvent(event);
         await broadcastToRoom(apiEndpoint, roomId, { type: 'roomState', room });
       }
-    } catch {
-      // El broadcast es best-effort: un fallo aqui no debe impedir limpiar la conexion.
+    } catch (error) {
+      // El broadcast es best-effort: un fallo aqui no debe impedir limpiar la conexion,
+      // por eso no se relanza. Pero un fallo mudo tampoco sirve — se registra para poder
+      // notar si empieza a pasar seguido.
+      logger.warn('connection.broadcast_failed', { connectionId, roomId, error });
     }
   }
 
