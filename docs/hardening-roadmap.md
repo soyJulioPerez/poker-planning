@@ -438,17 +438,26 @@ Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales
 
 Nota de contexto: la app no tiene autenticación por diseño (salas efímeras sin login), así que el riesgo de authz es acotado — pero el WebSocket público sin rate limiting sí es superficie real.
 
-### 5.1 — Actualización automática de dependencias
+### 5.1 — Actualización automática de dependencias ✅
+
+> **Hecha** el 2026-08-15, change `add-dependabot-config`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **Dependabot, no Renovate.** El documento dejaba la puerta abierta a Renovate por agrupar mejor, pero requiere instalar una GitHub App externa (cuenta y permisos propios) o correr un runner self-hosted. Las tres condiciones del criterio de aceptación se logran con la sintaxis nativa de Dependabot (`groups`, `schedule.interval`, `update-types`), sin agregar una dependencia externa al proceso. Queda como opción de escalamiento si el volumen lo justifica más adelante.
+> - **`target-branch: develop` explícito, en las tres entradas.** El branch por defecto del repositorio en GitHub es `master` (`gh repo view --json defaultBranchRef` lo confirma), no `develop`. Sin este campo, Dependabot habría abierto los PRs contra `master` — que además está protegido desde la Fase 1.3 con checks pensados para un release ya estabilizado, no para una actualización recién propuesta.
+> - **Dos entradas `npm`, no una.** `apps/mobile` tiene su propio `package.json` y `package-lock.json`, aislado del raíz desde la Fase 1.1 porque el executor de Expo corrompe el lockfile si comparte uno con el resto del workspace. Sin una segunda entrada apuntando ahí, sus dependencias habrían quedado fuera de cualquier actualización automática.
+> - **Siete grupos por entrada, no un agrupado único.** `angular`, `nx` y `expo-react-native` (restringidos a `minor`/`patch`), más `aws-sdk`, `lint-and-format`, `testing` y un catch-all `build-tooling` para el resto. El catch-all lleva `exclude-patterns` con los patrones de las tres familias especiales — sin eso, un `major` de Angular/Nx/Expo que no matchea las reglas de su propio grupo (restringidas a `minor`/`patch`) caería igual en el catch-all por ser `patterns: ["*"]`, solo que agrupado en vez de individual. Ese mecanismo (grupo evaluado en orden, primer match gana) es el que deja los majors de esas tres familias como PR individual, tal como pide el criterio de aceptación.
+> - **Se agregó una tercera entrada, `github-actions`.** No estaba en el criterio de aceptación original, pero es la misma superficie de supply chain que el resto de la Fase 5 y el costo es cuatro líneas en el mismo archivo — un único grupo, sin restricciones, porque las actions no tienen el problema de migración asistida que sí tienen Angular/Nx/Expo.
+> - **`open-pull-requests-limit: 10`** en las dos entradas `npm` (el default es 5). Con siete grupos posibles por entrada, el límite por defecto podía dejar actualizaciones calladas en cola sin ningún aviso.
 
 **Qué hacer**
 
-`.github/dependabot.yml` (o Renovate, que agrupa mejor). Configurarlo para agrupar por ecosistema — 90 PRs sueltos por semana se terminan ignorando, y un Dependabot ignorado es peor que ninguno.
+~~`.github/dependabot.yml` (o Renovate, que agrupa mejor). Configurarlo para agrupar por ecosistema — 90 PRs sueltos por semana se terminan ignorando, y un Dependabot ignorado es peor que ninguno.~~
 
 **Criterio de aceptación**
 
-- [ ] Los updates llegan agrupados (ej: todo `@nx/*` junto, todo `@angular/*` junto), con cadencia semanal, no diaria.
-- [ ] El CI de la Fase 1 corre sobre esos PRs — sin eso no sirven de nada.
-- [ ] Angular, Nx y Expo excluidos del agrupado automático o marcados aparte: sus majors necesitan `nx migrate` / `expo upgrade`, no un bump de `package.json`.
+- [x] Los updates llegan agrupados (ej: todo `@nx/*` junto, todo `@angular/*` junto), con cadencia semanal, no diaria.
+- [x] El CI de la Fase 1 corre sobre esos PRs — sin eso no sirven de nada.
+- [x] Angular, Nx y Expo excluidos del agrupado automático o marcados aparte: sus majors necesitan `nx migrate` / `expo upgrade`, no un bump de `package.json`.
 
 ### 5.2 — Auditoría de dependencias en CI
 

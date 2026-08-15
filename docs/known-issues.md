@@ -371,3 +371,15 @@ Ese log **no es el JSON de una línea que emite Powertools** (`level`, `message`
 ```
 
 `filter level = "ERROR"` en Logs Insights ya la encuentra sin necesitar el `@message like /Invoke Error/` que hacía falta antes.
+
+## `dependabot.yml`: el `exclude-patterns` del grupo catch-all no se probó en vivo
+
+**Detectado**: 2026-08-15, implementando el change `add-dependabot-config` (Fase 5.1 del roadmap).
+
+**El mecanismo**: `build-tooling` (el grupo catch-all de `.github/dependabot.yml`, `patterns: ["*"]`) lleva un `exclude-patterns` que repite los patrones de `angular`, `nx` y `expo-react-native`. Sin eso, un `major` de esas tres familias —que no matchea las reglas de su propio grupo por estar restringidas a `update-types: ["minor", "patch"]`— caería igual en el catch-all por ser `patterns: ["*"]`, solo que agrupado en vez de individual. Es el mecanismo completo del que depende el criterio de aceptación "Angular, Nx y Expo excluidos del agrupado automático".
+
+**Por qué queda sin verificar en vivo**: Dependabot no tiene un modo "dry-run" invocable por CLI ni por API pública que muestre a qué grupo asignaría cada actualización antes de que exista una versión nueva disponible de verdad. La única forma de confirmarlo con certeza es esperar a que aparezca un major real de Angular, Nx o Expo/React Native (o forzar uno bajando la versión fijada en `package.json` para simular el escenario) y observar si Dependabot lo abre como PR individual o lo agrupa.
+
+**Lo que sí está verificado**: la sintaxis del archivo es válida (`npx js-yaml .github/dependabot.yml` la parsea sin error) y el comportamiento de `groups`/`exclude-patterns`/`update-types` descrito acá está documentado explícitamente así en la documentación oficial de Dependabot (orden de evaluación de grupos, primer match gana, un dependency que no cumple `update-types` de un grupo sigue evaluándose contra los siguientes).
+
+**Cómo confirmarlo cuando aparezca la primera oportunidad real**: revisar el primer PR de Dependabot que involucre un major de `@angular/*`, `@nx/*` o de la familia Expo/React Native — debe llegar **individual**, sin agrupar. Si en cambio aparece agrupado dentro de `build-tooling`, el `exclude-patterns` no está funcionando como se espera y hay que revisar la sintaxis contra la documentación vigente de Dependabot (la sintaxis de `groups` cambió más de una vez en su historia).
