@@ -16,7 +16,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
-| 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
+| 4 | [Observabilidad](#fase-4--observabilidad) | 🟡 4.1 hecha · 4.2 y 4.3 pendientes | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
 | 7 | [Release y colaboración](#fase-7--release-y-colaboración) | ⬜ Pendiente | 1 |
@@ -329,21 +329,26 @@ Las dependencias no usadas no son gratis: son superficie de ataque (Fase 5), rui
 
 Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales corriendo en AWS. **Si `prod` se rompe hoy, alguien tiene que avisar para enterarse.** Es el área del ciclo de vida que falta entera.
 
-### 4.1 — Logging estructurado
+### 4.1 — Logging estructurado ✅
 
-**Qué hacer**
-
-Reemplazar los `console.log` sueltos por logs en JSON con campos consistentes: `level`, `requestId`, `connectionId`, `roomId`, `action`, `durationMs`. CloudWatch Logs Insights puede consultar JSON; texto libre no.
-
-Empezar por los tres handlers (`connect`, `disconnect`, `default`) y por los errores de todas las acciones.
+> **Hecha** el 2026-08-14, change `add-backend-structured-logging`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **No era "reemplazar `console.log` sueltos".** `default.ts` —el handler que enruta las 10 acciones, donde vive la lógica de dominio— no tenía un solo `console.log`. Su `catch` externo mandaba el error al cliente por WebSocket y ahí terminaba: CloudWatch nunca se enteraba de nada. `connect.ts` y `disconnect.ts` sí tenían uno cada uno, en texto plano.
+> - **Powertools, no una función casera.** Es la práctica establecida para Lambda+Node, y comparte familia con `Tracer` (4.3) y `Metrics` (4.2) — se instala solo `Logger` por ahora, mismo criterio que sacar `@nx/node` en la Fase 3.
+> - **El logging se centraliza en `default.ts`**, un solo punto de instrumentación para las 10 acciones, en vez de tocar diez archivos.
+> - **`handleCreateRoom` pasa a devolver el `roomId`** que genera — es el único mensaje sin `roomId` en el request, porque la sala no existe todavía cuando llega. Sin esto, la creación de una sala quedaría fuera de "reconstruir la sesión".
+> - **Hallazgo de paso**: el `catch` del broadcast best-effort en `disconnect.ts` se tragaba cualquier error sin loguear nada. Sigue sin relanzar —es best-effort a propósito— pero deja de ser mudo. Cubierto con un test nuevo (`disconnect.spec.ts`), no forzado en `dev` real para no romper infraestructura compartida a propósito.
+> - **Verificado en `dev` real**: se desplegó, se generó actividad con un cliente WebSocket directo, y se forzó una excepción real (un voto con valor `undefined`, que dispara `ValidationException: ExpressionAttributeValues must not be empty` del SDK de DynamoDB). El log de error salió con `roomId`, `action`, `durationMs` y el stack completo. La query de Logs Insights reconstruyó la sala entera en orden. Todo documentado en [aws-observability.md](aws-observability.md).
+>
+> **Continuación directa, no parte del criterio original**: al verificar esto se encontró que ningún log group tenía retención (`None` = nunca expira) y que 9 quedaban huérfanos en `dev` cada vez que un deploy forzaba el reemplazo de una función — un problema que no tenía nombre en el criterio de 4.1 porque hasta ahora los logs no valían la pena retener. Se resolvió aparte, en el change `add-log-retention` (2026-08-15): retención de 7/7/14 días por ambiente (`dev`/`qa`/`prod`), y el log group pasa a ser un recurso propio del stack con nombre fijo — lo que también evita que un reemplazo futuro vuelva a dejarlo huérfano. En `prod`, el huérfano transicional tenía tráfico real: se le fijó la misma retención en vez de borrarlo de un saque.
 
 **Criterio de aceptación**
 
-- [ ] Todos los logs del backend salen como JSON de una línea.
-- [ ] Cada log de una acción incluye `roomId` y la acción, para poder reconstruir la sesión de una sala.
-- [ ] Los errores loguean el stack completo y el contexto, no solo el mensaje.
-- [ ] Una query de CloudWatch Logs Insights documentada en `docs/` que muestre los errores de la última hora, escrita y probada contra `dev`.
-- [ ] Prueba práctica del resultado: se puede contestar *"¿qué pasó en la sala ABC123 hace 20 minutos?"* sin leer código.
+- [x] Todos los logs del backend salen como JSON de una línea.
+- [x] Cada log de una acción incluye `roomId` y la acción, para poder reconstruir la sesión de una sala.
+- [x] Los errores loguean el stack completo y el contexto, no solo el mensaje.
+- [x] Una query de CloudWatch Logs Insights documentada en `docs/` que muestre los errores de la última hora, escrita y probada contra `dev`.
+- [x] Prueba práctica del resultado: se puede contestar *"¿qué pasó en la sala ABC123 hace 20 minutos?"* sin leer código.
 
 ### 4.2 — Alarmas en CloudWatch
 
