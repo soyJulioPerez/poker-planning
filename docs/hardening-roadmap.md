@@ -459,12 +459,21 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 - [x] El CI de la Fase 1 corre sobre esos PRs — sin eso no sirven de nada.
 - [x] Angular, Nx y Expo excluidos del agrupado automático o marcados aparte: sus majors necesitan `nx migrate` / `expo upgrade`, no un bump de `package.json`.
 
-### 5.2 — Auditoría de dependencias en CI
+### 5.2 — Auditoría de dependencias en CI ✅
+
+> **Hecha** el 2026-08-15, change `audit-dependencies-in-ci`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El umbral que rompe el build es `critical`, no `high` como sugería el borrador.** Verificado con `npm audit --json` contra la raíz el mismo día: 63 vulnerabilidades — 0 `critical`, 48 `high`, 13 `moderate`, 2 `low`. Las 48 `high` son enteramente herramientas de build/CLI (Angular CLI, Nx y sus plugins, Expo CLI, Metro, Vite), ninguna en código de runtime. Con `--audit-level=high` el job nace rojo el primer día y se queda así indefinidamente — la trampa que esta misma sección advertía, solo que con un número puesto encima.
+> - **`--production` (`--omit=dev`) no alcanzaba a bajar el ruido, y se probó antes de descartarlo.** Este `package.json` no separa build tooling de dependencias de runtime de forma limpia: `@angular-devkit/build-angular`, `expo`, `react-native` están bajo `"dependencies"`, no `"devDependencies"`. Con `--omit=dev --audit-level=high` seguían quedando 27 `high`. Se acotó por la otra vía que esta misma sección sugería: el `--audit-level`.
+> - **El job no usa `nx affected`**, a diferencia de `verify`/`test-integration`/`e2e`: una vulnerabilidad de la cadena de dependencias no es "afectada" por proyecto, vive en el árbol instalado completo. Corre siempre, sobre el `package-lock.json` de la raíz entero.
+> - **Gatea `deploy-backend` y `deploy-web`** (se agregó a su `needs:`), mismo patrón que `test-integration` estableció en la Fase 2.2 — no se agregó a los checks obligatorios de branch protection (siguen siendo solo `verify` y `e2e`), decisión de gobernanza que queda fuera de esta fase.
+> - **`apps/mobile` queda fuera de alcance**: tiene su propio `package-lock.json`, separado del de la raíz — mismo criterio que la Fase 1.1 ya usó para sacar su build del gate de `nx affected`.
+> - `docs/ci-pipeline.md` se actualizó con el job nuevo (tabla, diagrama y las dos secciones de "qué corre según qué cambies") para que el mapa del pipeline no quedara desactualizado. El detalle completo de la decisión de umbral está en el `design.md` del change.
 
 **Criterio de aceptación**
 
-- [ ] Un job que corra `npm audit --audit-level=high` (o `--production` para acotar el ruido).
-- [ ] Definido explícitamente qué severidad rompe el build y cuál solo avisa. Documentado.
+- [x] Un job que corre `npm audit` con un umbral de severidad acotado. Corregido: `--audit-level=critical`, no `--audit-level=high` — `--production` se probó y no alcanzaba a bajar el ruido en este `package.json` (ver el `design.md` del change).
+- [x] Definido explícitamente qué severidad rompe el build y cuál solo avisa. Documentado en el `design.md` del change y en `openspec/specs/continuous-integration/spec.md`.
 
 **Trampas**
 

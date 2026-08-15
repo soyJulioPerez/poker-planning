@@ -9,11 +9,11 @@ Corre en cada `pull_request` y en push a `develop`, `master` y `release/**`.
 ```
 push a PR / develop / master / release/**
               │
-   ┌──────────┼──────────────┐
-   ▼          ▼               ▼
-verify   test-integration    e2e          ← los tres EN PARALELO
-   │          │               │
-   └──────────┴───────┬───────┘
+   ┌──────────┼──────────────┬───────────────┐
+   ▼          ▼               ▼              ▼
+verify   test-integration    e2e   dependency-audit    ← los cuatro EN PARALELO
+   │          │               │              │
+   └──────────┴───────┬───────┴──────────────┘
                        ▼
             deploy-backend / deploy-web   ← solo en push a master/release
 ```
@@ -23,14 +23,17 @@ verify   test-integration    e2e          ← los tres EN PARALELO
 | `verify` | `nx affected -t lint test build` — lint, tests rápidos (mockeados) y build, solo de lo que cambió. Calcula además qué proyectos son "desplegables" (`deployable`, usado por los dos jobs de deploy). | Gate principal: código que no compila o rompe un test no debería llegar a ningún lado. |
 | `test-integration` | Levanta DynamoDB Local en Docker (reusa `npm run e2e:db:up` de más abajo) y corre los tests de `room-repository.ts` contra la base real, no contra un mock. | Detecta bugs en las queries (expresiones de clave, `begins_with`) que `verify` no puede ver porque sus tests mockean el SDK. |
 | `e2e` | Levanta `web` + `realtime-api` de verdad y corre Playwright — un usuario real usando la app en un navegador. | El único que prueba el sistema completo integrado, no una pieza aislada. |
-| `deploy-backend` | Despliega `realtime-api` (prod si es `master`, qa si es `release/*`). Depende de `verify`, `e2e` y `test-integration`; se acota además a que `realtime-api` esté en la lista de `deployable`. | Nada se despliega si alguno de los tres falló. |
-| `deploy-web` | Despliega `web` a GitHub Pages, solo desde `master`. Depende de `verify` y `e2e` (no de `test-integration`, no toca el backend). | Igual que arriba. |
+| `dependency-audit` | `npm audit --audit-level=critical` sobre el `package-lock.json` de la raíz — el árbol completo, no lo que el PR afectó (no usa `nx affected`). | Detecta una vulnerabilidad crítica en la cadena de dependencias. `high`/`moderate`/`low` quedan en el log como aviso, sin fallar el job (Fase 5.2 del roadmap; el porqué del umbral está en `openspec/changes/audit-dependencies-in-ci/design.md`). |
+| `deploy-backend` | Despliega `realtime-api` (prod si es `master`, qa si es `release/*`). Depende de `verify`, `e2e`, `test-integration` y `dependency-audit`; se acota además a que `realtime-api` esté en la lista de `deployable`. | Nada se despliega si alguno de los cuatro falló. |
+| `deploy-web` | Despliega `web` a GitHub Pages, solo desde `master`. Depende de `verify`, `e2e` y `dependency-audit` (no de `test-integration`, no toca el backend). | Igual que arriba. |
 
-**Por qué `verify`/`test-integration`/`e2e` corren en paralelo, no en serie**: el tiempo total del pipeline es el del job más lento, no la suma de los tres. Si `test-integration` (que necesita levantar Docker) corriera antes de `verify`, el feedback de "¿compila? ¿pasan los tests rápidos?" tardaría más sin necesidad.
+**Por qué `verify`/`test-integration`/`e2e`/`dependency-audit` corren en paralelo, no en serie**: el tiempo total del pipeline es el del job más lento, no la suma de los cuatro. Si `test-integration` (que necesita levantar Docker) corriera antes de `verify`, el feedback de "¿compila? ¿pasan los tests rápidos?" tardaría más sin necesidad.
 
 **Por qué `test-integration` y `e2e` a veces terminan en verde sin correr nada**: los dos calculan su propio alcance con `nx show projects --affected --with-target <target>`. Si el cambio no toca nada relacionado, el job igual arranca, no hace nada, y termina en verde — a propósito. La alternativa (un `if:` a nivel de job) dejaría a `deploy-backend`/`deploy-web` en `skipped` en cascada cada vez que el cambio no tocara esos targets, y un deploy que no corre sin que nada quede en rojo es peor que un job que corrió de más.
 
-**Checks obligatorios para mergear un PR** (branch protection, Fase 1.3 del [hardening roadmap](hardening-roadmap.md)): `verify` y `e2e`. Los jobs de deploy nunca son obligatorios — quedan `skipped` en todo PR, y exigirlos dejaría el botón de merge esperando un resultado que nunca llega.
+**Por qué `dependency-audit` no calcula ningún alcance**: a diferencia de los otros tres, no usa `nx affected`. Una vulnerabilidad de la cadena de dependencias no es "afectada" por proyecto — vive en el árbol instalado completo, sea cual sea el archivo que cambió el PR. Corre siempre, sobre el `package-lock.json` de la raíz entero. `apps/mobile` tiene su propio lockfile, separado, y queda fuera de este job.
+
+**Checks obligatorios para mergear un PR** (branch protection, Fase 1.3 del [hardening roadmap](hardening-roadmap.md)): `verify` y `e2e`. Los jobs de deploy nunca son obligatorios — quedan `skipped` en todo PR, y exigirlos dejaría el botón de merge esperando un resultado que nunca llega. `dependency-audit` tampoco es obligatorio para mergear (decisión de la Fase 5.2, ver su `design.md`): gatea el deploy automático, no el merge.
 
 ## Qué corre según qué cambies
 
@@ -43,7 +46,7 @@ $ npx nx show projects --affected --uncommitted --json
 []
 ```
 
-Cero proyectos afectados — `docs/` no pertenece a ningún proyecto, y no está en `sharedGlobals` de `nx.json` (que hoy solo tiene `ci.yml`: el único archivo que, si cambia, marca *todo* como afectado). Los tres jobs igual arrancan, cada uno calcula su alcance, encuentra cero proyectos, y termina en verde en segundos sin correr nada.
+Cero proyectos afectados — `docs/` no pertenece a ningún proyecto, y no está en `sharedGlobals` de `nx.json` (que hoy solo tiene `ci.yml`: el único archivo que, si cambia, marca *todo* como afectado). `verify`, `test-integration` y `e2e` arrancan igual, cada uno calcula su alcance, encuentra cero proyectos, y terminan en verde en segundos sin correr nada. `dependency-audit` no calcula alcance —no usa `nx affected`— así que corre igual el `npm audit` completo, sin importar que el cambio sea solo documentación.
 
 **Un cambio en `apps/web/src/app/pages/home/home.html`** (la pantalla de entrada):
 
@@ -58,6 +61,7 @@ Por job:
 - `verify` corre `web:lint`, `web:test`, `web:build`, y `e2e:lint` (tiene ese target). `e2e` no tiene `test` ni `build`, así que ahí no pasa nada.
 - `test-integration`: `--with-target test-integration` da `[]` (solo `realtime-api` tiene ese target) → corre, no hace nada, verde.
 - `e2e`: `--with-target e2e` da `["e2e"]` → este job sí hace algo de verdad.
+- `dependency-audit`: corre igual, sin importar el archivo — no calcula alcance.
 - `deploy-web` pasa a tener `web` en su lista de `deployable` — pero solo despliega de verdad en push a `master`; en un PR queda `skipped` igual que siempre.
 
 **La pregunta clave: ¿corren todos los tests del proyecto, o solo los relacionados con lo que cambió?**
