@@ -18,8 +18,8 @@
 
 - [x] 3.1 `nx affected -t lint test build` en verde — este change no toca código de aplicación, así que no debería afectar ningún proyecto.
 - [x] 3.2 Confirmar que el YAML es válido (parseado con `js-yaml` en local; sin errores de sintaxis).
-- [ ] 3.3 Verificar en la pestaña Actions del PR que el job de CodeQL corre y termina sin error. **Pendiente de la corrida real** — se confirma una vez abierto el PR, no se puede verificar antes de que exista el evento `pull_request`.
-- [ ] 3.4 Verificar en Security → Code scanning alerts que el análisis subió resultados (aunque sean cero hallazgos). **Pendiente de la corrida real**, mismo motivo que 3.3.
+- [x] 3.3 Verificar en la pestaña Actions del PR que el job de CodeQL corre y termina sin error. → [Run 31906692934](https://github.com/soyJulioPerez/poker-planning/actions/runs/31906692934), `CodeQL job status was success`, PR #19.
+- [x] 3.4 Verificar en Security → Code scanning alerts que el análisis subió resultados (aunque sean cero hallazgos). → Log del job: `Uploading results` → `Successfully uploaded results`. Cero hallazgos por ahora (`code-scanning/alerts` vacío), que es un resultado válido — confirma que el pipeline llegó hasta el final, no solo que no crasheó.
 
 ## 4. Documentación
 
