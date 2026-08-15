@@ -20,6 +20,15 @@ Parameters:
       lo cual borra las salas que existan en ese momento. Aceptado a propósito:
       las salas son efímeras (TTL, sin historial entre sesiones).
 
+Mappings:
+  LogRetention:
+    dev:
+      Days: 7
+    qa:
+      Days: 7
+    prod:
+      Days: 14
+
 Globals:
   Function:
     Runtime: nodejs24.x
@@ -130,6 +139,29 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
 
+  # Un log group por funcion, declarado como recurso propio del stack. No es solo para
+  # fijar la retencion (SAM no tiene atajo para eso en AWS::Serverless::Function, hay que
+  # declarar el AWS::Logs::LogGroup igual): un log group con nombre fijo, no atado al ID
+  # fisico de la funcion, sobrevive a un reemplazo futuro de esa funcion. Antes de esto,
+  # cada reemplazo dejaba el log group anterior huerfano, sin retencion, invisible.
+  ConnectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/poker-planning-${Environment}-connect'
+      RetentionInDays: !FindInMap [LogRetention, !Ref Environment, Days]
+
+  DisconnectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/poker-planning-${Environment}-disconnect'
+      RetentionInDays: !FindInMap [LogRetention, !Ref Environment, Days]
+
+  DefaultLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/poker-planning-${Environment}-default'
+      RetentionInDays: !FindInMap [LogRetention, !Ref Environment, Days]
+
   ConnectFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -142,6 +174,8 @@ Resources:
         Format: cjs
     Properties:
       Handler: connect.handler
+      LoggingConfig:
+        LogGroup: !Ref ConnectLogGroup
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RoomsTable
@@ -158,6 +192,8 @@ Resources:
         Format: cjs
     Properties:
       Handler: disconnect.handler
+      LoggingConfig:
+        LogGroup: !Ref DisconnectLogGroup
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RoomsTable
@@ -179,6 +215,8 @@ Resources:
         Format: cjs
     Properties:
       Handler: default.handler
+      LoggingConfig:
+        LogGroup: !Ref DefaultLogGroup
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RoomsTable

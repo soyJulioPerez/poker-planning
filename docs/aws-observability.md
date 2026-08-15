@@ -18,7 +18,7 @@ Los tres Lambdas (`connect`, `disconnect`, `default`) emiten logs estructurados 
 
 ## Reconstruir la actividad de una sala
 
-En **CloudWatch → Logs Insights**, eligiendo el log group de la función `default` del ambiente que corresponda (`/aws/lambda/poker-planning-<ambiente>-DefaultFunction-*`):
+En **CloudWatch → Logs Insights**, eligiendo el log group de la función `default` del ambiente que corresponda (`/aws/lambda/poker-planning-<ambiente>-default`):
 
 ```
 fields @timestamp, level, message, action, connectionId, durationMs, error.message, error.stack
@@ -32,17 +32,31 @@ Devuelve, en orden, cada acción procesada sobre esa sala: quién la pidió (`co
 
 ## Encontrar el log group correcto
 
-El nombre físico de cada función lleva un sufijo que cambia entre deploys. Para no adivinarlo:
+El nombre es predecible desde el change `add-log-retention` (2026-08-15): cada función tiene su `AWS::Logs::LogGroup` declarado como recurso propio del stack, con nombre fijo — no atado al ID físico de la función, que sí cambia entre deploys que fuerzan un reemplazo.
 
-```bash
-aws cloudformation describe-stack-resource \
-  --stack-name poker-planning-<ambiente> \
-  --logical-resource-id DefaultFunction \
-  --query "StackResourceDetail.PhysicalResourceId" --output text \
-  --region us-east-2
+```
+/aws/lambda/poker-planning-<ambiente>-connect
+/aws/lambda/poker-planning-<ambiente>-disconnect
+/aws/lambda/poker-planning-<ambiente>-default
 ```
 
+No hace falta `describe-stack-resource` para armarlo. Esto también es lo que evita que un reemplazo de función deje el log group huérfano: al ser un recurso del stack con nombre fijo, sobrevive al reemplazo — la función nueva sigue escribiendo ahí.
+
 **En Git Bash de Windows**, anteponer `MSYS_NO_PATHCONV=1` a cualquier comando de `aws` cuyo argumento empiece con `/` (como `--log-group-name-prefix "/aws/lambda/..."`): sin eso, Git Bash reescribe la ruta como si fuera del sistema de archivos y el comando falla con `InvalidParameterException`.
+
+## Retención
+
+Cada log group tiene una retención finita, diferenciada por ambiente — antes de este change, ninguno la tenía (`retentionInDays: None`, el default de CloudWatch, que es no expirar nunca):
+
+| Ambiente | Retención |
+|---|---|
+| `dev` | 7 días |
+| `qa` | 7 días |
+| `prod` | 14 días |
+
+Configurada vía `Mappings.LogRetention` en `infra/template.yaml`, indexado por el parámetro `Environment`.
+
+**Verificado en los tres ambientes** el 2026-08-15: se desplegó, se confirmó que las funciones escriben en el log group nuevo (no en el auto-generado que usaban antes), y que la retención quedó aplicada. Los log groups auto-generados que quedaron huérfanos con esta transición se trataron distinto según el ambiente: en `dev` y `qa` se borraron directo (contenido descartable, `qa` no tenía ninguno); en `prod` —que tenía tráfico real— se les fijó la misma retención de 14 días en vez de borrarlos, para que expiren solos sin perder de golpe el historial reciente.
 
 ## Qué falta
 
