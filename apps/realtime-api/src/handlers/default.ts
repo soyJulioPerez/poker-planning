@@ -1,6 +1,7 @@
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 import { apiEndpointFromEvent, sendToConnection } from '../lib/broadcast';
 import { logger } from '../lib/logger';
+import { tracer } from '../lib/tracer';
 import { handleCreateRoom } from '../actions/create-room';
 import { handleJoinRoom } from '../actions/join-room';
 import { handleGetRoomInfo } from '../actions/get-room-info';
@@ -35,6 +36,16 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   let roomId = 'roomId' in request ? request.roomId : undefined;
   const started = Date.now();
   logger.info('action.received', { connectionId, action: request.action, roomId });
+
+  // Powertools no deja anotar el segmento "facade" que Lambda crea para toda la invocacion
+  // (lo rechaza en silencio); hace falta un subsegmento propio. Patron de instrumentacion
+  // manual documentado por Powertools para handlers sin decorator ni Middy.
+  const facadeSegment = tracer.getSegment();
+  const actionSegment = facadeSegment?.addNewSubsegment(`## ${request.action}`);
+  if (actionSegment) {
+    tracer.setSegment(actionSegment);
+  }
+  tracer.putAnnotation('action', request.action);
 
   try {
     switch (request.action) {
@@ -94,6 +105,17 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       type: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
+  } finally {
+    // `roomId` puede resolverse recien dentro del switch (caso `createRoom`), asi que la
+    // annotation se agrega al cierre, cuando ya se conoce en ambos caminos (exito y error) —
+    // y antes de cerrar el subsegmento, mientras todavia es el segmento activo.
+    if (roomId) {
+      tracer.putAnnotation('roomId', roomId);
+    }
+    if (actionSegment && facadeSegment) {
+      actionSegment.close();
+      tracer.setSegment(facadeSegment);
+    }
   }
 
   return { statusCode: 200, body: 'OK' };

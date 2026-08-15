@@ -16,7 +16,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
-| 4 | [Observabilidad](#fase-4--observabilidad) | 🟡 4.1 hecha · 4.2 y 4.3 pendientes | — |
+| 4 | [Observabilidad](#fase-4--observabilidad) | 🟡 4.1 y 4.3 hechas · 4.2 pendiente | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
 | 7 | [Release y colaboración](#fase-7--release-y-colaboración) | ⬜ Pendiente | 1 |
@@ -367,14 +367,23 @@ En [infra/template.yaml](../infra/template.yaml), agregar alarmas y una suscripc
 - [ ] **Probado que dispara**: forzar un error en `dev` y confirmar que llega la notificación. Una alarma que nunca se vio disparar no existe.
 - [ ] Umbrales distintos por ambiente, o `dev` genera spam hasta que alguien apaga las notificaciones — que es la forma más común en que muere el monitoreo.
 
-### 4.3 — Tracing distribuido (opcional)
+### 4.3 — Tracing distribuido (opcional) ✅
 
-Activar AWS X-Ray en las Lambdas y el API Gateway (`Tracing: Active` en el template de SAM). Con una sola Lambda el valor es limitado.
+> **Hecha** el 2026-08-15, change `add-backend-tracing`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El criterio de aceptación original no era alcanzable tal cual estaba escrito.** *"API Gateway → Lambda → DynamoDB → broadcast"* asume un segmento de API Gateway que X-Ray no puede crear: la documentación oficial de AWS es explícita — *"X-Ray only supports tracing for REST APIs through API Gateway"* — y este backend usa un WebSocket API (`AWS::ApiGatewayV2::Api`, `ProtocolType: WEBSOCKET`), el caso no soportado. El timeline real arranca en Lambda, no en API Gateway. Verificado contra `dev`: en ningún trace generado aparece un segmento con `origin` distinto de `AWS::Lambda`/`AWS::Lambda::Function` como entrada.
+> - **Cada invocación de Lambda es un trace independiente**, no uno que una `connect` → mensajes de `default` → `disconnect` de una misma sesión — X-Ray no tiene forma de propagar un trace ID entre invocaciones separadas de un WebSocket API. Para reconstruir una sesión completa, siguen sirviendo los logs de la Fase 4.1.
+> - **Powertools Tracer, no `aws-xray-sdk-core` directo** — misma familia que el `Logger` de la Fase 4.1, y `tracer.captureAWSv3Client()` instrumenta un cliente de AWS SDK v3 en una línea.
+> - **`tracer.putAnnotation()` llamado directo en el handler no funcionaba** — hallazgo real durante la verificación contra `dev`, no algo previsto en el diseño inicial. Powertools rechaza anotar el segmento *facade* que Lambda crea para toda la invocación (`"You cannot annotate the main segment in a Lambda execution environment"`, con un `console.warn` silencioso). Se resolvió con el patrón de instrumentación manual que el propio paquete documenta: abrir un subsegmento propio al entrar al handler, anotar ahí, cerrarlo al salir.
+>
+> **Verificado en `dev` real**: se generó una sesión completa (crear sala, unirse, votar, revelar, cerrar) contra el endpoint desplegado. Aparecieron 6 traces —uno por acción procesada por `default`—, todos filtrables por `annotation.roomId` vía `aws xray get-trace-summaries`. El trace de `reveal` mostró el subsegmento `## reveal` con la duración de cada llamada a DynamoDB y a la API Gateway Management API por separado. Todo documentado en [aws-observability.md](aws-observability.md).
+
+~~Activar AWS X-Ray en las Lambdas y el API Gateway (`Tracing: Active` en el template de SAM). Con una sola Lambda el valor es limitado.~~
 
 **Criterio de aceptación**
 
-- [ ] Se puede ver el timeline de un mensaje WebSocket: API Gateway → Lambda → DynamoDB → broadcast.
-- [ ] Identificado dónde se va el tiempo en la acción más lenta.
+- [x] ~~Se puede ver el timeline de un mensaje WebSocket: API Gateway → Lambda → DynamoDB → broadcast.~~ Corregido: el timeline va de Lambda → DynamoDB → broadcast — API Gateway no soporta X-Ray para WebSocket APIs (ver nota arriba).
+- [x] Identificado dónde se va el tiempo en la acción más lenta.
 
 ---
 
