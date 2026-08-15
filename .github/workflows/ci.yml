@@ -102,6 +102,53 @@ jobs:
       - id: affected
         run: echo "projects=$(npx nx show projects --affected --with-target deploy --json)" >> "$GITHUB_OUTPUT"
 
+  dependency-audit:
+    # En paralelo al resto, no adentro de ninguno: audita el `package-lock.json` de la
+    # raíz completo, no lo que el PR afectó. A diferencia de `verify`/`test-integration`/
+    # `e2e`, este job NO usa `nx affected` — una vulnerabilidad de la cadena de
+    # dependencias no es "afectada" por proyecto, vive en el árbol instalado entero, sea
+    # cual sea el archivo que cambió. Por eso tampoco necesita `fetch-depth: 0` ni
+    # `nx-set-shas`: no calcula ningún alcance.
+    #
+    # `apps/mobile` tiene su propio `package-lock.json`, separado del de acá, y queda
+    # fuera de este job — mismo criterio que la Fase 1.1 usó para sacar el build de
+    # mobile del gate de `nx affected` (vive en su propio flujo, `build-mobile.yml`).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Umbral elegido: `critical` rompe el job; `high`, `moderate` y `low` quedan como
+      # aviso. `npm audit` imprime SIEMPRE el detalle completo de todo lo que encuentra
+      # —`--audit-level` solo decide el exit code, no qué se loguea— así que un único
+      # comando alcanza: las severidades por debajo del umbral no desaparecen, quedan
+      # visibles en este mismo log.
+      #
+      # No es `--audit-level=high` como sugería el borrador del roadmap. Verificado el
+      # 2026-08-15: el árbol tiene 63 vulnerabilidades (0 critical / 48 high / 13
+      # moderate / 2 low), y las 48 `high` son enteramente herramientas de build (Angular
+      # CLI, Nx y sus plugins, Expo CLI, Metro, Vite), no código de runtime. Acotar por
+      # `--omit=dev` (el reemplazo de `--production`, deprecado) no alcanza para bajar
+      # ese ruido: este `package.json` no separa build tooling de dependencias de runtime
+      # de forma limpia (`@angular-devkit/build-angular`, `expo`, `react-native` están
+      # bajo "dependencies", no "devDependencies") — con `--omit=dev --audit-level=high`
+      # siguen quedando 27 `high` y el job nacería en rojo. Con `audit-level=high` el job
+      # se queda rojo indefinidamente por hallazgos que nadie puede resolver sin migrar
+      # Angular/Nx/Expo a la vez (la Fase 5.1 ya trata esos majors aparte, por la misma
+      # razón) — que es justo la trampa que el roadmap pide evitar: "si rompe el build
+      # por todo, en dos semanas alguien le pone `|| true`". Detalle completo de la
+      # decisión en `openspec/changes/audit-dependencies-in-ci/design.md`.
+      #
+      # Prohibido silenciar el exit code (`|| true` o equivalente): el umbral es la única
+      # palanca de ruido permitida acá.
+      - run: npm audit --audit-level=critical
+
   test-integration:
     # En paralelo a `verify` y `e2e`, no adentro de ninguno de los dos: necesita Docker
     # (DynamoDB Local) y no debe demorar el feedback rápido de `verify`. Reusa el mismo
@@ -262,7 +309,7 @@ jobs:
           retention-days: 7
 
   deploy-backend:
-    needs: [verify, e2e, test-integration]
+    needs: [verify, e2e, test-integration, dependency-audit]
     if: >-
       contains(fromJSON(needs.verify.outputs.deployable), 'realtime-api')
       && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))
@@ -294,7 +341,7 @@ jobs:
       - run: npx nx deploy realtime-api --configuration=${{ github.ref == 'refs/heads/master' && 'prod' || 'qa' }} --outputStyle=static
 
   deploy-web:
-    needs: [verify, e2e]
+    needs: [verify, e2e, dependency-audit]
     if: >-
       contains(fromJSON(needs.verify.outputs.deployable), 'web')
       && github.ref == 'refs/heads/master'
