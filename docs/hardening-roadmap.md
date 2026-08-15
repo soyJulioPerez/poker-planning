@@ -15,7 +15,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
-| 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | 🟡 3.1 hecha · 3.2 y 3.3 pendientes | 1 |
+| 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ⬜ Pendiente | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
@@ -298,24 +298,28 @@ Esto convierte en mecánico el desacople web/mobile/api que se logró en el chan
 - [ ] Todos los proyectos tienen tags.
 - [ ] **Verificación activa**: agregar temporalmente un `import` de `apps/realtime-api` dentro de `apps/web`, confirmar que `nx lint web` falla, y revertirlo. Una regla de boundaries que nunca se vio fallar no se sabe si funciona.
 
-### 3.2 — `nx.json`: `release.projects` apunta a un proyecto inexistente
+### 3.2 — `nx.json`: `release.projects` apuntaba a un proyecto inexistente ✅
 
-[nx.json](../nx.json) declara `"release": { "projects": ["api"] }`, pero no existe ningún proyecto llamado `api` — se llama `realtime-api` (`npx nx show projects` lo confirma).
+> **Hecha** el 2026-08-14, change `clean-workspace-config`. Se **eliminó el bloque `release` entero**, no se corrigió el nombre. Corregir `"api"` → `"realtime-api"` habría dejado en pie `"projectsRelationship": "independent"` — versión y tag por proyecto — que contradice cómo se releasea este repo hoy: un tag único para el repo completo (`v1.4.1`). Arreglar solo el nombre habría cambiado el síntoma de "falla con un error claro" a "corre y versiona mal", que es peor. El diseño real del versionado queda para la Fase 7.1, con el modelo completo delante.
+
+~~[nx.json](../nx.json) declara `"release": { "projects": ["api"] }`, pero no existe ningún proyecto llamado `api` — se llama `realtime-api` (`npx nx show projects` lo confirma).~~
 
 **Criterio de aceptación**
 
-- [ ] O se corrige a `realtime-api`, o se elimina el bloque `release` hasta que la Fase 7 lo necesite de verdad. Cualquiera de las dos, pero no dejarlo como está.
+- [x] O se corrige a `realtime-api`, o se elimina el bloque `release` hasta que la Fase 7 lo necesite de verdad. Cualquiera de las dos, pero no dejarlo como está.
 
-### 3.3 — Plugin de Docker sin Dockerfile
+### 3.3 — Plugin de Docker sin Dockerfile ✅
 
-`nx.json` registra el plugin `@nx/docker` con `buildTarget`/`runTarget`, y `@nx/docker` está en `devDependencies`, pero **no existe ningún Dockerfile en el repo**. El backend se despliega como Lambdas vía SAM, así que probablemente el plugin sobra.
+> **Hecha** el 2026-08-14, change `clean-workspace-config`. Se sacó en sus tres capas: la entrada del plugin en `nx.json`, `@nx/docker` de `package.json`, y `@nx/node` de `package.json` — este último porque `@nx/docker` es su dependencia **dura** (no peer), así que sacar solo `@nx/docker` no lo desinstalaba de verdad. Y `@nx/node` no lo usaba ningún target: `realtime-api:serve` corre con el executor `@nx/js:node`, de un paquete distinto. Si en el futuro se agrega una app Node, el patrón a copiar es el de `realtime-api`, no los generadores de `@nx/node` — reinstalarlo es un `npm i -D` reversible si hiciera falta.
+
+~~`nx.json` registra el plugin `@nx/docker` con `buildTarget`/`runTarget`, y `@nx/docker` está en `devDependencies`, pero **no existe ningún Dockerfile en el repo**. El backend se despliega como Lambdas vía SAM, así que probablemente el plugin sobra.~~
 
 Las dependencias no usadas no son gratis: son superficie de ataque (Fase 5), ruido en el árbol de decisiones, y tiempo de instalación en cada corrida de CI.
 
 **Criterio de aceptación**
 
-- [ ] Decidir: o se usa (¿hay un caso? ¿el dev server local containerizado?) o se saca el plugin de `nx.json` y la dependencia de `package.json`.
-- [ ] Si se saca: confirmar que `npx nx show projects` y los builds siguen funcionando.
+- [x] Decidir: o se usa (¿hay un caso? ¿el dev server local containerizado?) o se saca el plugin de `nx.json` y la dependencia de `package.json`.
+- [x] Si se saca: confirmar que `npx nx show projects` y los builds siguen funcionando.
 
 ---
 
