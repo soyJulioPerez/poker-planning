@@ -102,6 +102,57 @@ jobs:
       - id: affected
         run: echo "projects=$(npx nx show projects --affected --with-target deploy --json)" >> "$GITHUB_OUTPUT"
 
+  test-integration:
+    # En paralelo a `verify` y `e2e`, no adentro de ninguno de los dos: necesita Docker
+    # (DynamoDB Local) y no debe demorar el feedback rápido de `verify`. Reusa el mismo
+    # mecanismo de la Fase 1.2 (`npm run e2e:db:up`), no el mismo job — mezclar tests de
+    # integración del backend con los e2e de Playwright complicaría leer qué falló.
+    #
+    # Mismo criterio que `e2e` para no llevar `if:` a nivel de job: un job salteado
+    # arrastra a sus dependientes al mismo estado.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: develop
+
+      - name: Base correcta en master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          before="${{ github.event.before }}"
+          if [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "Sin commit previo utilizable en master; se conserva la base de nx-set-shas ($NX_BASE)"
+          else
+            echo "NX_BASE=$before" >> "$GITHUB_ENV"
+            echo "Base en master: $before (era $NX_BASE)"
+          fi
+
+      - id: scope
+        run: |
+          projects=$(npx nx show projects --affected --with-target test-integration --json)
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
+          echo "Proyectos con target test-integration afectados: $projects"
+
+      # Mismo script que usa `e2e` para levantar DynamoDB Local — no se duplica el
+      # contenedor, se reusa el mecanismo.
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'realtime-api')
+        run: npm run e2e:db:up
+
+      - if: contains(fromJSON(steps.scope.outputs.projects), 'realtime-api')
+        run: npx nx affected -t test-integration --outputStyle=static
+
   e2e:
     # Corre EN PARALELO con `verify`, no detrás: los e2e son la etapa más lenta del
     # portón y ponerlos en serie demoraría el feedback de lint/test sin ganar nada.
@@ -211,7 +262,7 @@ jobs:
           retention-days: 7
 
   deploy-backend:
-    needs: [verify, e2e]
+    needs: [verify, e2e, test-integration]
     if: >-
       contains(fromJSON(needs.verify.outputs.deployable), 'realtime-api')
       && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))

@@ -14,7 +14,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
-| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
+| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1, 2.2 y 2.3 hechas · 2.4 pendiente | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
@@ -223,39 +223,66 @@ Empezar por las acciones con reglas de negocio puras, en este orden:
 - Evitar testear a través del handler HTTP. Los handlers (`connect`, `disconnect`, `default`) son adaptadores finos; la lógica está en `actions/`. Los tests van ahí.
 - Si mockear el repositorio resulta difícil, esa dificultad es señal de acoplamiento mal puesto en el código, no de un problema del test.
 
-### 2.2 — Test de integración contra DynamoDB Local
+### 2.2 — Test de integración contra DynamoDB Local ✅
 
-**Qué hacer**
+> **Hecha** el 2026-08-15, change `add-backend-integration-tests`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El plan original de separar el target ("segunda entrada de `@nx/jest/plugin`") no era viable, y se descubrió recién implementando.** El glob que usa el plugin para descubrir configs de Jest está fijo (`jest.config.{cjs,mjs,js,cts,mts,ts}`) — un nombre distinto nunca se descubre, sea cual sea el `include`/`exclude`. Y moverlo a una subcarpeta con el nombre correcto tampoco alcanza: el plugin exige que esa carpeta tenga su propio `package.json`/`project.json`, es decir, ser la raíz de un proyecto Nx distinto. Convertirlo en proyecto hermano (el patrón que sí usa `e2e/`) chocaba con `enforce-module-boundaries`: `realtime-api` es `type:app`, y las apps son hojas — nada puede depender de ellas, ni siquiera un proyecto de tests.
+> - **La solución real: `test-integration` declarado a mano en `project.json` con `nx:run-commands`**, invocando `jest --config jest.integration.config.cts` directo — ni la inferencia del plugin ni su executor dedicado (`@nx/jest:jest`, deprecado, se elimina en Nx v24).
+> - **DynamoDB Local aísla datos por credenciales**, no solo por región. Sin credenciales AWS explícitas (dummy, como ya usa `dev:db:create-table`), el SDK resolvía las credenciales reales de esta máquina y la tabla creada con credenciales dummy no aparecía — `ResourceNotFoundException` aunque la tabla existiera.
+> - **Job de CI nuevo, en paralelo a `verify` y `e2e`**, no adentro de ninguno — reusa `npm run e2e:db:up` de la Fase 1.2. `deploy-backend` depende de él: un bug real en las queries no debería desplegarse solo porque los unitarios mockeados no lo detectan.
 
-Los unitarios de 2.1 mockean el repositorio, así que **no prueban que las queries a DynamoDB estén bien**. Agregar una capa fina de integración que corra `lib/room-repository.ts` contra DynamoDB Local — la infra ya existe (`npm run dev:db:up` + `npm run dev:db:create-table`).
-
-Cubrir sobre todo el diseño single-table: PK/SK, el TTL, y las lecturas de sala completa.
-
-**Criterio de aceptación**
-
-- [ ] Los tests crean y limpian sus propios datos (nada de estado compartido entre tests).
-- [ ] Corren en CI (misma infra que se armó en 1.2).
-- [ ] Están separados de los unitarios: `nx test realtime-api` sigue siendo rápido y no necesita Docker.
-
-### 2.3 — Cobertura con umbral
-
-**Qué hacer**
-
-Activar reporte de cobertura y fijar un umbral mínimo que falle el build si baja.
-
-> **Conviene fijarlo después de la segunda vuelta de la 2.1**, no antes. El umbral se fija en el valor ya alcanzado, y con solo tres handlers cubiertos mediría poco y habría que rehacerlo.
-
-El umbral funciona como **trinquete**: se fija en el valor ya alcanzado y solo sube. Un 80% impuesto de golpe genera tests basura escritos para el número; un umbral que sube de a poco genera cobertura real.
+~~Agregar una capa fina de integración que corra `lib/room-repository.ts` contra DynamoDB Local — la infra ya existe (`npm run dev:db:up` + `npm run dev:db:create-table`).~~
 
 **Criterio de aceptación**
 
-- [ ] `nx test realtime-api --coverage` produce reporte.
-- [ ] Hay un umbral configurado, fijado en el valor ya alcanzado (no un número aspiracional).
-- [ ] CI falla si la cobertura baja de ese umbral.
+- [x] Los tests crean y limpian sus propios datos (nada de estado compartido entre tests).
+- [x] Corren en CI (misma infra que se armó en 1.2).
+- [x] Están separados de los unitarios: `nx test realtime-api` sigue siendo rápido y no necesita Docker.
+
+### 2.3 — Cobertura con umbral ✅
+
+> **Hecha** el 2026-08-15, junto con la 2.2, change `add-backend-integration-tests`. Cobertura real medida al fijar el umbral: Statements 86.38%, Branches 76.2%, Functions 95.52%, Lines 86.12% — redondeada hacia abajo a enteros (86/76/95/86) para el `coverageThreshold`. Verificación activa confirmada: subir el umbral a 100% hace fallar `nx test realtime-api --coverage` con el mensaje real de Jest, no uno decorativo.
+
+~~Activar reporte de cobertura y fijar un umbral mínimo que falle el build si baja.~~
+
+**Criterio de aceptación**
+
+- [x] `nx test realtime-api --coverage` produce reporte.
+- [x] Hay un umbral configurado, fijado en el valor ya alcanzado (no un número aspiracional).
+- [x] CI falla si la cobertura baja de ese umbral.
 
 **Trampas**
 
 - El workspace mezcla runners (Jest en 3 proyectos, Vitest en `web`). Agregar la cobertura de todos en un solo número es trabajo extra y poco valor — mantener el umbral **por proyecto**.
+
+### 2.4 — Tests del cliente (`room-client-runtime` + `apps/web`)
+
+**El problema**
+
+Esta fase se llama "Tests del backend" a propósito — el lado cliente nunca estuvo en su alcance. Pero verificando la 2.2/2.3 quedó a la vista que el hueco ahí es más grande que el que se acaba de cerrar en `realtime-api`:
+
+| | Archivos fuente | Con test |
+|---|---|---|
+| `apps/web` (componentes, servicios) | 15 | 3 — incluye `app.spec.ts`, el scaffold genérico de Nx |
+| `room-client-runtime` (lógica extraída del cliente en `uncouple-client-logic`) | 4 | 1 |
+
+No es solo un número bajo: los archivos sin test son exactamente los que ya tienen un bug conocido documentado. `session-store.ts` (`room-client-runtime`) y `room-socket.service.ts` (`apps/web`) son los que [known-issues.md](known-issues.md) señala en *"Link directo a una sala en una pestaña nueva nunca conecta"* — `rejoinIfNeeded` vive ahí, sin ningún test que lo cubra.
+
+**Qué hacer**
+
+Empezar por `session-store.ts` y `room-socket.service.ts` — no solo por ser los menos cubiertos, sino porque un test ahí puede confirmar (o descartar) el bug ya documentado antes de arreglarlo. Después, el resto de `room-client-runtime` (superficie chica, lógica de dominio del cliente) y los servicios de `apps/web` con lógica real, no los componentes puramente presentacionales.
+
+**Criterio de aceptación**
+
+- [ ] `session-store.ts` y `room-socket.service.ts` tienen tests que reproducen (o descartan) el bug de *"Link directo a una sala"*.
+- [ ] `room-client-runtime` tiene cobertura de su lógica de dominio, no solo de `room-client.ts`.
+- [ ] Umbral de cobertura propio para `web` y para `room-client-runtime` — mismo criterio de trinquete que la 2.3, sin mezclarlo con el de `realtime-api` (runners distintos: Vitest vs Jest).
+
+**Trampas**
+
+- `apps/web` usa Vitest (`@angular/build:unit-test`, `runner: vitest`), `room-client-runtime` usa Jest — dos configuraciones de cobertura separadas, no una.
+- Ver [known-issues.md](known-issues.md) — la entrada de "Vitest con Angular falla por la casing de la letra de unidad en Windows" puede reaparecer al escribir tests nuevos en `web` si el entorno tiene la variable `NX_WORKSPACE_ROOT_PATH` mal seteada.
 
 ---
 
