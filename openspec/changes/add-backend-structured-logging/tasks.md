@@ -35,13 +35,13 @@
 
 ## 6. Verificación con AWS real — confirmar antes de ejecutar
 
-- [ ] 6.1 Deploy a `dev`: `nx deploy realtime-api --configuration=dev`.
-- [ ] 6.2 Generar actividad real: crear una sala, votar, revelar, desde la web apuntando a `dev` o con un cliente WebSocket de prueba.
-- [ ] 6.3 En CloudWatch Logs Insights (log group de la función `default`), escribir y probar la query que reconstruye la actividad de esa sala por `roomId` y ventana de tiempo.
-- [ ] 6.4 Forzar un error real (por ejemplo, un `roomId` inexistente en una acción que no lo valide, o interrumpir la tabla momentáneamente si es seguro) y confirmar que el log de error aparece con stack completo.
-- [ ] 6.5 Confirmar que el log del `catch` de `disconnect.ts` es alcanzable: no es necesario forzarlo en `dev` si el camino ya se ejercita en los tests unitarios; anotar cuál de las dos vías se usó.
+- [x] 6.1 Deploy a `dev`: `nx deploy realtime-api --configuration=dev`.
+- [x] 6.2 Generar actividad real: crear una sala, votar, revelar, desde la web apuntando a `dev` o con un cliente WebSocket de prueba.
+- [x] 6.3 En CloudWatch Logs Insights (log group de la función `default`), escribir y probar la query que reconstruye la actividad de esa sala por `roomId` y ventana de tiempo.
+- [x] 6.4 Forzar un error real (por ejemplo, un `roomId` inexistente en una acción que no lo valide, o interrumpir la tabla momentáneamente si es seguro) y confirmar que el log de error aparece con stack completo.
+- [x] 6.5 Confirmar que el log del `catch` de `disconnect.ts` es alcanzable: no es necesario forzarlo en `dev` si el camino ya se ejercita en los tests unitarios; anotar cuál de las dos vías se usó.
 
 ## 7. Documentación
 
-- [ ] 7.1 Crear `docs/aws-observability.md` con la query de Logs Insights documentada, y el ejemplo de cómo contestar *"¿qué pasó en la sala X hace N minutos?"*.
-- [ ] 7.2 `docs/hardening-roadmap.md`: cerrar 4.1, anotando la decisión de Powertools sobre función casera y el hallazgo del `catch` mudo de `disconnect.ts`.
+- [x] 7.1 Crear `docs/aws-observability.md` con la query de Logs Insights documentada, y el ejemplo de cómo contestar *"¿qué pasó en la sala X hace N minutos?"*.
+- [x] 7.2 `docs/hardening-roadmap.md`: cerrar 4.1, anotando la decisión de Powertools sobre función casera y el hallazgo del `catch` mudo de `disconnect.ts`.
