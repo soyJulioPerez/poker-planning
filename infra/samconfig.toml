@@ -18,7 +18,7 @@ resolve_s3 = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
-parameter_overrides = "Environment=dev"
+parameter_overrides = "Environment=dev NotificationEmail=juliolpj@hotmail.com"
 
 [qa.deploy.parameters]
 stack_name = "poker-planning-qa"
@@ -27,7 +27,7 @@ resolve_s3 = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
-parameter_overrides = "Environment=qa"
+parameter_overrides = "Environment=qa NotificationEmail=juliolpj@hotmail.com"
 
 [prod.deploy.parameters]
 stack_name = "poker-planning-prod"
@@ -36,4 +36,4 @@ resolve_s3 = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
-parameter_overrides = "Environment=prod"
+parameter_overrides = "Environment=prod NotificationEmail=juliolpj@hotmail.com"

@@ -16,7 +16,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1 hecha · 2.2 y 2.3 pendientes | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
-| 4 | [Observabilidad](#fase-4--observabilidad) | 🟡 4.1 y 4.3 hechas · 4.2 pendiente | — |
+| 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
 | 7 | [Release y colaboración](#fase-7--release-y-colaboración) | ⬜ Pendiente | 1 |
@@ -350,22 +350,28 @@ Cero logging estructurado, cero alarmas, cero tracing. Hay tres ambientes reales
 - [x] Una query de CloudWatch Logs Insights documentada en `docs/` que muestre los errores de la última hora, escrita y probada contra `dev`.
 - [x] Prueba práctica del resultado: se puede contestar *"¿qué pasó en la sala ABC123 hace 20 minutos?"* sin leer código.
 
-### 4.2 — Alarmas en CloudWatch
+### 4.2 — Alarmas en CloudWatch ✅
 
-**Qué hacer**
+> **Hecha** el 2026-08-15, change `add-backend-alarms`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **"Errores 5xx de API Gateway" no existe para una WebSocket API.** Mismo tipo de limitación que la de X-Ray en la Fase 4.3: la métrica "5xx" es exclusiva de REST/HTTP APIs. Se usó `IntegrationError` (4XX/5XX devueltos por la integración, es decir, por la Lambda) como equivalente funcional, confirmado contra la doc oficial de AWS.
+> - **Cuatro alarmas agregadas, no una por función.** Alarmar cada métrica (`Errors`, `Throttles`, `Duration` p99) por cada una de las tres Lambdas daría 9 recursos; se combinaron con metric math (`SUM` para `Errors`/`Throttles`, `MAX` para `Duration` p99) en 3 alarmas — con los logs (4.1) y el tracing (4.3) ya cubriendo el diagnóstico fino, alcanza con saber que alguna de las tres tuvo un problema.
+> - **El email de notificación es un `Parameter`, no un `Mappings`.** Inyectado vía `parameter_overrides` en `infra/samconfig.toml`, mismo mecanismo que ya usa `Environment` — no es un valor estructural del diseño, es "quién recibe el aviso al desplegar esta instancia".
+> - **Hallazgo de paso, no anticipado**: al forzar errores reales para probar la alarma, se encontró que `connect.ts`/`disconnect.ts` pueden crashear sin dejar un log estructurado de Powertools — a diferencia de `default.ts`, no tienen `try`/`catch` propio. Documentado en [known-issues.md](known-issues.md#connectts-y-disconnectts-pueden-crashear-sin-dejar-un-log-estructurado), sin resolver en este change.
+> - **Verificado en `dev` real**: se confirmó la suscripción SNS a mano (paso manual, no automatizable), se invocó `ConnectFunction` directamente cuatro veces con un evento vacío para cruzar el umbral de `dev` (>3 en 5 min), `poker-planning-dev-lambda-errors` pasó a `ALARM`, y el email de notificación llegó. Todo documentado en [aws-observability.md](aws-observability.md).
 
-En [infra/template.yaml](../infra/template.yaml), agregar alarmas y una suscripción SNS a un email. Mínimo viable:
+~~En [infra/template.yaml](../infra/template.yaml), agregar alarmas y una suscripción SNS a un email. Mínimo viable:~~
 
-- Errores de Lambda > N en 5 minutos.
-- Throttles de Lambda > 0.
-- Errores 5xx de API Gateway.
-- Duración p99 de Lambda por encima de un umbral.
+- ~~Errores de Lambda > N en 5 minutos.~~
+- ~~Throttles de Lambda > 0.~~
+- ~~Errores 5xx de API Gateway.~~ Corregido: `IntegrationError`, no soportada la métrica "5xx" en WebSocket APIs.
+- ~~Duración p99 de Lambda por encima de un umbral.~~
 
 **Criterio de aceptación**
 
-- [ ] Las alarmas se crean por ambiente (una alarma de `dev` no puede despertar por un problema de `prod`).
-- [ ] **Probado que dispara**: forzar un error en `dev` y confirmar que llega la notificación. Una alarma que nunca se vio disparar no existe.
-- [ ] Umbrales distintos por ambiente, o `dev` genera spam hasta que alguien apaga las notificaciones — que es la forma más común en que muere el monitoreo.
+- [x] Las alarmas se crean por ambiente (una alarma de `dev` no puede despertar por un problema de `prod`).
+- [x] **Probado que dispara**: forzar un error en `dev` y confirmar que llega la notificación. Una alarma que nunca se vio disparar no existe.
+- [x] Umbrales distintos por ambiente, o `dev` genera spam hasta que alguien apaga las notificaciones — que es la forma más común en que muere el monitoreo.
 
 ### 4.3 — Tracing distribuido (opcional) ✅
 
