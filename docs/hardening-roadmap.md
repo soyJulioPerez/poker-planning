@@ -260,29 +260,39 @@ Empezar por las acciones con reglas de negocio puras, en este orden:
 
 **El problema**
 
-Esta fase se llama "Tests del backend" a propósito — el lado cliente nunca estuvo en su alcance. Pero verificando la 2.2/2.3 quedó a la vista que el hueco ahí es más grande que el que se acaba de cerrar en `realtime-api`:
+Esta fase se llama "Tests del backend" a propósito — el lado cliente nunca estuvo en su alcance. La primera exploración de esta fase (antes de leer el código a fondo) partió de un número bajo de específicos:
 
 | | Archivos fuente | Con test |
 |---|---|---|
 | `apps/web` (componentes, servicios) | 15 | 3 — incluye `app.spec.ts`, el scaffold genérico de Nx |
 | `room-client-runtime` (lógica extraída del cliente en `uncouple-client-logic`) | 4 | 1 |
 
-No es solo un número bajo: los archivos sin test son exactamente los que ya tienen un bug conocido documentado. `session-store.ts` (`room-client-runtime`) y `room-socket.service.ts` (`apps/web`) son los que [known-issues.md](known-issues.md) señala en *"Link directo a una sala en una pestaña nueva nunca conecta"* — `rejoinIfNeeded` vive ahí, sin ningún test que lo cubra.
+Y de una hipótesis que **resultó incorrecta al leer el código real**: que `session-store.ts` y `room-socket.service.ts` eran el hueco detrás del bug documentado en [known-issues.md](known-issues.md) ("Link directo a una sala..."). Dos cosas se cayeron al verificar:
+
+- **`session-store.ts` es solo una interfaz TypeScript** (`SessionStore`, `StoredSession`) — no tiene lógica, no hay nada que testear ahí.
+- **La lógica real (`RoomClient.rejoinIfNeeded`, en `room-client.ts`) ya tenía 11 tests**, tres de ellos sobre `rejoinIfNeeded` específicamente — incluido uno que confirma el mecanismo exacto detrás del bug (`no reingresa ni se conecta sin sesion guardada`). No es un hueco de cobertura.
+- **El bug en sí ya estaba resuelto**, sin que nadie actualizara la documentación — verificado en vivo (stack local completo, navegador real) el 2026-08-15. Ver la entrada corregida en `known-issues.md`.
+
+El hueco real, verificado, es otro:
+
+- `apps/web/src/app/core/room-session-store.ts` (`BrowserSessionStore`, la implementación de `SessionStore` con `sessionStorage` real) — sin test.
+- `home.ts` y `room.ts` — tienen lógica real (validaciones, señales computadas, y el flujo de redirect-con-query-param que resuelve el bug) y **cero tests**. Es justo la ausencia de un test ahí lo que dejó pasar el arreglo del bug sin que nada lo asentara — se rompe otra vez tan silenciosamente como se arregló.
 
 **Qué hacer**
 
-Empezar por `session-store.ts` y `room-socket.service.ts` — no solo por ser los menos cubiertos, sino porque un test ahí puede confirmar (o descartar) el bug ya documentado antes de arreglarlo. Después, el resto de `room-client-runtime` (superficie chica, lógica de dominio del cliente) y los servicios de `apps/web` con lógica real, no los componentes puramente presentacionales.
+Empezar por `home.ts`/`room.ts` — un test de regresión del flujo `/room/<código>` sin sesión → redirect a `/?room=<código>` → formulario precargado, para que ese comportamiento no se pierda una segunda vez sin que nadie se entere. Después, `BrowserSessionStore` (chico, fácil). El resto de `room-client-runtime` ya tiene buena cobertura — no hace falta tocarlo salvo que aparezca un gap concreto.
 
 **Criterio de aceptación**
 
-- [ ] `session-store.ts` y `room-socket.service.ts` tienen tests que reproducen (o descartan) el bug de *"Link directo a una sala"*.
-- [ ] `room-client-runtime` tiene cobertura de su lógica de dominio, no solo de `room-client.ts`.
-- [ ] Umbral de cobertura propio para `web` y para `room-client-runtime` — mismo criterio de trinquete que la 2.3, sin mezclarlo con el de `realtime-api` (runners distintos: Vitest vs Jest).
+- [ ] `home.ts`/`room.ts` tienen un test que cubre el flujo de reingreso sin sesión (el que resuelve el bug de "Link directo a una sala").
+- [ ] `BrowserSessionStore` (`apps/web/src/app/core/room-session-store.ts`) tiene test.
+- [ ] Umbral de cobertura propio para `web` — mismo criterio de trinquete que la 2.3, sin mezclarlo con el de `realtime-api` (runners distintos: Vitest vs Jest). `room-client-runtime` ya tiene cobertura real; si se le pone umbral, se fija en lo ya alcanzado, no en una aspiración.
 
 **Trampas**
 
 - `apps/web` usa Vitest (`@angular/build:unit-test`, `runner: vitest`), `room-client-runtime` usa Jest — dos configuraciones de cobertura separadas, no una.
 - Ver [known-issues.md](known-issues.md) — la entrada de "Vitest con Angular falla por la casing de la letra de unidad en Windows" puede reaparecer al escribir tests nuevos en `web` si el entorno tiene la variable `NX_WORKSPACE_ROOT_PATH` mal seteada.
+- `npm run dev:api` (usado para probar el flujo a mano) no setea credenciales AWS dummy — en una máquina con perfil de AWS real configurado, el backend local falla con `ResourceNotFoundException` contra DynamoDB Local aunque la tabla exista. Es el mismo aislamiento por credenciales/región que ya documenta [sam-local-dynamodb-local.md](sam-local-dynamodb-local.md) para `sam local invoke` — acá pega igual, y `docs/local-dev-workflow.md` todavía no lo menciona.
 
 ---
 

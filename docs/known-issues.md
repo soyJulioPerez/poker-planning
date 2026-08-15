@@ -295,28 +295,17 @@ Ese `if (!this.moderatorName.trim()) return;` de [home.ts:131](../apps/web/src/a
 
 > **Ver también** el problema "Test e2e inestable: participante desconectado" más abajo. Ambos fallan en el mismo punto exacto (`waitForRoomUrl` justo después de `createRoom`), en el mismo archivo de tests. Es probable que sean el mismo problema subyacente manifestándose en dos tests distintos — vale la pena investigarlos juntos, no por separado.
 
-## Link directo a una sala en una pestaña nueva nunca conecta
+## Link directo a una sala en una pestaña nueva nunca conecta ✅
 
-**Detectado**: 2026-07-06, verificando el change `deploy-web-github-pages`.
+**Detectado**: 2026-07-06, verificando el change `deploy-web-github-pages`. **Resuelto**: en algún momento entre esa fecha y el 2026-08-15, probablemente durante `uncouple-client-logic` (2026-08-01) — sin que esta entrada se actualizara. Encontrado y verificado en vivo al explorar la Fase 2.4 del roadmap.
 
-**Síntoma**: pegar la URL de una sala (ej. `/room/U9DG8K`) en una pestaña nueva —o en un navegador/sesión sin estado previo de esa sala— queda colgado en "Conectando a la sala..." para siempre. Recargar una pestaña *existente* que ya se unió a la sala funciona bien.
+**Síntoma** *(histórico, ya no reproduce)*: pegar la URL de una sala (ej. `/room/U9DG8K`) en una pestaña nueva —o en un navegador/sesión sin estado previo de esa sala— quedaba colgado en "Conectando a la sala..." para siempre.
 
-**Causa raíz**: `RoomSocketService.rejoinIfNeeded` (`apps/web/src/app/core/room-socket.service.ts`) solo reconecta si hay una sesión coincidente en `sessionStorage`:
+**Causa raíz** *(histórico)*: la lógica de reingreso solo reconectaba si había una sesión coincidente en `sessionStorage`, y no hacía nada más si no la había — ni intentaba conectar, ni ofrecía una UI alternativa para pedir el nombre. Esta entrada originalmente ubicaba la causa en `RoomSocketService.rejoinIfNeeded` (`apps/web/src/app/core/room-socket.service.ts`) — **eso también quedó desactualizado**: esa clase hoy es un adaptador fino que delega todo a `RoomClient` (`packages/room-client-runtime/src/lib/room-client.ts`), donde vive el `rejoinIfNeeded` real desde el refactor de `uncouple-client-logic`.
 
-```ts
-rejoinIfNeeded(roomId: string): void {
-  if (this.room()) return;
-  const raw = sessionStorage.getItem(SESSION_KEY);
-  if (!raw) return; // no-op: nunca conecta, nunca muestra el formulario de ingreso
-  ...
-}
-```
+**Estado actual, verificado en vivo** (stack local completo: DynamoDB Local + `dev:api` + `dev` web, navegador real vía Playwright): `apps/web/src/app/pages/room/room.ts` ya no delega ciegamente en `rejoinIfNeeded` — primero comprueba `hasSessionFor(roomId)`, y si no hay sesión, redirige a `/` con `?room=<código>` como query param. `home.ts` lee ese query param en su constructor, pone el modo en "unirse", y precarga el input de código de sala. Probado con una sala real (código `ZE69TY`): pestaña nueva → `/room/ZE69TY` → redirige a `/?room=ZE69TY` → campo "Código de sala" precargado, sin errores de consola.
 
-`sessionStorage` es por pestaña y nunca se llena hasta que el usuario efectivamente envía un nombre desde el flujo de ingreso de la home. Una pestaña recién abierta (alguien que hace clic en un link compartido) no tiene sesión, así que `rejoinIfNeeded` no hace nada en silencio — ni intenta conectar, ni ofrece una UI alternativa para pedir el nombre.
-
-**No está relacionado con**: el deploy a GitHub Pages ni el fallback SPA de `404.html` — ambos funcionan correctamente (verificado con `curl`, comparando `etag`/contenido contra `index.html`, y confirmando el `base href`). Es comportamiento preexistente de la app, reproducible también en desarrollo local.
-
-**Recomendación** (futuro change): cuando `room()` es null y no hay sesión válida para ese `roomId`, mostrar un formulario de "unirse a esta sala" (input de nombre) en vez de dejar al usuario en el estado de carga indefinidamente.
+**Lección**: nadie actualizó esta entrada cuando el comportamiento cambió. `room-client.spec.ts` sí tiene un test que cubre `rejoinIfNeeded` sin sesión guardada (`no reingresa ni se conecta sin sesion guardada`) — pero nada a nivel de `home.ts`/`room.ts` (donde vive el redirect-con-query-param) tiene cobertura, así que el arreglo pasó sin que ningún test lo dejara asentado. Ver Fase 2.4 del [hardening roadmap](hardening-roadmap.md).
 
 ## Test e2e inestable: participante desconectado
 
