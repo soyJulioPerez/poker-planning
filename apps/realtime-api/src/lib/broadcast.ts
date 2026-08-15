@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { ddb, TABLE_NAME } from './dynamo-client';
+import { tracer } from './tracer';
 import { Room, ServerMessage } from 'shared-contracts';
 
 const LOCAL_ENDPOINT_PREFIX = 'local://';
@@ -22,6 +23,7 @@ let managementClient: ApiGatewayManagementApiClient | undefined;
 function getManagementClient(endpoint: string): ApiGatewayManagementApiClient {
   if (!managementClient) {
     managementClient = new ApiGatewayManagementApiClient({ endpoint });
+    tracer.captureAWSv3Client(managementClient);
   }
   return managementClient;
 }
