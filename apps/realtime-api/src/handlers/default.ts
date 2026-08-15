@@ -15,8 +15,18 @@ import { handleCloseRoom } from '../actions/close-room';
 import { ClientRequest } from 'shared-contracts';
 
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  const connectionId = event.requestContext.connectionId;
-  const apiEndpoint = apiEndpointFromEvent(event);
+  // Separado del try/catch de JSON.parse de abajo: ese puede responderle al cliente
+  // porque ya conoce connectionId. Este no — si esto falla, todavia no hay a quien
+  // avisarle nada, asi que solo queda loguear con lo que se tenga y relanzar.
+  let connectionId: string;
+  let apiEndpoint: string;
+  try {
+    connectionId = event.requestContext.connectionId;
+    apiEndpoint = apiEndpointFromEvent(event);
+  } catch (error) {
+    logger.error('action.malformed_event', { error });
+    throw error;
+  }
 
   let request: ClientRequest;
   try {

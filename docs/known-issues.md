@@ -350,11 +350,11 @@ El path que busca es `<raíz-del-repo>/assets/images`, **no** `apps/mobile/asset
 
 **Recomendación** (futuro change): revisar el manejo de `server.rootPath` vs `projectRoot` de `withNxMetro`/`@nx/expo` en `metro.config.js`. Como workaround más simple, probar apuntar `app.json` a paths absolutos, o verificar si actualizar `@nx/expo` a una versión más reciente ya lo corrige.
 
-## `connect.ts` y `disconnect.ts` pueden crashear sin dejar un log estructurado
+## `connect.ts` y `disconnect.ts` pueden crashear sin dejar un log estructurado ✅
 
-**Detectado**: 2026-08-15, verificando el change `add-backend-alarms` — al forzar errores reales para probar que la alarma de `Errors` de Lambda dispara.
+**Detectado**: 2026-08-15, verificando el change `add-backend-alarms` — al forzar errores reales para probar que la alarma de `Errors` de Lambda dispara. **Resuelto** el mismo día, change `harden-connection-error-logging`.
 
-**Síntoma**: invocar `ConnectFunction` con un evento sin `requestContext` (`event.requestContext.connectionId` revienta) produce este crash, visible en CloudWatch:
+**Síntoma**: invocar `ConnectFunction` con un evento sin `requestContext` (`event.requestContext.connectionId` revienta) producía este crash, visible en CloudWatch:
 
 ```json
 {
@@ -367,8 +367,18 @@ El path que busca es `<raíz-del-repo>/assets/images`, **no** `apps/mobile/asset
 
 Ese log **no es el JSON de una línea que emite Powertools** (`level`, `message`, `service`, etc.) — es el formato crudo con el que el runtime de Lambda reporta una excepción no capturada. `filter level = "ERROR"` en Logs Insights no lo encuentra; hace falta `filter level = "ERROR" or @message like /Invoke Error/` para verlo (ver [aws-observability.md](aws-observability.md)).
 
-**Causa**: a diferencia de `default.ts` (que desde la Fase 4.1 nunca deja escapar una excepción sin capturarla), `connect.ts` no tiene ningún `try`/`catch` — su primera línea, `event.requestContext.connectionId`, se ejecuta *antes* del primer `logger.info`. Un fallo real ahí no llega a loguearse en formato estructurado. `disconnect.ts` está parcialmente cubierto: el broadcast best-effort al desconectar sí loguea si falla (`connection.broadcast_failed`, agregado en la Fase 4.1), pero el resto de su cuerpo —el lookup y la limpieza de la conexión— no tiene la misma protección.
+**Causa, corregida respecto al primer diagnóstico**: la primera versión de esta entrada decía que `default.ts` estaba completamente cubierto desde la Fase 4.1, "a diferencia de" `connect.ts`/`disconnect.ts`. Eso no era exacto — `default.ts` tenía el mismo hueco, acotado a sus dos primeras líneas (`event.requestContext.connectionId` y `apiEndpointFromEvent(event)`, que también lee `event.requestContext`), que corrían *antes* de su `try`/`catch` de `JSON.parse`. Los tres handlers comparten la misma primera operación (`event.requestContext.connectionId`) sin protección — no es un problema de dos handlers, es un problema de una línea repetida en tres archivos.
 
-**Consecuencia práctica, no solo teórica**: un error real de `connect.ts` no puede asociarse a un `roomId` — estructuralmente, `$connect` ocurre antes de que el cliente mande ningún `createRoom`/`joinRoom`, así que en ese punto el backend todavía no sabe de ninguna sala. Y si el crash ocurre antes del primer log (como en el ejemplo de arriba), tampoco queda un `connectionId` — el único rastro es el `RequestId` de Lambda, que identifica la invocación pero no a ningún usuario.
+**Dos categorías con valor muy distinto**, que conviene no mezclar:
+- **Las llamadas a DynamoDB** de `connect.ts`/`disconnect.ts` (`PutCommand`, `GetCommand`, `UpdateCommand`, `DeleteCommand`) — estas sí pueden fallar con tráfico real (throttling, un problema transitorio), y no tener ese fallo logueado sí era una pérdida real de observabilidad.
+- **La extracción de `event.requestContext.connectionId`** — API Gateway completa `requestContext` siempre para las tres rutas de un WebSocket genuino (`$connect`, `$disconnect`, `$default`); esto solo revienta con una invocación sintética o malformada, como la que se usó para forzar la alarma de la Fase 4.2. No es una vulnerabilidad de producción.
 
-**Recomendación** (futuro change): envolver el cuerpo de `connect.ts` en `try`/`catch` y auditar el resto de `disconnect.ts`, con el mismo criterio que ya se aplicó a `default.ts` en la Fase 4.1 — un log de error con el contexto disponible (`connectionId`, lo que se pueda leer del evento) antes de relanzar o responder. No bloquea nada hoy: las tres funciones siguen respondiendo correctamente ante tráfico real; el hueco es de observabilidad, no de comportamiento.
+**Solución aplicada**: los tres handlers relanzan después de loguear, no tragan el error — a diferencia del `switch` de acciones de `default.ts`, ninguno de estos tres puntos tiene un cliente WebSocket identificado al que responderle, así que tragar el error no protege nada y además dejaría ciega a la alarma `lambda-errors` de la Fase 4.2 para estos casos. `connect.ts` envuelve todo su cuerpo (`connection.open_failed`); `disconnect.ts` gana un `try`/`catch` exterior nuevo que cubre todo lo que no tenía protección, sin tocar el catch best-effort del broadcast (`connection.close_failed`); `default.ts` envuelve sus dos líneas iniciales en un `try`/`catch` propio, separado del de `JSON.parse` (`action.malformed_event`).
+
+**Verificado en `dev` real**: se repitió la misma invocación (`aws lambda invoke` contra `ConnectFunction` con un evento vacío) que forzó la alarma en la Fase 4.2. La respuesta del invoke sigue mostrando el mismo `FunctionError: "Unhandled"` —esperado, porque el código relanza a propósito—, pero ahora CloudWatch tiene, *antes* del crash crudo de Lambda, la línea JSON de Powertools que faltaba:
+
+```json
+{"level":"ERROR","message":"connection.open_failed","service":"realtime-api","error":{"name":"TypeError","location":"/var/task/connect.js:65","message":"Cannot read properties of undefined (reading 'connectionId')","stack":"..."}}
+```
+
+`filter level = "ERROR"` en Logs Insights ya la encuentra sin necesitar el `@message like /Invoke Error/` que hacía falta antes.

@@ -66,3 +66,33 @@ describe('handler (disconnect) — el broadcast best-effort', () => {
     warnSpy.mockRestore();
   });
 });
+
+// A diferencia del broadcast, esto no es best-effort: la limpieza en si (el lookup de la
+// conexion, marcar al participante, o el borrado final) debe relanzar si falla, para que
+// la alarma de Errors de Lambda no quede ciega ante un fallo real de limpieza.
+describe('handler (disconnect) — un fallo real en la limpieza', () => {
+  it('loguea el error y relanza si falla el lookup de la conexion', async () => {
+    ddbMock
+      .on(GetCommand, { TableName: TABLE_NAME, Key: { PK: `CONN#${CONNECTION_ID}`, SK: 'META' } })
+      .rejects(new Error('ProvisionedThroughputExceededException'));
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    let thrown: unknown;
+    try {
+      await handler(evento(), {} as never, () => undefined);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe('ProvisionedThroughputExceededException');
+    // El lookup fallo antes de conocer el roomId, asi que el log solo puede traer el
+    // connectionId.
+    expect(errorSpy).toHaveBeenCalledWith(
+      'connection.close_failed',
+      expect.objectContaining({ connectionId: CONNECTION_ID, roomId: undefined })
+    );
+
+    errorSpy.mockRestore();
+  });
+});
