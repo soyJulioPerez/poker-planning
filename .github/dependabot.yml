@@ -1,0 +1,222 @@
+# Actualización automática de dependencias — Fase 5.1 del hardening roadmap.
+#
+# Agrupado por familia, cadencia semanal, contra `develop` (no el branch por
+# defecto del repo, que es `master`). El porqué de cada decisión está en
+# openspec/changes/archive/2026-08-15-add-dependabot-config/design.md una vez
+# archivado el change; hasta entonces, en openspec/changes/add-dependabot-config/.
+#
+# Angular, Nx y Expo/React Native quedan fuera del agrupado automático para
+# `major`: esas actualizaciones necesitan `nx migrate` / `expo upgrade`, no un
+# bump mecánico de package.json, así que salen como PR individual en vez de
+# esconderse dentro de un grupo. El grupo catch-all (`build-tooling`) excluye
+# esos mismos patrones a propósito — sin el `exclude-patterns`, un major de
+# esas familias caería igual ahí, solo que agrupado.
+
+version: 2
+
+updates:
+  # Raíz del workspace: apps/web, apps/realtime-api, packages/*, y las
+  # dependencias de apps/mobile que también viven acá (hoisting).
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@schematics/angular"
+          - "angular-eslint"
+          - "zone.js"
+        update-types:
+          - "minor"
+          - "patch"
+      nx:
+        patterns:
+          - "@nx/*"
+          - "nx"
+        update-types:
+          - "minor"
+          - "patch"
+      expo-react-native:
+        patterns:
+          - "expo"
+          - "expo-*"
+          - "@expo/*"
+          - "react"
+          - "react-dom"
+          - "react-native"
+          - "react-native-*"
+          - "@react-navigation/*"
+          - "@testing-library/react-native"
+          - "babel-preset-expo"
+          - "jest-expo"
+          - "metro-*"
+          - "react-test-renderer"
+        update-types:
+          - "minor"
+          - "patch"
+      aws-sdk:
+        patterns:
+          - "@aws-sdk/*"
+          - "@aws-lambda-powertools/*"
+          - "aws-sdk-client-mock"
+      lint-and-format:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "@typescript-eslint/*"
+          - "typescript-eslint"
+          - "prettier"
+          - "jsonc-eslint-parser"
+      testing:
+        patterns:
+          - "jest*"
+          - "@types/jest"
+          - "ts-jest"
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/*"
+          - "supertest"
+          - "@types/supertest"
+          - "babel-jest"
+      build-tooling:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@schematics/angular"
+          - "angular-eslint"
+          - "zone.js"
+          - "@nx/*"
+          - "nx"
+          - "expo"
+          - "expo-*"
+          - "@expo/*"
+          - "react"
+          - "react-dom"
+          - "react-native"
+          - "react-native-*"
+          - "@react-navigation/*"
+          - "@testing-library/react-native"
+          - "babel-preset-expo"
+          - "jest-expo"
+          - "metro-*"
+          - "react-test-renderer"
+
+  # apps/mobile tiene su propio package.json + package-lock.json, separado del
+  # raíz desde la Fase 1.1: el executor @nx/expo:build corrompe el lockfile si
+  # comparte uno con el resto del workspace. Sin esta entrada, sus
+  # dependencias quedarían fuera de cualquier actualización automática.
+  - package-ecosystem: "npm"
+    directory: "/apps/mobile"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@schematics/angular"
+          - "angular-eslint"
+          - "zone.js"
+        update-types:
+          - "minor"
+          - "patch"
+      nx:
+        patterns:
+          - "@nx/*"
+          - "nx"
+        update-types:
+          - "minor"
+          - "patch"
+      expo-react-native:
+        patterns:
+          - "expo"
+          - "expo-*"
+          - "@expo/*"
+          - "react"
+          - "react-dom"
+          - "react-native"
+          - "react-native-*"
+          - "@react-navigation/*"
+          - "@testing-library/react-native"
+          - "babel-preset-expo"
+          - "jest-expo"
+          - "metro-*"
+          - "react-test-renderer"
+        update-types:
+          - "minor"
+          - "patch"
+      aws-sdk:
+        patterns:
+          - "@aws-sdk/*"
+          - "@aws-lambda-powertools/*"
+          - "aws-sdk-client-mock"
+      lint-and-format:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "@typescript-eslint/*"
+          - "typescript-eslint"
+          - "prettier"
+          - "jsonc-eslint-parser"
+      testing:
+        patterns:
+          - "jest*"
+          - "@types/jest"
+          - "ts-jest"
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/*"
+          - "supertest"
+          - "@types/supertest"
+          - "babel-jest"
+      build-tooling:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@schematics/angular"
+          - "angular-eslint"
+          - "zone.js"
+          - "@nx/*"
+          - "nx"
+          - "expo"
+          - "expo-*"
+          - "@expo/*"
+          - "react"
+          - "react-dom"
+          - "react-native"
+          - "react-native-*"
+          - "@react-navigation/*"
+          - "@testing-library/react-native"
+          - "babel-preset-expo"
+          - "jest-expo"
+          - "metro-*"
+          - "react-test-renderer"
+
+  # Versiones de las actions usadas en .github/workflows/. No es un criterio
+  # de aceptación explícito de la Fase 5.1, pero es la misma superficie de
+  # supply chain (ver design.md, Decisión 6) — bajo riesgo, sin la
+  # complicación de migración asistida que sí tienen Angular/Nx/Expo, así que
+  # va todo en un único grupo.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
