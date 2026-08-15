@@ -20,6 +20,13 @@ Parameters:
       lo cual borra las salas que existan en ese momento. Aceptado a propósito:
       las salas son efímeras (TTL, sin historial entre sesiones).
 
+  NotificationEmail:
+    Type: String
+    Description: >
+      Destino de las alarmas de CloudWatch. SNS manda un link de confirmacion
+      a esta direccion tras el deploy; hasta que se confirma a mano, ninguna
+      notificacion se entrega.
+
 Mappings:
   LogRetention:
     dev:
@@ -28,6 +35,16 @@ Mappings:
       Days: 7
     prod:
       Days: 14
+  AlarmThresholds:
+    dev:
+      LambdaErrorsPerFiveMin: 3
+      IntegrationErrorsPerFiveMin: 3
+    qa:
+      LambdaErrorsPerFiveMin: 3
+      IntegrationErrorsPerFiveMin: 3
+    prod:
+      LambdaErrorsPerFiveMin: 1
+      IntegrationErrorsPerFiveMin: 1
 
 Globals:
   Function:
@@ -226,6 +243,199 @@ Resources:
               Action:
                 - execute-api:ManageConnections
               Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+  # Notificacion proactiva: los logs (add-backend-structured-logging) y el tracing
+  # (add-backend-tracing) sirven para diagnosticar despues de enterarse de un problema.
+  # Esto es lo que avisa que hay que mirar. Un topic por ambiente porque cada ambiente
+  # ya es un stack separado, sin recursos compartidos entre si.
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'poker-planning-${Environment}-alerts'
+
+  AlertsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # Las tres alarmas de Lambda agregan connect+disconnect+default con metric math en vez
+  # de una alarma por funcion (9 recursos): con los logs y el tracing ya cubriendo el
+  # diagnostico fino, alcanza con saber que alguna de las tres tuvo un problema. SUM para
+  # conteos de eventos discretos (Errors, Throttles); MAX para p99 de Duration, porque
+  # promediar percentiles entre funciones no tiene sentido estadistico pero el maximo si.
+  LambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'poker-planning-${Environment}-lambda-errors'
+      AlarmDescription: Errores combinados de connect+disconnect+default por encima del umbral del ambiente.
+      Metrics:
+        - Id: connectErrors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ConnectFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: disconnectErrors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DisconnectFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: defaultErrors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DefaultFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: totalErrors
+          Expression: 'connectErrors + disconnectErrors + defaultErrors'
+          Label: Errores combinados de las tres funciones
+          ReturnData: true
+      EvaluationPeriods: 1
+      Threshold: !FindInMap [AlarmThresholds, !Ref Environment, LambdaErrorsPerFiveMin]
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+
+  LambdaThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'poker-planning-${Environment}-lambda-throttles'
+      AlarmDescription: Al menos un throttle en connect, disconnect o default. No varia por ambiente.
+      Metrics:
+        - Id: connectThrottles
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Throttles
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ConnectFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: disconnectThrottles
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Throttles
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DisconnectFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: defaultThrottles
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Throttles
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DefaultFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: totalThrottles
+          Expression: 'connectThrottles + disconnectThrottles + defaultThrottles'
+          Label: Throttles combinados de las tres funciones
+          ReturnData: true
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+
+  LambdaDurationP99Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'poker-planning-${Environment}-lambda-duration-p99'
+      AlarmDescription: La mas lenta de las tres funciones supera 5s de p99. No varia por ambiente (mitad del Timeout de 10s).
+      Metrics:
+        - Id: connectP99
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Duration
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ConnectFunction
+            Period: 300
+            Stat: p99
+          ReturnData: false
+        - Id: disconnectP99
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Duration
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DisconnectFunction
+            Period: 300
+            Stat: p99
+          ReturnData: false
+        - Id: defaultP99
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Duration
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DefaultFunction
+            Period: 300
+            Stat: p99
+          ReturnData: false
+        - Id: maxP99
+          Expression: 'MAX([connectP99, disconnectP99, defaultP99])'
+          Label: p99 mas alto de las tres funciones
+          ReturnData: true
+      EvaluationPeriods: 1
+      Threshold: 5000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+
+  # IntegrationError es el equivalente funcional a "5xx" para un WebSocket API: X-Ray y
+  # este namespace de metricas tratan las WebSocket APIs distinto de las REST/HTTP APIs,
+  # que si tienen una metrica "5xx" dedicada. Ver add-backend-alarms/design.md.
+  ApiGatewayIntegrationErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'poker-planning-${Environment}-apigw-integration-errors'
+      AlarmDescription: Errores 4XX/5XX devueltos por la integracion del WebSocket API, por encima del umbral del ambiente.
+      Namespace: AWS/ApiGateway
+      MetricName: IntegrationError
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref WebSocketApi
+      Period: 300
+      Statistic: Sum
+      EvaluationPeriods: 1
+      Threshold: !FindInMap [AlarmThresholds, !Ref Environment, IntegrationErrorsPerFiveMin]
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
 
 Outputs:
   WebSocketUrl:

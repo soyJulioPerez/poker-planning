@@ -349,3 +349,26 @@ El path que busca es `<raíz-del-repo>/assets/images`, **no** `apps/mobile/asset
 **Descartado como causa**: no es haber corrido el comando desde la carpeta equivocada — se confirmó que se ejecutaba desde `apps/mobile`.
 
 **Recomendación** (futuro change): revisar el manejo de `server.rootPath` vs `projectRoot` de `withNxMetro`/`@nx/expo` en `metro.config.js`. Como workaround más simple, probar apuntar `app.json` a paths absolutos, o verificar si actualizar `@nx/expo` a una versión más reciente ya lo corrige.
+
+## `connect.ts` y `disconnect.ts` pueden crashear sin dejar un log estructurado
+
+**Detectado**: 2026-08-15, verificando el change `add-backend-alarms` — al forzar errores reales para probar que la alarma de `Errors` de Lambda dispara.
+
+**Síntoma**: invocar `ConnectFunction` con un evento sin `requestContext` (`event.requestContext.connectionId` revienta) produce este crash, visible en CloudWatch:
+
+```json
+{
+  "errorType": "TypeError",
+  "errorMessage": "Cannot read properties of undefined (reading 'connectionId')",
+  "stack": ["TypeError: Cannot read properties of undefined (reading 'connectionId')",
+    "    at BufferedInvokeProcessor.Yye [as handler] (/var/task/connect.js:65:15830)", "..."]
+}
+```
+
+Ese log **no es el JSON de una línea que emite Powertools** (`level`, `message`, `service`, etc.) — es el formato crudo con el que el runtime de Lambda reporta una excepción no capturada. `filter level = "ERROR"` en Logs Insights no lo encuentra; hace falta `filter level = "ERROR" or @message like /Invoke Error/` para verlo (ver [aws-observability.md](aws-observability.md)).
+
+**Causa**: a diferencia de `default.ts` (que desde la Fase 4.1 nunca deja escapar una excepción sin capturarla), `connect.ts` no tiene ningún `try`/`catch` — su primera línea, `event.requestContext.connectionId`, se ejecuta *antes* del primer `logger.info`. Un fallo real ahí no llega a loguearse en formato estructurado. `disconnect.ts` está parcialmente cubierto: el broadcast best-effort al desconectar sí loguea si falla (`connection.broadcast_failed`, agregado en la Fase 4.1), pero el resto de su cuerpo —el lookup y la limpieza de la conexión— no tiene la misma protección.
+
+**Consecuencia práctica, no solo teórica**: un error real de `connect.ts` no puede asociarse a un `roomId` — estructuralmente, `$connect` ocurre antes de que el cliente mande ningún `createRoom`/`joinRoom`, así que en ese punto el backend todavía no sabe de ninguna sala. Y si el crash ocurre antes del primer log (como en el ejemplo de arriba), tampoco queda un `connectionId` — el único rastro es el `RequestId` de Lambda, que identifica la invocación pero no a ningún usuario.
+
+**Recomendación** (futuro change): envolver el cuerpo de `connect.ts` en `try`/`catch` y auditar el resto de `disconnect.ts`, con el mismo criterio que ya se aplicó a `default.ts` en la Fase 4.1 — un log de error con el contexto disponible (`connectionId`, lo que se pueda leer del evento) antes de relanzar o responder. No bloquea nada hoy: las tres funciones siguen respondiendo correctamente ante tráfico real; el hueco es de observabilidad, no de comportamiento.
