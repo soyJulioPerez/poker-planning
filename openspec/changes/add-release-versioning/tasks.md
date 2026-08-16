@@ -8,8 +8,8 @@
 
 - [x] 2.1 Actualizar `specs/continuous-integration/spec.md` de este change con la gramática exacta a exigir: los 11 tipos estándar de Conventional Commits (`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test` — el repo ya usa 6 de esos 11: `docs`/`feat`/`fix`/`test`/`chore`/`ci`, verificado contra `git log`), scope opcional (nunca usado hasta ahora, no se exige), `!` de breaking change opcional (tampoco usado). Sin esto explícito, "sigue Conventional Commits" es ambiguo para quien implemente el check.
 - [x] 2.2 Agregar un job nuevo a `.github/workflows/ci.yml` que valide `github.event.pull_request.title` contra la gramática de 2.1 (evaluar `amannn/action-semantic-pull-request` u equivalente) — corre solo en el evento `pull_request`, no en push. → job `pr-title`, `amannn/action-semantic-pull-request@v6`, `types` explícitos (verificado contra la doc real de la action, no supuesto), YAML validado con `js-yaml`.
-- [ ] 2.3 El job SHALL bloquear el merge si el título no cumple — agregarlo a los checks obligatorios de branch protection en `develop` y `master` (mismo mecanismo que `verify`/`e2e`, Fase 1.3).
-- [ ] 2.4 Verificar en un PR real (este mismo change) que el check aparece y pasa con un título bien formado.
+- [x] 2.3 El job SHALL bloquear el merge si el título no cumple — agregarlo a los checks obligatorios de branch protection en `develop` y `master` (mismo mecanismo que `verify`/`e2e`, Fase 1.3). → Confirmado en vivo con `gh api`: ambas ramas quedaron con `["verify", "e2e", "pr-title"]`.
+- [x] 2.4 Verificar en un PR real (este mismo change) que el check aparece y pasa con un título bien formado. → PR #27: `pr-title` corrió en 5s, `pass`.
 
 ## 3. Changelog dentro de la rama de release
 
