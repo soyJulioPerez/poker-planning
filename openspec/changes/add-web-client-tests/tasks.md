@@ -35,5 +35,5 @@
 
 ## 6. Pull request
 
-- [ ] 6.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
+- [x] 6.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR. → ya estaba al día, sin nada que rebasar.
 - [ ] 6.2 Abrir PR contra `develop` con `gh pr create`, mensaje en Conventional Commits.
