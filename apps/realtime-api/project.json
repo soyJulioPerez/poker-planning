@@ -96,6 +96,14 @@
         }
       }
     },
+    "smoke-test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["room-client-runtime:build"],
+      "options": {
+        "cwd": "apps/realtime-api",
+        "command": "node scripts/smoke-test.mjs"
+      }
+    },
     "deploy": {
       "executor": "nx:run-commands",
       "defaultConfiguration": "dev",
