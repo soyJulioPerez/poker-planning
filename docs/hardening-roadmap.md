@@ -570,6 +570,21 @@ Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona
 - [ ] Plantilla de PR que pida el link al change de OpenSpec correspondiente. Cierra el ciclo entre el proceso de diseño y el de revisión, que hoy están desconectados.
 - [ ] `commitlint` en CI para que Conventional Commits sea verificado y no solo una costumbre (prerequisito real de 7.1: si un commit se escapa del formato, el changelog sale mal).
 
+### 7.3 — Specs de OpenSpec con `Purpose` sin completar
+
+**El problema**
+
+`openspec validate --specs --strict` (comando manual, ningún job de CI lo corre hoy) marca 9 de las 16 capabilities en rojo — todas por la misma razón: `## Purpose` quedó en el placeholder que deja `/opsx:archive` (`TBD` a secas, o `TBD - created by archiving change X. Update Purpose after archive.`) sin que nadie lo reemplazara por una descripción real. Afecta a `backend-deployment`, `estimation-session`, `mobile-app`, `mobile-preview-builds`, `participant-identity`, `room-client-runtime`, `room-management`, `session-summary` y `web-static-deployment`. No es un problema funcional — los requirements de esas specs son válidos y están al día — es puramente la sección `Purpose` sin escribir.
+
+**Qué hacer**
+
+Escribir un párrafo real de `Purpose` en cada una de las 9 (una o dos frases: qué cubre la capability y por qué existe como capability separada). Trabajo mecánico, sin decisiones de diseño.
+
+**Criterio de aceptación**
+
+- [ ] Las 9 capabilities listadas tienen un `## Purpose` real, no un placeholder.
+- [ ] `openspec validate --specs --strict` pasa sin warnings de "Purpose section is too brief" en ninguna spec.
+
 ---
 
 ## Deuda menor detectada de paso
