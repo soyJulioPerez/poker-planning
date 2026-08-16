@@ -40,4 +40,4 @@
 ## 7. Pull request
 
 - [x] 7.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
-- [ ] 7.2 Abrir PR contra `develop` con `gh pr create`, título en Conventional Commits — `ci:` o `feat:` según corresponda (no es una feature de la app, ver la corrección del PR #27).
+- [x] 7.2 Abrir PR contra `develop` con `gh pr create`, título en Conventional Commits — `ci:` (no es una feature de la app, ver la corrección del PR #27). → [PR #30](https://github.com/soyJulioPerez/poker-planning/pull/30).
