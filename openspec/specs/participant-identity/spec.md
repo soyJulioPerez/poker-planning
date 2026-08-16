@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre la identidad visual opcional de un participante: el catálogo de grupos de íconos, su selección al crear o unirse a una sala, y cómo se muestran junto al nombre en la lista de participantes. Es una decoración sobre la identidad real, que sigue resolviéndose por nombre en `room-management` — dos participantes pueden compartir ícono, nunca nombre.
 
 ## Requirements
 

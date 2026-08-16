@@ -19,7 +19,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ✅ Completa | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
-| 7 | [Release y colaboración](#fase-7--release-y-colaboración) | ⬜ Pendiente | 1 |
+| 7 | [Release y colaboración](#fase-7--release-y-colaboración) | 🟡 7.3 hecha · 7.1 y 7.2 pendientes | 1 |
 
 ---
 
@@ -570,7 +570,9 @@ Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona
 - [ ] Plantilla de PR que pida el link al change de OpenSpec correspondiente. Cierra el ciclo entre el proceso de diseño y el de revisión, que hoy están desconectados.
 - [ ] `commitlint` en CI para que Conventional Commits sea verificado y no solo una costumbre (prerequisito real de 7.1: si un commit se escapa del formato, el changelog sale mal).
 
-### 7.3 — Specs de OpenSpec con `Purpose` sin completar
+### 7.3 — Specs de OpenSpec con `Purpose` sin completar ✅
+
+> **Hecha** el 2026-08-16. Se escribió un `## Purpose` real (1-2 oraciones, en español, basado en los requirements existentes de cada spec) en las 9 capabilities listadas abajo, sin tocar sus requirements. `openspec validate --specs --strict --json` confirma `valid: true` en las 9, sin ningún warning de "Purpose section is too brief" — quedan únicamente los INFO de "Requirement text is very long" en `backend-deployment`, `estimation-session` y `room-management`, que no son parte de este ítem.
 
 **El problema**
 
@@ -582,8 +584,8 @@ Escribir un párrafo real de `Purpose` en cada una de las 9 (una o dos frases: q
 
 **Criterio de aceptación**
 
-- [ ] Las 9 capabilities listadas tienen un `## Purpose` real, no un placeholder.
-- [ ] `openspec validate --specs --strict` pasa sin warnings de "Purpose section is too brief" en ninguna spec.
+- [x] Las 9 capabilities listadas tienen un `## Purpose` real, no un placeholder.
+- [x] `openspec validate --specs --strict` pasa sin warnings de "Purpose section is too brief" en ninguna spec.
 
 ---
 

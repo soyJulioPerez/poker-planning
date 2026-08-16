@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre el seguimiento agregado de una sesión de estimación: el contador de historias resueltas y la puntuación acumulada, visibles en vivo durante toda la sesión, y el resumen final que se muestra al cerrar la sala. Es distinta de `estimation-session` porque agrega resultados a través de múltiples historias, no la mecánica de una ronda individual.
 
 ## Requirements
 

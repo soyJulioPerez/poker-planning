@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Define cómo y cuándo el backend (`realtime-api`) llega a AWS: qué push dispara qué ambiente, que el deploy dependa de que la verificación completa —incluidos los e2e— haya pasado, y el aislamiento de cada ambiente en su propio stack de CloudFormation. Cubre además el rollback manual sin reescribir la historia de `master` y la autenticación por OIDC, sin credenciales de larga duración en GitHub.
 ## Requirements
 ### Requirement: Automated build and deploy to AWS on relevant changes
 
