@@ -359,7 +359,12 @@ jobs:
       group: deploy-backend
       cancel-in-progress: false
     steps:
+      # fetch-depth:0 (a diferencia del resto de los jobs de deploy): el diagnóstico
+      # de rollback de la Fase 6.1 necesita `HEAD^` para calcular el tag anterior — un
+      # checkout shallow (depth 1, el default) no tiene padre que resolver.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -377,6 +382,54 @@ jobs:
 
       # master → prod, release/** → qa
       - run: npx nx deploy realtime-api --configuration=${{ github.ref == 'refs/heads/master' && 'prod' || 'qa' }} --outputStyle=static
+
+      # Fase 6.1: solo contra prod — qa no lleva smoke test (ver design.md del change
+      # add-backend-smoke-test, Decisión 4). Los outputs del stack ya existen
+      # (infra/template.yaml), no hace falta hardcodear ni deducir la URL/tabla.
+      - name: Leer outputs del stack (solo prod)
+        if: github.ref == 'refs/heads/master'
+        id: stack-outputs
+        run: |
+          ws_url=$(aws cloudformation describe-stacks --stack-name poker-planning-prod --query "Stacks[0].Outputs[?OutputKey=='WebSocketUrl'].OutputValue" --output text)
+          table_name=$(aws cloudformation describe-stacks --stack-name poker-planning-prod --query "Stacks[0].Outputs[?OutputKey=='TableName'].OutputValue" --output text)
+          echo "ws-url=$ws_url" >> "$GITHUB_OUTPUT"
+          echo "table-name=$table_name" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test contra prod
+        if: github.ref == 'refs/heads/master'
+        id: smoke-test
+        run: npx nx run realtime-api:smoke-test -- --ws-url=${{ steps.stack-outputs.outputs.ws-url }} --table=${{ steps.stack-outputs.outputs.table-name }}
+
+      # No hace rollback solo — el deploy ya se aplicó. Imprime la instrucción con el
+      # tag real (no un placeholder) y, si puede, las últimas líneas de error del
+      # handler que concentra la lógica de sala — para no tener que salir de CI a
+      # empezar a investigar. Un fallo leyendo los logs (por ejemplo, permisos IAM
+      # insuficientes en el rol de deploy, provisto fuera de este repo) no debe tapar
+      # la instrucción de rollback, que es la parte crítica.
+      - name: Diagnóstico y rollback si el smoke test falló
+        if: always() && steps.smoke-test.outcome == 'failure'
+        run: |
+          git fetch --tags --force --quiet
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          echo "::group::Últimos errores en /aws/lambda/poker-planning-prod-default"
+          aws logs filter-log-events \
+            --log-group-name /aws/lambda/poker-planning-prod-default \
+            --start-time "$(( ($(date +%s) - 300) * 1000 ))" \
+            --filter-pattern '{ $.level = "ERROR" }' \
+            --query 'events[*].message' --output text \
+            || echo "No se pudo leer el log (¿permisos del rol de deploy?)"
+          echo "::endgroup::"
+
+          echo "### ✗ Smoke test falló contra prod — el deploy YA se aplicó" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$previous_tag" ]; then
+            echo "Para revertir manualmente:" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "gh workflow run deploy-backend.yml -f environment=prod -f ref=$previous_tag" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No se encontró un tag anterior automáticamente — revisar \`git tag -l\` a mano antes de revertir." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # El checkout de este job no trae tags (sin fetch-depth:0) — se traen aparte,
       # sin descargar el resto de la historia. `--always` evita que el paso falle si

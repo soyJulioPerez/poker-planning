@@ -18,7 +18,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ✅ Completa | 1 |
-| 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
+| 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | 🟡 6.1 hecha · 6.2 pendiente | 1, 4 |
 | 7 | [Release y colaboración](#fase-7--release-y-colaboración) | 🟡 7.1 y 7.3 hechas · 7.2 pendiente | 1 |
 
 ---
@@ -505,21 +505,23 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 
 ## Fase 6 — Confianza en el deploy
 
-### 6.1 — Smoke test post-deploy
+### 6.1 — Smoke test post-deploy ✅
 
-**El problema**
-
-[deploy-backend.yml](../.github/workflows/deploy-backend.yml) termina en `sam deploy` y reporta éxito. Pero "el stack se actualizó" no es lo mismo que "la app funciona": el deploy puede salir verde con la API completamente rota.
-
-**Qué hacer**
-
-Agregar un step después de `sam deploy` que abra un WebSocket contra el endpoint recién desplegado, cree una sala, se una, vote y cierre. Si falla, el workflow falla.
+> **Hecha** el 2026-08-16, change `add-backend-smoke-test`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **Solo contra `prod`, no contra todos los ambientes** — decisión explícita, no una limitación técnica. `qa` no lleva smoke test.
+> - **"Cierra la sala" no significa lo que decía el borrador.** `closeRoom` no borra nada de DynamoDB, solo emite un broadcast (`roomClosed`) — verificado leyendo `apps/realtime-api/src/actions/close-room.ts`. La limpieza real es un `DeleteCommand` explícito contra la tabla, en un `finally` que corre pase lo que pase.
+> - **La secuencia necesitó un paso extra no anticipado: `nextStory`.** `vote`/`reveal` rechazan con "No story assigned yet" si la sala no tiene `currentStoryTitle` asignado — `createRoom` lo deja en `null` a propósito. Sin este paso, la secuencia original (crear/unir/votar/revelar) nunca hubiera pasado del primer voto.
+> - **Reusa `RoomClient` de `room-client-runtime`** en vez de reimplementar el protocolo WebSocket — confirmado en vivo que corre en Node sin el paquete `ws`: Node 22/24 ya traen `WebSocket` como global nativo.
+> - **El import de `room-client-runtime` desde el script es por path relativo al build**, no por el nombre del paquete — ese specifier solo resuelve vía `tsconfig.base.json` paths dentro del toolchain de Nx/TS, un script Node plano no lo ve. Confirmado además que ese import no dispara `enforce-module-boundaries` (la regla no lo reconoce como dependencia cross-proyecto al no ser el specifier del paquete).
+> - **Sin rollback automático** (decisión explícita) — pero si el smoke test falla, el resumen del run incluye la instrucción exacta de rollback (con el tag anterior ya calculado) y, best-effort, las últimas líneas de error de CloudWatch Logs del handler `default`.
+> - **Verificación parcial**: sin Docker ni acceso a AWS en el entorno donde se implementó, no se pudo correr la secuencia completa exitosa contra un stack real. Sí se verificó en vivo el camino de fallo completo (timeout, exit code, limpieza correctamente salteada, wiring del target de Nx). La corrida contra `prod` de verdad queda como primera verificación real, no forzada de antemano.
 
 **Criterio de aceptación**
 
-- [ ] Corre contra la URL del ambiente que se acaba de desplegar (leída de los outputs del stack, no hardcodeada).
-- [ ] Un endpoint roto deja el deploy en rojo.
-- [ ] Se limpia lo que crea (la sala de prueba no queda dando vueltas — el TTL ayuda, pero no conviene depender de eso).
+- [x] Corre contra la URL del ambiente que se acaba de desplegar (leída de los outputs del stack, no hardcodeada).
+- [x] Un endpoint roto deja el deploy en rojo.
+- [x] Se limpia lo que crea (`DeleteCommand` explícito, no depende de `closeRoom` ni del TTL).
 
 ### 6.2 — Multi-ambiente para web
 
