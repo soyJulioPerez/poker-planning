@@ -17,7 +17,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1, 2.2 y 2.3 hechas · 2.4 pendiente | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
-| 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ⬜ Pendiente | 1 |
+| 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ✅ Completa | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
 | 7 | [Release y colaboración](#fase-7--release-y-colaboración) | ⬜ Pendiente | 1 |
 
@@ -479,19 +479,19 @@ Nota de contexto: la app no tiene autenticación por diseño (salas efímeras si
 
 - `npm audit` sobre devDependencies genera mucho falso positivo (una vulnerabilidad en una herramienta de build no es la misma que una en runtime). Si rompe el build por todo, en dos semanas alguien le pone `|| true` — y ahí se pierde la señal para siempre.
 
-### 5.3 — Análisis estático y secret scanning 🟡
+### 5.3 — Análisis estático y secret scanning ✅
 
-> **🟡 Parcial** el 2026-08-15, change `add-codeql-scanning`. Lo que quedó distinto de lo que este documento anticipaba:
+> **Hecha** el 2026-08-15, change `add-codeql-scanning`. Lo que quedó distinto de lo que este documento anticipaba:
 >
 > - **CodeQL cubre las dos apps con un solo lenguaje.** `apps/web` y `apps/realtime-api` son ambos JS/TS, y CodeQL analiza por lenguaje, no por proyecto de Nx — no hizo falta matrix ni un job por app. `.github/workflows/codeql.yml` corre en `pull_request` y `push` a `develop`/`master`, más un cron semanal para detectar hallazgos nuevos sobre código que no cambió.
 > - **Sin paso de build.** A diferencia de lenguajes compilados, el extractor de JS/TS de CodeQL parsea el código fuente directamente — no hace falta `npm ci` ni `nx build` antes de analizar.
 > - **`infra/env.json` está limpio**: nunca estuvo trackeado (verificado con `git log --all --full-history` sobre el archivo, sin resultados), y la entrada de `.gitignore` lo cubre. `infra/env.json.example` solo tiene placeholders (`DYNAMODB_ENDPOINT` de ejemplo, sin credenciales). La intención — ejemplo trackeado, real ignorado — se cumple de hecho, no solo de nombre. No hubo que rotar nada.
-> - **Secret scanning + push protection queda pendiente, y a propósito no se implementó acá.** Es un toggle de Settings del repositorio en GitHub, no un archivo versionable — algunos planes de organización ni lo exponen vía API, y activarlo requiere permisos de administración del repo que un change de código no tiene. Queda como checkbox sin marcar en el `tasks.md` del change, con el paso documentado en la descripción del PR para quien lo revise.
+> - **Secret scanning + push protection no se activaron desde código.** Es un toggle de Settings del repositorio en GitHub, no un archivo versionable — quedó fuera del PR a propósito, documentado como acción manual pendiente. El dueño del repo lo activó por separado el mismo día (Settings → Advanced Security), confirmado en `tasks.md` del change.
 
 **Criterio de aceptación**
 
 - [x] CodeQL activo para JavaScript/TypeScript (workflow provisto por GitHub).
-- [ ] Secret scanning + push protection activados en Settings del repo. **Pendiente — acción manual del dueño del repo, ver nota arriba.**
+- [x] Secret scanning + push protection activados en Settings del repo. Activados el 2026-08-15 por el dueño del repo (fuera de CI, es un toggle de Settings).
 - [x] Revisado que [infra/env.json](../infra/env.json) no tenga secretos commiteados y que esté en `.gitignore` (existe `env.json.example`, así que la intención está — confirmado que se cumple).
 
 ---

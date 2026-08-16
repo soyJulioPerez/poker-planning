@@ -30,11 +30,11 @@
 
 > Esto NO se implementa en este change. Ver `proposal.md` (Non-Goals) y `design.md` (Non-Goals) para el porqué: es un toggle de Settings de GitHub, no un archivo versionable, y en algunos planes de organización ni siquiera está expuesto vía API.
 
-- [ ] 5.1 Activar **Secret scanning** en Settings → Code security del repositorio (requiere permisos de administración, fuera del alcance de un PR/CI).
-- [ ] 5.2 Activar **Push protection** en la misma sección, una vez que secret scanning esté activo.
+- [x] 5.1 Activar **Secret scanning** en Settings → Code security del repositorio (requiere permisos de administración, fuera del alcance de un PR/CI). → Confirmado activo el 2026-08-15 (botón "Disable" en Settings → Advanced Security, hecho por el dueño del repo fuera de este PR).
+- [x] 5.2 Activar **Push protection** en la misma sección, una vez que secret scanning esté activo. → Confirmado activo el 2026-08-15, misma revisión.
 
 ## 6. Cierre
 
 - [x] 6.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
 - [x] 6.2 Abrir el PR contra `develop`, con el checklist de la sección 5 visible en la descripción para quien lo revise. → [PR #19](https://github.com/soyJulioPerez/poker-planning/pull/19).
-- [ ] 6.3 `/opsx:verify` y después `/opsx:archive` (la tarea 5 queda sin marcar en el archivo — es correcto, no un olvido). **Pendiente hasta que el PR se mergee** — archivar antes dejaría el change sin corresponderse con develop.
+- [x] 6.3 `/opsx:verify` y después `/opsx:archive` (la tarea 5 queda sin marcar en el archivo — es correcto, no un olvido). PR #19 mergeado el 2026-08-15.
