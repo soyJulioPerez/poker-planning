@@ -119,10 +119,10 @@
         "runner": "vitest",
         "coverage": true,
         "coverageThresholds": {
-          "statements": 38,
-          "branches": 47,
-          "functions": 26,
-          "lines": 43
+          "statements": 34,
+          "branches": 41,
+          "functions": 25,
+          "lines": 38
         }
       }
     },

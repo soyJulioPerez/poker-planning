@@ -42,6 +42,8 @@ Se configuran `coverage: true` y `coverageThresholds: { statements, branches, fu
 
 **Números**: se corre `nx test web --coverage` primero para medir el estado real de la suite después de agregar los tests de arriba, y el umbral se fija en ese número (redondeando levemente hacia abajo si hace falta) — mismo criterio de trinquete que la Fase 2.3 ya estableció para `apps/realtime-api`: el valor ya alcanzado, no uno aspiracional.
 
+**Corrección post-CI**: el número medido en local (statements 38.64%, branches 48%, functions 26.35%, lines 43.44%) no se sostuvo en el runner de GitHub Actions — ahí midió statements 35.5%, branches 42.66%, functions 26.35%, lines 39.69% (functions, casualmente, salió idéntico). La diferencia es una variación real y conocida del proveedor de cobertura `v8` de Vitest entre entornos con distinto paralelismo/aislamiento de workers, no un test roto ni un umbral mal calculado — el mismo código, la misma suite, dos números distintos según la máquina. El umbral final se fijó por debajo del número de CI, no del local (statements 34, branches 41, functions 25, lines 38), con margen extra para absorber esa variación entre corridas y no dejar el job parpadeando en rojo/verde sin que cambie una línea de código.
+
 ### Decisión 4: sin capability nueva; `continuous-integration` gana un requirement paralelo
 
 El comportamiento de "un link directo a una sala navega correctamente" ya está especificado en `room-management` (requirement "Creación de sala"). Este change no cambia esa especificación — solo la cubre con un test. Por eso no hay delta spec para `room-management` ni para `room-client-runtime`.

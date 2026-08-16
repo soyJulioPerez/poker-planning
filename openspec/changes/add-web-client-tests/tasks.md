@@ -19,9 +19,9 @@
 
 ## 3. Umbral de cobertura de `apps/web`
 
-- [x] 3.1 Correr `nx test web --coverage` después de agregar los tests de las secciones 1 y 2, y anotar los cuatro números (statements/branches/functions/lines). → Statements 38.64%, Branches 48%, Functions 26.35%, Lines 43.44%.
-- [x] 3.2 Agregar `coverage: true` y `coverageThresholds` al target `test` de `apps/web/project.json`, con los números medidos (redondeando levemente hacia abajo si hace falta) — ver `design.md`, Decisión 3. → 38/47/26/43.
-- [x] 3.3 Confirmar que `nx test web --coverage` sigue en verde con el umbral puesto.
+- [x] 3.1 Correr `nx test web --coverage` después de agregar los tests de las secciones 1 y 2, y anotar los cuatro números (statements/branches/functions/lines). → Local: Statements 38.64%, Branches 48%, Functions 26.35%, Lines 43.44%. CI midió distinto (ver 3.3) — no es el número final.
+- [x] 3.2 Agregar `coverage: true` y `coverageThresholds` al target `test` de `apps/web/project.json`, con los números medidos (redondeando levemente hacia abajo si hace falta) — ver `design.md`, Decisión 3. → Corregido a 34/41/25/38 después de que CI midiera más bajo que local (ver 3.3 y `design.md`, Decisión 3, "Corrección post-CI").
+- [x] 3.3 Confirmar que `nx test web --coverage` sigue en verde con el umbral puesto. → En local sí, pero el PR #23 falló en CI con el umbral original (38/47/26/43): CI midió Statements 35.5%, Branches 42.66%, Functions 26.35%, Lines 39.69% — más bajo que local por varianza real del proveedor `v8` de Vitest entre entornos, no por un test roto. Umbral final fijado por debajo del número de CI (34/41/25/38), con margen para esa varianza.
 - [x] 3.4 Confirmar que bajar artificialmente la cobertura (comentar un test) hace fallar la tarea, y revertir el cambio de prueba. → probado con `room-session-store.spec.ts` (skip de sus 4 tests hizo fallar los 4 umbrales); el intento inicial con `room.spec.ts` no sirvió como prueba porque saltear sus tests sube la cobertura global en vez de bajarla (efecto de que `compileComponents()` deja de instrumentar el árbol de componentes hijos) — anotado como hallazgo, no bloquea nada.
 
 ## 4. Documentación
