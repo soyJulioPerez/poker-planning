@@ -116,7 +116,14 @@
       "dependsOn": ["check-workspace-root"],
       "options": {
         "buildTarget": "web:build:development",
-        "runner": "vitest"
+        "runner": "vitest",
+        "coverage": true,
+        "coverageThresholds": {
+          "statements": 38,
+          "branches": 47,
+          "functions": 26,
+          "lines": 43
+        }
       }
     },
     "lint": {
