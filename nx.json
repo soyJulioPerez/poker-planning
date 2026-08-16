@@ -7,6 +7,10 @@
     "version": {
       "manifestRootsToUpdate": [],
       "conventionalCommits": true
+    },
+    "git": {
+      "commit": true,
+      "tag": false
     }
   },
   "namedInputs": {
