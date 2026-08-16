@@ -563,13 +563,17 @@ Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona
 - [x] El changelog queda commiteado en el repo. (`CHANGELOG.md`, generado y comiteado junto con el bump de versión.)
 - [x] El deploy a `prod` registra qué versión desplegó (visible en el resumen del workflow, no solo en el SHA).
 
-### 7.2 — Higiene de colaboración
+### 7.2 — Higiene de colaboración 🟡
+
+> **Explorada el 2026-08-16, deliberadamente pendiente.** El ítem de `commitlint` se resolvió como parte de la Fase 7.1 (job `pr-title`) — era un prerequisito técnico real de esa fase, no de esta. Lo que queda (`CODEOWNERS`, plantilla de PR) son ambos diseño para un segundo colaborador que todavía no existe, sin ningún efecto en cómo se trabaja hoy — mismo criterio que ya dejó "0 aprobaciones requeridas" como provisorio en la Fase 1.3. Se deja explícitamente sin hacer hasta que entre esa segunda persona, en vez de cerrarla con archivos placeholder de bajo costo pero cero valor actual.
+>
+> **Hallazgo a tener en cuenta cuando se implemente**: casi ningún PR de este repo se crea tipeando en la UI de GitHub — se crean con `gh pr create --body "..."`, con el body completo explícito. Una plantilla en `.github/PULL_REQUEST_TEMPLATE.md` solo se auto-completa cuando alguien abre "New Pull Request" en el navegador; `gh pr create --body` la ignora por completo. Si el flujo real sigue siendo "el agente escribe el body a mano", agregar la plantilla no alcanza — hay que buscar además la forma de indicarle al agente que la siga (por ejemplo, referenciarla desde `CLAUDE.md`, o que el propio flujo de PR la lea antes de armar el body), o quedará un archivo que nadie consulta en el camino real.
 
 **Criterio de aceptación**
 
+- [x] `commitlint` — resuelto en la Fase 7.1 (job `pr-title`, lintea el título del PR).
 - [ ] `CODEOWNERS` — trivial hoy, pero define quién revisa qué cuando entra alguien más.
 - [ ] Plantilla de PR que pida el link al change de OpenSpec correspondiente. Cierra el ciclo entre el proceso de diseño y el de revisión, que hoy están desconectados.
-- [ ] `commitlint` en CI para que Conventional Commits sea verificado y no solo una costumbre (prerequisito real de 7.1: si un commit se escapa del formato, el changelog sale mal).
 
 ### 7.3 — Specs de OpenSpec con `Purpose` sin completar ✅
 
