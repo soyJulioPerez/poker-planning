@@ -19,7 +19,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ✅ Completa | 1 |
 | 6 | [Confianza en el deploy](#fase-6--confianza-en-el-deploy) | ⬜ Pendiente | 1, 4 |
-| 7 | [Release y colaboración](#fase-7--release-y-colaboración) | 🟡 7.3 hecha · 7.1 y 7.2 pendientes | 1 |
+| 7 | [Release y colaboración](#fase-7--release-y-colaboración) | 🟡 7.1 y 7.3 hechas · 7.2 pendiente | 1 |
 
 ---
 
@@ -546,21 +546,22 @@ Esa última alternativa es la decisión de fondo —configuración en build time
 
 Esta fase tiene el valor más bajo mientras el repo lo mantenga una sola persona, y el más alto en el momento en que entra una segunda. Va última, pero va.
 
-### 7.1 — Versionado y changelog
+### 7.1 — Versionado y changelog ✅
 
-**El problema**
-
-`git tag v1.5.0` está en la convención de [git-branching-strategy.md](git-branching-strategy.md), pero no hay tags en el repo, ni changelog, ni relación entre lo que está desplegado en `prod` y una versión nombrable. Si `prod` se rompe, no hay respuesta rápida a *"¿qué cambió?"*.
-
-**Qué hacer**
-
-`nx release` ya está parcialmente configurado (arreglado en 3.2). Los commits ya siguen Conventional Commits a mano (`feat:`, `docs:`, `chore:`), o sea que la generación automática de changelog está a un paso.
+> **Hecha** el 2026-08-16, change `add-release-versioning`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **`nx release` no estaba "parcialmente configurado"** — la Fase 3.2 había eliminado el bloque `release` entero de `nx.json`, a propósito, hasta tener este diseño. Arrancó de cero, no de una config a medio hacer.
+> - **El tag sigue siendo la única fuente de verdad para leer la versión** (`currentVersionResolver` vía `conventionalCommits: true`, que ya trae implícita la resolución por tag) — pero `room-client-runtime` y `shared-contracts` (los únicos dos `package.json` que existen en todo el workspace) sí reciben la versión nueva escrita como efecto del versionado. Probado en vivo: no hay forma de evitarlo sin trabajo de configuración adicional, y no reabre el problema de branch protection porque ese commit vive en la rama `release/*`, no en `master` directo.
+> - **El paso de `nx release version` + `nx release changelog` va al *cortar* la rama de release, no al promoverla a `master`.** Corregido durante la implementación: hacerlo más tarde (como decía el plan original) arrastraría al changelog los commits sin formato de la estabilización en QA — todo lo contrario de lo que se buscaba. En el momento de cortar la rama, `release/x.y.z` y `develop` apuntan al mismo commit, así que el rango queda limpio de forma natural.
+> - **El tag después del merge a `master` sigue siendo manual y simple** (`git tag vX.Y.Z`) — no se usa `nx release` de nuevo ahí, porque la versión y el changelog ya se resolvieron al cortar la rama; volver a correrlo recomputaría desde cero.
+> - **`commitlint` verifica el título del PR, no los commits de la rama** — el repo usa squash merge, así que el mensaje que aterriza en `develop`/`master` es el título del PR, no ninguno de los commits intermedios (esos se descartan). Implementado con `amannn/action-semantic-pull-request`, los 11 tipos estándar de Conventional Commits, scope opcional.
+> - **La versión desplegada se agregó en 4 lugares, no 2**: además de los workflows manuales (`deploy-backend.yml`, `deploy-web.yml`), el deploy automático real vive en los jobs `deploy-backend`/`deploy-web` de `ci.yml` — ahí también se agregó el resumen.
 
 **Criterio de aceptación**
 
-- [ ] Un comando genera version bump + changelog + tag desde los commits.
-- [ ] El changelog queda commiteado en el repo.
-- [ ] El deploy a `prod` registra qué versión desplegó (visible en el resumen del workflow, no solo en el SHA).
+- [x] Un comando genera version bump + changelog + tag desde los commits. (`npx nx release --skip-publish --git-tag=false`, corrido al cortar la rama de release; el tag final queda manual, ver nota arriba.)
+- [x] El changelog queda commiteado en el repo. (`CHANGELOG.md`, generado y comiteado junto con el bump de versión.)
+- [x] El deploy a `prod` registra qué versión desplegó (visible en el resumen del workflow, no solo en el SHA).
 
 ### 7.2 — Higiene de colaboración
 

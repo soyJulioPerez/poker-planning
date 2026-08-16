@@ -1,6 +1,14 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "develop",
+  "release": {
+    "projectsRelationship": "fixed",
+    "projects": ["room-client-runtime", "shared-contracts"],
+    "version": {
+      "manifestRootsToUpdate": [],
+      "conventionalCommits": true
+    }
+  },
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [

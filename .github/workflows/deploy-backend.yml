@@ -88,3 +88,9 @@ jobs:
         working-directory: infra
         run: sam deploy --config-env ${{ github.event.inputs.environment }} --no-confirm-changeset --no-fail-on-empty-changeset
 
+      - name: Versión desplegada
+        if: always()
+        run: |
+          git fetch --tags --force --quiet
+          echo "### Versión desplegada a \`${{ github.event.inputs.environment }}\`: \`$(git describe --tags --always)\` (ref pedido: \`${{ github.event.inputs.ref || 'HEAD' }}\`)" >> "$GITHUB_STEP_SUMMARY"
+

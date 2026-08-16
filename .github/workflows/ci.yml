@@ -149,6 +149,44 @@ jobs:
       # palanca de ruido permitida acá.
       - run: npm audit --audit-level=critical
 
+  pr-title:
+    # Valida el TÍTULO del PR, no los commits de la rama — el repo usa squash merge
+    # (docs/conventions.md), así que el mensaje que aterriza en develop/master es el
+    # título del PR, nunca ninguno de los commits individuales (esos se descartan
+    # enteros). Lintear los commits de la rama estaría verificando algo que nunca llega
+    # a la historia permanente, y dejaría pasar sin control lo único que sí importa para
+    # generar el changelog (Fase 7.1, change add-release-versioning).
+    #
+    # Solo aplica al evento pull_request — en push (develop/master/release/**) no hay
+    # título de PR que validar.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Los 11 tipos estándar de Conventional Commits, explícitos en vez de confiar
+          # en el default de la action (que podría cambiar entre versiones). El repo ya
+          # usa 6 de los 11 (docs/feat/fix/test/chore/ci, verificado con `git log`).
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            revert
+            style
+            test
+          # Scope opcional (requireScope: false es el default de la action, se omite).
+          # El marcador de breaking change (`tipo!: descripción`) no tiene opción de
+          # configuración propia: la action lo reconoce siempre, sin exigirlo.
+
   test-integration:
     # En paralelo a `verify` y `e2e`, no adentro de ninguno de los dos: necesita Docker
     # (DynamoDB Local) y no debe demorar el feedback rápido de `verify`. Reusa el mismo
@@ -340,6 +378,16 @@ jobs:
       # master → prod, release/** → qa
       - run: npx nx deploy realtime-api --configuration=${{ github.ref == 'refs/heads/master' && 'prod' || 'qa' }} --outputStyle=static
 
+      # El checkout de este job no trae tags (sin fetch-depth:0) — se traen aparte,
+      # sin descargar el resto de la historia. `--always` evita que el paso falle si
+      # todavía no existe ningún tag alcanzable (puede pasar: el tag del release se
+      # crea a mano después del merge, no como parte de este mismo push).
+      - name: Versión desplegada
+        if: always()
+        run: |
+          git fetch --tags --force --quiet
+          echo "### Versión desplegada: \`$(git describe --tags --always)\`" >> "$GITHUB_STEP_SUMMARY"
+
   deploy-web:
     needs: [verify, e2e, dependency-audit]
     if: >-
@@ -376,3 +424,9 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Versión desplegada
+        if: always()
+        run: |
+          git fetch --tags --force --quiet
+          echo "### Versión desplegada: \`$(git describe --tags --always)\`" >> "$GITHUB_STEP_SUMMARY"
