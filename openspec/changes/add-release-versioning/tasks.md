@@ -34,5 +34,5 @@
 
 ## 7. Pull request
 
-- [ ] 7.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
+- [x] 7.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
 - [ ] 7.2 Abrir PR contra `develop` con `gh pr create`, mensaje en Conventional Commits — este mismo título es, de hecho, el primer título que el check de la sección 2 va a verificar.
