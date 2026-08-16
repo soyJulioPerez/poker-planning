@@ -14,7 +14,7 @@ Plan de implementación progresiva de los huecos detectados en la revisión del 
 | # | Fase | Estado | Depende de |
 |---|---|---|---|
 | 1 | [Portón de CI](#fase-1--portón-de-ci) | ✅ Completa | — |
-| 2 | [Tests del backend](#fase-2--tests-del-backend) | 🟡 2.1, 2.2 y 2.3 hechas · 2.4 pendiente | 1 |
+| 2 | [Tests del backend](#fase-2--tests-del-backend) | ✅ Completa | 1 |
 | 3 | [Higiene del workspace](#fase-3--higiene-del-workspace) | ✅ Completa | 1 |
 | 4 | [Observabilidad](#fase-4--observabilidad) | ✅ Completa | — |
 | 5 | [Seguridad y supply chain](#fase-5--seguridad-y-supply-chain) | ✅ Completa | 1 |
@@ -256,7 +256,14 @@ Empezar por las acciones con reglas de negocio puras, en este orden:
 
 - El workspace mezcla runners (Jest en 3 proyectos, Vitest en `web`). Agregar la cobertura de todos en un solo número es trabajo extra y poco valor — mantener el umbral **por proyecto**.
 
-### 2.4 — Tests del cliente (`room-client-runtime` + `apps/web`)
+### 2.4 — Tests del cliente (`room-client-runtime` + `apps/web`) ✅
+
+> **Hecha** el 2026-08-16, change `add-web-client-tests`. Lo que quedó distinto de lo que este documento anticipaba:
+>
+> - **El fake de `RoomSocketService` no reutiliza `vi.fn()`**, a pesar de que `vitest/globals` está habilitado (`tsconfig.spec.json`). El fake vive en `apps/web/src/app/testing/fake-room-socket-service.ts`, fuera del patrón `*.spec.ts`/`*.test.ts` que `tsconfig.spec.json` incluye — así que el tipo ambiente de `vi` no está disponible ahí. Se optó por métodos y arrays planos (`rejoinIfNeededCalls: string[]`, etc.) en vez de tocar el `include` de `tsconfig.spec.json` para un solo archivo de test-helper.
+> - **Umbral final**: Statements 34%, Branches 41%, Functions 25%, Lines 38%. Son números bajos comparados con `realtime-api` (86/76/95/86) porque la mayoría de los componentes de UI de `apps/web` siguen sin test — el umbral fija el piso de hoy, no certifica que la cobertura sea buena.
+> - **El número medido en local no se sostuvo en CI**: en local la suite midió 38.64/48/26.35/43.44, pero el runner de GitHub Actions midió 35.5/42.66/26.35/39.69 con el mismo código — una variación real y documentada del proveedor de cobertura `v8` de Vitest entre entornos con distinto paralelismo de workers, no un test roto. El PR falló una vez en CI con el umbral fijado sobre el número local antes de corregirlo. El umbral final se fijó por debajo del número de **CI**, con margen extra, no del local — ver `design.md` del change, Decisión 3.
+> - **Hallazgo no anticipado**: saltear los tests de `room.spec.ts` (vía `it.skip`, como prueba de que el umbral realmente rompe la build) subió la cobertura global en vez de bajarla, porque sin `TestBed.configureTestingModule(...).compileComponents()` corriendo, Angular no instrumenta el árbol de componentes hijos (`ParticipantList`, `VotingBoard`, `RevealPanel`) de la misma forma. La prueba de "esto rompe si baja la cobertura" se hizo en cambio con `room-session-store.spec.ts`, que no tiene ese efecto colateral.
 
 **El problema**
 
@@ -284,9 +291,9 @@ Empezar por `home.ts`/`room.ts` — un test de regresión del flujo `/room/<cód
 
 **Criterio de aceptación**
 
-- [ ] `home.ts`/`room.ts` tienen un test que cubre el flujo de reingreso sin sesión (el que resuelve el bug de "Link directo a una sala").
-- [ ] `BrowserSessionStore` (`apps/web/src/app/core/room-session-store.ts`) tiene test.
-- [ ] Umbral de cobertura propio para `web` — mismo criterio de trinquete que la 2.3, sin mezclarlo con el de `realtime-api` (runners distintos: Vitest vs Jest). `room-client-runtime` ya tiene cobertura real; si se le pone umbral, se fija en lo ya alcanzado, no en una aspiración.
+- [x] `home.ts`/`room.ts` tienen un test que cubre el flujo de reingreso sin sesión (el que resuelve el bug de "Link directo a una sala").
+- [x] `BrowserSessionStore` (`apps/web/src/app/core/room-session-store.ts`) tiene test.
+- [x] Umbral de cobertura propio para `web` — mismo criterio de trinquete que la 2.3, sin mezclarlo con el de `realtime-api` (runners distintos: Vitest vs Jest). `room-client-runtime` ya tiene cobertura real; si se le pone umbral, se fija en lo ya alcanzado, no en una aspiración.
 
 **Trampas**
 
