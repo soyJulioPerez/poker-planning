@@ -39,5 +39,5 @@
 
 ## 7. Pull request
 
-- [ ] 7.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
+- [x] 7.1 `git fetch origin && git rebase origin/develop` antes de abrir el PR.
 - [ ] 7.2 Abrir PR contra `develop` con `gh pr create`, título en Conventional Commits — `ci:` o `feat:` según corresponda (no es una feature de la app, ver la corrección del PR #27).
