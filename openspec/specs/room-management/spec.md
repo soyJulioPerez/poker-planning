@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre el ciclo de vida de una sala como unidad de colaboración: creación y unión sin autenticación, el rol único de moderador, la lista de participantes en vivo con su estado de conexión y voto, la reconexión automática por nombre y sala, y la expiración automática por inactividad. Es la capability que resuelve quién está en la sala y con qué rol; `estimation-session` resuelve qué hacen una vez adentro.
 
 ## Requirements
 

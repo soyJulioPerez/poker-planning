@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Define cómo y cuándo la app `web` se publica en GitHub Pages: el mismo gate de verificación que `backend-deployment` —incluidos los e2e— aplicado al frontend, la resolución correcta de assets bajo el subpath del repositorio, y el fallback de `404.html` para que el router de Angular resuelva rutas profundas sin soporte de rewrites del lado del servidor. La publicación no requiere ningún cambio en el backend.
 ## Requirements
 ### Requirement: Automated build and publish to GitHub Pages
 

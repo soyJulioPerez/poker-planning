@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre la mecánica central de una ronda de Planning Poker: selección de mazo, votación oculta con las reglas de negocio aplicadas en el servidor (no solo en la interfaz), revelado simultáneo, cálculo de promedio y moda, y resolución manual de la historia por el moderador. Es distinta de `room-management`, que resuelve quién está en la sala; esta resuelve qué hacen una vez adentro.
 
 ## Requirements
 
