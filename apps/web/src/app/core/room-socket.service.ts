@@ -34,8 +34,12 @@ export class RoomSocketService {
     this.client.send(request);
   }
 
-  saveSession(roomId: string, name: string): void {
-    this.client.saveSession(roomId, name);
+  generateParticipantId(): string {
+    return this.client.generateParticipantId();
+  }
+
+  saveSession(roomId: string, name: string, participantId: string): void {
+    this.client.saveSession(roomId, name, participantId);
   }
 
   clearSession(): void {
