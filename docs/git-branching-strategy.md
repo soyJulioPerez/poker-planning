@@ -59,15 +59,19 @@ feature/z ──╯                         ▲                      │        
    ```
    Es la **excepción, no la vía habitual**. Solo aplica si la historia de la rama ya está exactamente como se la quiere ver en `develop`: sin commits de `WIP`, sin "arregla typo", sin idas y vueltas. Si hay ruido, se hace squash. `--ff-only` falla en vez de crear un merge commit si `develop` avanzó mientras tanto — misma protección que en la promoción a `master`.
 
-2. **Cortar un release**: cuando `develop` tiene algo listo para pasar a QA:
+2. **Cortar un release**: primero correr `nx release` **contra `develop`, antes de crear la rama** — así el nombre de la rama puede reflejar el número real que calculó la herramienta, no una etiqueta puesta a ojo:
    ```bash
-   git checkout -b release/1.5.0 develop
-   npx nx release --skip-publish --git-tag=false
-   git push origin release/1.5.0
+   git checkout develop
+   npx nx release --skip-publish --dry-run   # solo para ver qué versión va a calcular
+   git checkout -b release/X.Y.Z develop     # X.Y.Z = la versión real de arriba
+   npx nx release --skip-publish
+   git push origin release/X.Y.Z
    ```
    Cortar una rama nunca genera un commit de merge. El push dispara el deploy automático a `qa`.
 
-   **El paso de `nx release` va acá, no más adelante, y es a propósito**: en este momento exacto `release/1.5.0` y `develop` apuntan al mismo commit, así que el changelog que genera cubre justo lo nuevo desde el último release, sin nada más. Calcula la próxima versión desde Conventional Commits (`feat` → minor, `fix` → patch, `BREAKING CHANGE`/`!` → major), escribe una entrada nueva en `CHANGELOG.md`, y de paso actualiza el `package.json` de `room-client-runtime` y `shared-contracts` (los únicos dos del workspace que tienen uno) — todo en un solo commit, al principio de la rama. `--git-tag=false` porque acá todavía no corresponde taggear (ver paso 4). Si este paso se corriera más tarde, después de que aparezcan fixes de estabilización, el changelog los arrastraría con su mensaje de commit crudo, sin formato — exactamente lo que se busca evitar.
+   **El paso de `nx release` va acá, no más adelante, y es a propósito**: en este momento exacto la rama y `develop` apuntan al mismo commit, así que el changelog que genera cubre justo lo nuevo desde el último release, sin nada más. Calcula la próxima versión desde Conventional Commits (`feat` → minor, `fix` → patch, `BREAKING CHANGE`/`!` → major), escribe una entrada nueva en `CHANGELOG.md`, y de paso actualiza el `package.json` de `room-client-runtime` y `shared-contracts` (los únicos dos del workspace que tienen uno) — todo en un solo commit. Si este paso se corriera más tarde, después de que aparezcan fixes de estabilización, el changelog los arrastraría con su mensaje de commit crudo, sin formato — exactamente lo que se busca evitar.
+
+   **Sin `--git-tag=false`**: esa opción no existe en el comando orquestador (`nx release [specifier]`) — solo en sus subcomandos (`nx release version`/`nx release changelog`) por separado. Que este paso no taggee todavía se controla en `nx.json` (`release.git.tag: false`, fijo, no por flag) — el tag sigue siendo el paso 4, manual, después del merge a `master`.
 
 3. **Estabilización en QA**: los bugs que aparecen se corrigen con commits directos sobre `release/1.5.0`, encima del commit de `nx release` del paso anterior. Cada push redeploya y pisa QA. Estos commits **no** entran al changelog automático — si alguno amerita su propia línea, se agrega a mano en la descripción del PR de promoción (paso 4).
 
