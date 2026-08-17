@@ -78,8 +78,10 @@ feature/z ──╯                         ▲                      │        
 4. **Promoción a `master`** — por pull request, con **merge commit**:
 
    ```bash
-   gh pr create --base master --head release/1.5.0 --title "release 1.5.0"
+   gh pr create --base master --head release/1.5.0 --title "chore(release): publish 1.5.0"
    ```
+
+   El título SHALL seguir Conventional Commits (`tipo: descripción`) — el check `pr-title` de la Fase 7.1 es obligatorio también en `master`, y bloquearía este mismo PR si el título no cumple. `chore(release): publish X.Y.Z` sigue la misma convención que ya usa el commit que generó `nx release` en el paso 2 (verificable con `git log -1 --format=%s` en la punta de la rama de release).
 
    En la interfaz: esperar a que `verify` y `e2e` estén en verde, y mergear con **Create a merge commit** (no *Squash*, no *Rebase*). Después:
 
@@ -91,6 +93,8 @@ feature/z ──╯                         ▲                      │        
 
    El tag queda simple y manual a propósito: la versión y el changelog ya se resolvieron en el paso 2, y volver a correr `nx release` acá recomputaría desde cero (o fallaría, por no haber nada nuevo que versionar) — el único trabajo que queda es marcar con el tag el commit de merge resultante, algo que un comando de una línea ya resuelve sin necesitar más herramienta.
 
+   > **Pendiente, sin resolver todavía**: crear también el Release de GitHub (no solo el tag), reusando la entrada de `CHANGELOG.md` que ya generó el paso 2 como descripción. Antes de decidir el mecanismo, vale la pena chequear si `nx release` ya tiene una opción nativa para esto (similar a `changelog.projectChangelogs.createRelease: 'github'`, pero a nivel de workspace) en vez de agregar un `gh release create` suelto.
+
    El merge dispara el deploy automático a `prod`.
 
    **Tres cosas que conviene entender de este paso:**
@@ -99,13 +103,11 @@ feature/z ──╯                         ▲                      │        
    - **El merge commit no es ruido, es el marcador del release.** `git log --first-parent master` da una línea por release, y el pull request queda como acta de qué entró.
    - **Qué reemplazó al `--ff-only`.** Antes este paso era `git merge --ff-only` + `git push`, y el valor de `--ff-only` era que **fallaba** si `master` había avanzado por otro lado. Esa alarma ahora la da GitHub: si la rama de release quedó desactualizada, el merge no se habilita hasta que la actualices.
 
-5. **Sync de vuelta a `develop`** — **después** de promover a `master`, nunca antes (ver la nota de abajo): si hubo bugfixes en `release/1.5.0` durante la estabilización, `develop` los necesita (si no, el próximo release cortado desde `develop` los pierde):
+5. **Sync de vuelta a `develop`** — **después** de promover a `master`, nunca antes (ver la nota de abajo): si hubo bugfixes en `release/1.5.0` durante la estabilización, `develop` los necesita (si no, el próximo release cortado desde `develop` los pierde). **Corregido**: `git push origin develop` directo no funciona — `develop` exige pull request igual que `master` (Fase 1.3, aplica también a administradores), así que esto es un PR más, no un push directo:
    ```bash
-   git checkout develop
-   git merge release/1.5.0
-   git push origin develop
+   gh pr create --base develop --head release/1.5.0 --title "chore(release): sync 1.5.0 a develop"
    ```
-   Este sí puede ser un merge commit real (`develop` probablemente avanzó con features nuevos mientras tanto) — es el único merge aceptado en todo el flujo, y cae en `develop`, nunca en `master`.
+   Mergear desde la interfaz con **Create a merge commit** (mismo motivo que el paso 4: conservar los commits de estabilización tal cual, no aplastarlos ni reescribirlos) — es el único merge commit aceptado contra `develop` en todo el flujo.
 
 6. **Limpieza de `release/1.5.0`**: a criterio de cada developer, sin política automática. El tag (`v1.5.0`) queda como referencia permanente aunque la rama se borre.
 
