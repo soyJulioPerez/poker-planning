@@ -195,6 +195,54 @@ describe('handleJoinRoom', () => {
     });
   });
 
+  // La misma sesión (mismo participantId) reingresa siempre, sin importar `connected` — es lo
+  // que cierra la carrera contra la limpieza de la conexión anterior. Sin esa coincidencia, el
+  // comportamiento es exactamente el del bloque de arriba (no cambia).
+  describe('reingreso identificado por participantId', () => {
+    it('lo acepta si el participantId coincide, aunque el registro siga marcado como conectado', async () => {
+      escenarioBase({}, [
+        participante('beto', { connected: true, participantId: 'participant-1', vote: '8' }),
+      ]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+        participantId: 'participant-1',
+      });
+
+      expect(rechazos()).toEqual([]);
+      expect(altaDeParticipante()).toMatchObject({ participantId: 'participant-1', vote: '8' });
+    });
+
+    it('lo rechaza si el participantId no coincide y el original sigue conectado', async () => {
+      escenarioBase({}, [participante('beto', { connected: true, participantId: 'participant-1' })]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+        participantId: 'participant-2',
+      });
+
+      expect(rechazos()).toEqual([{ type: 'joinRejected', reason: 'name-taken' }]);
+      expect(ddbMock.commandCalls(PutCommand)).toHaveLength(0);
+    });
+
+    it('sin participantId de ningún lado, se comporta como un participante legacy (solo mira connected)', async () => {
+      escenarioBase({}, [participante('beto', { connected: false })]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+      });
+
+      expect(rechazos()).toEqual([]);
+      expect(altaDeParticipante()).toMatchObject({ participantId: null });
+    });
+  });
+
   describe('ícono', () => {
     it('acepta el pedido si pertenece al grupo de la sala', async () => {
       escenarioBase({ iconGroupId: 'animals' });

@@ -8,8 +8,8 @@ export class InMemorySessionStore implements SessionStore {
     return this.session;
   }
 
-  save(roomId: string, name: string): void {
-    this.session = { roomId, name };
+  save(roomId: string, name: string, participantId: string): void {
+    this.session = { roomId, name, participantId };
   }
 
   clear(): void {

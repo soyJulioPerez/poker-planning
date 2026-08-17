@@ -27,6 +27,7 @@ interface ParticipantItem {
   connected: boolean;
   vote: string | null;
   icon: string | null;
+  participantId: string | null;
 }
 
 export async function getRoomMeta(roomId: string): Promise<RoomMetaItem | undefined> {
