@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AVAILABLE_DECKS } from 'shared-contracts';
@@ -21,7 +21,14 @@ export class RoomPage {
   readonly room = this.socketService.room;
   readonly myName = this.socketService.myName;
   readonly roomSummary = this.socketService.roomSummary;
+  readonly connected = this.socketService.connected;
+  readonly joinRejectedReason = this.socketService.joinRejectedReason;
   readonly roomIdFromUrl = this.route.snapshot.paramMap.get('roomId');
+
+  // Reconectando a mitad de sesión: ya hubo `room` cargado, pero el socket se cayó. No hay
+  // que reemplazar la vista de la sala por un estado de carga — el participante no debería
+  // perder de vista lo que estaba mirando mientras el runtime reintenta solo.
+  readonly reconnecting = computed(() => !this.connected() && this.room() !== null);
 
   nextStoryTitle = '';
 
@@ -32,7 +39,14 @@ export class RoomPage {
       this.socketService.rejoinIfNeeded(this.roomIdFromUrl);
     } else {
       this.router.navigate(['/'], { queryParams: { room: this.roomIdFromUrl } });
+      return;
     }
+
+    effect(() => {
+      if (this.joinRejectedReason() !== null) {
+        this.router.navigate(['/'], { queryParams: { room: this.roomIdFromUrl } });
+      }
+    });
   }
 
   readonly isModerator = computed(() => {

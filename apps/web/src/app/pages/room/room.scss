@@ -31,6 +31,16 @@
   color: #888;
 }
 
+.room__reconnecting {
+  text-align: center;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background: #fff3cd;
+  color: #664d03;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+
 .room__voting,
 .room__participants,
 .room__current-story {

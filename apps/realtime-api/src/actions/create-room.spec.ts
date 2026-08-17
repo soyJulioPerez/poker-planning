@@ -90,6 +90,25 @@ describe('handleCreateRoom', () => {
     expect(enviados[0].message).toMatchObject({ type: 'roomState' });
   });
 
+  it('persiste el participantId recibido en el registro del moderador', async () => {
+    escenarioBase();
+
+    await handleCreateRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+      ...pedidoBase,
+      participantId: 'participant-1',
+    });
+
+    expect(altaDeModerador()).toMatchObject({ participantId: 'participant-1' });
+  });
+
+  it('deja el participantId en null si el pedido no lo incluye', async () => {
+    escenarioBase();
+
+    await handleCreateRoom(LOCAL_ENDPOINT, CONNECTION_ID, pedidoBase);
+
+    expect(altaDeModerador()).toMatchObject({ participantId: null });
+  });
+
   describe('ícono del moderador', () => {
     it('lo acepta si pertenece al grupo elegido', async () => {
       escenarioBase();
