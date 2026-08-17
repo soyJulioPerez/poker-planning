@@ -89,11 +89,12 @@ feature/z ──╯                         ▲                      │        
    git checkout master && git pull
    git tag v1.5.0
    git push origin v1.5.0
+   gh release create v1.5.0 --title v1.5.0 --notes-file <(awk '/^## /{n++} n==1' CHANGELOG.md)
    ```
 
    El tag queda simple y manual a propósito: la versión y el changelog ya se resolvieron en el paso 2, y volver a correr `nx release` acá recomputaría desde cero (o fallaría, por no haber nada nuevo que versionar) — el único trabajo que queda es marcar con el tag el commit de merge resultante, algo que un comando de una línea ya resuelve sin necesitar más herramienta.
 
-   > **Pendiente, sin resolver todavía**: crear también el Release de GitHub (no solo el tag), reusando la entrada de `CHANGELOG.md` que ya generó el paso 2 como descripción. Antes de decidir el mecanismo, vale la pena chequear si `nx release` ya tiene una opción nativa para esto (similar a `changelog.projectChangelogs.createRelease: 'github'`, pero a nivel de workspace) en vez de agregar un `gh release create` suelto.
+   El Release de GitHub se crea con `gh release create`, no con la opción nativa de `nx release` (`release.changelog.workspaceChangelog.createRelease: 'github'` en `nx.json`) — esa opción crea el tag **junto con** el Release, en el mismo momento en que corre `nx release`. Acá el tag se crea recién en este paso, después del merge; activarla haría que el Release (y su tag automático) se generen en el paso 2, contra el commit de corte de la rama, no contra el merge commit real — exactamente el problema que el paso 2 evita a propósito para el changelog. El `awk '/^## /{n++} n==1'` extrae solo la entrada más reciente de `CHANGELOG.md` (desde el primer `## ` hasta el siguiente), para no repetir todo el historial como descripción de cada Release.
 
    El merge dispara el deploy automático a `prod`.
 
