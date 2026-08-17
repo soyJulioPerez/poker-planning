@@ -8,12 +8,17 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .room__share {
   font-size: 0.85rem;
   color: #666;
+  margin-bottom: 2rem;
+
+  code {
+    word-break: break-all;
+  }
 }
 
 .room__stats {
