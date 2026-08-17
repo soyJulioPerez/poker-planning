@@ -43,6 +43,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.sha }}
+          # fetch-depth:0: el diagnóstico de rollback de la Fase 6.1 necesita `HEAD^`
+          # para calcular el tag anterior — un checkout shallow no tiene padre que resolver.
+          fetch-depth: 0
 
       # Ya no hace falta deducir el ambiente de la rama: este workflow es solo manual,
       # así que siempre viene del input.
@@ -87,4 +90,53 @@ jobs:
       - name: sam deploy
         working-directory: infra
         run: sam deploy --config-env ${{ github.event.inputs.environment }} --no-confirm-changeset --no-fail-on-empty-changeset
+
+      # Fase 6.1: solo contra prod, mismo criterio que el deploy automático de ci.yml
+      # (ver openspec/changes/add-backend-smoke-test/design.md, Decisión 4). Usa el
+      # target de Nx (no el script directo) para que se dispare el build de
+      # room-client-runtime primero — es una dependencia real del script.
+      - name: Leer outputs del stack (solo prod)
+        if: github.event.inputs.environment == 'prod'
+        id: stack-outputs
+        run: |
+          ws_url=$(aws cloudformation describe-stacks --stack-name poker-planning-prod --query "Stacks[0].Outputs[?OutputKey=='WebSocketUrl'].OutputValue" --output text)
+          table_name=$(aws cloudformation describe-stacks --stack-name poker-planning-prod --query "Stacks[0].Outputs[?OutputKey=='TableName'].OutputValue" --output text)
+          echo "ws-url=$ws_url" >> "$GITHUB_OUTPUT"
+          echo "table-name=$table_name" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test contra prod
+        if: github.event.inputs.environment == 'prod'
+        id: smoke-test
+        run: npx nx run realtime-api:smoke-test -- --ws-url=${{ steps.stack-outputs.outputs.ws-url }} --table=${{ steps.stack-outputs.outputs.table-name }}
+
+      - name: Diagnóstico y rollback si el smoke test falló
+        if: always() && steps.smoke-test.outcome == 'failure'
+        run: |
+          git fetch --tags --force --quiet
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          echo "::group::Últimos errores en /aws/lambda/poker-planning-prod-default"
+          aws logs filter-log-events \
+            --log-group-name /aws/lambda/poker-planning-prod-default \
+            --start-time "$(( ($(date +%s) - 300) * 1000 ))" \
+            --filter-pattern '{ $.level = "ERROR" }' \
+            --query 'events[*].message' --output text \
+            || echo "No se pudo leer el log (¿permisos del rol de deploy?)"
+          echo "::endgroup::"
+
+          echo "### ✗ Smoke test falló contra prod — el deploy YA se aplicó" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$previous_tag" ]; then
+            echo "Para revertir manualmente:" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "gh workflow run deploy-backend.yml -f environment=prod -f ref=$previous_tag" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No se encontró un tag anterior automáticamente — revisar \`git tag -l\` a mano antes de revertir." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Versión desplegada
+        if: always()
+        run: |
+          git fetch --tags --force --quiet
+          echo "### Versión desplegada a \`${{ github.event.inputs.environment }}\`: \`$(git describe --tags --always)\` (ref pedido: \`${{ github.event.inputs.ref || 'HEAD' }}\`)" >> "$GITHUB_STEP_SUMMARY"
 

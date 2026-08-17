@@ -59,3 +59,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Versión desplegada
+        if: always()
+        run: |
+          git fetch --tags --force --quiet
+          echo "### Versión desplegada: \`$(git describe --tags --always)\`" >> "$GITHUB_STEP_SUMMARY"

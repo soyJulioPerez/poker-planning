@@ -38,6 +38,33 @@ export async function handleVote(
     return;
   }
 
+  // Las dos guardas de abajo las cumple también la interfaz —el mazo no se pinta con la
+  // ronda revelada, y va `disabled` para quien no es votante—, pero el servidor no puede
+  // depender de eso: un cliente desactualizado, una reconexión con estado desfasado o una
+  // regresión en la web vuelven a abrir el camino. Es el mismo criterio que el change
+  // `2026-07-11-fix-mode-numeric-only` aplicó al puntaje final.
+
+  // Va antes que la de `isVoter` a propósito: se resuelve con lo que ya se leyó, sin
+  // pagar una consulta más.
+  if (meta.roundPhase === 'revealed') {
+    await sendToConnection(apiEndpoint, connectionId, {
+      type: 'error',
+      message: 'Voting is closed for this round',
+    });
+    return;
+  }
+
+  const participant = await ddb.send(
+    new GetCommand({ TableName: TABLE_NAME, Key: participantKey(request.roomId, name) })
+  );
+  if (participant.Item?.['isVoter'] === false) {
+    await sendToConnection(apiEndpoint, connectionId, {
+      type: 'error',
+      message: 'Only participants marked as voters can vote',
+    });
+    return;
+  }
+
   await ddb.send(
     new UpdateCommand({
       TableName: TABLE_NAME,

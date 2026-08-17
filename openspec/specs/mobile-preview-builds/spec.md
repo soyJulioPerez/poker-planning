@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre el workflow manual de GitHub Actions que genera un build Android instalable de la app móvil vía EAS, sin depender de una laptop de desarrollo encendida, y que permite elegir a qué ambiente de backend (`dev`, `qa` o `prod`) se conecta el build independientemente del perfil EAS usado para empaquetarlo. Es una capability distinta de `mobile-app`: esta cubre cómo se distribuye un build de prueba, no el comportamiento de la app.
 
 ## Requirements
 

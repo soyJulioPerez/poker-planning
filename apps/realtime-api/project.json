@@ -4,7 +4,23 @@
   "sourceRoot": "apps/realtime-api/src",
   "projectType": "application",
   "tags": ["scope:api", "type:app"],
+  "// test-integration": "requiere DynamoDB Local corriendo (npm run dev:db:up + dev:db:create-table). Credenciales dummy explicitas: sin ellas el SDK resuelve las credenciales reales de AWS del entorno, y DynamoDB Local (sin -sharedDb) aisla los datos por credenciales+region — la tabla creada con las credenciales dummy de dev:db:create-table no aparece bajo otras credenciales.",
   "targets": {
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/realtime-api",
+        "command": "jest --config jest.integration.config.cts",
+        "env": {
+          "DYNAMODB_ENDPOINT": "http://127.0.0.1:8000",
+          "AWS_REGION": "us-east-2",
+          "TABLE_NAME": "poker-planning-rooms",
+          "AWS_ACCESS_KEY_ID": "dummy",
+          "AWS_SECRET_ACCESS_KEY": "dummy",
+          "AWS_EC2_METADATA_DISABLED": "true"
+        }
+      }
+    },
     "build": {
       "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
@@ -80,9 +96,12 @@
         }
       }
     },
-    "test": {
+    "smoke-test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["room-client-runtime:build"],
       "options": {
-        "passWithNoTests": true
+        "cwd": "apps/realtime-api",
+        "command": "node scripts/smoke-test.mjs"
       }
     },
     "deploy": {

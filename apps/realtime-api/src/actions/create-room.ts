@@ -8,7 +8,7 @@ export async function handleCreateRoom(
   apiEndpoint: string,
   connectionId: string,
   request: CreateRoomRequest
-): Promise<void> {
+): Promise<string> {
   const roomId = generateRoomId();
   const ttl = nowPlusTtl();
 
@@ -89,4 +89,6 @@ export async function handleCreateRoom(
   };
 
   await sendToConnection(apiEndpoint, connectionId, { type: 'roomState', room });
+
+  return roomId;
 }

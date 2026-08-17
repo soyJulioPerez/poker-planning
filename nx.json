@@ -1,6 +1,18 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "develop",
+  "release": {
+    "projectsRelationship": "fixed",
+    "projects": ["room-client-runtime", "shared-contracts"],
+    "version": {
+      "manifestRootsToUpdate": [],
+      "conventionalCommits": true
+    },
+    "git": {
+      "commit": true,
+      "tag": false
+    }
+  },
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
@@ -47,13 +59,6 @@
       "inputs": ["default", "^production"]
     }
   },
-  "release": {
-    "projects": ["api"],
-    "projectsRelationship": "independent",
-    "docker": {
-      "skipVersionActions": true
-    }
-  },
   "plugins": [
     {
       "plugin": "@nx/playwright/plugin",
@@ -65,13 +70,6 @@
       "plugin": "@nx/eslint/plugin",
       "options": {
         "targetName": "lint"
-      }
-    },
-    {
-      "plugin": "@nx/docker",
-      "options": {
-        "buildTarget": "docker:build",
-        "runTarget": "docker:run"
       }
     },
     {

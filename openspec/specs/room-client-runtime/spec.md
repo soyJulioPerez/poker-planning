@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Cubre el paquete `room-client-runtime`, extraído del cliente Angular para no depender de ningún framework de UI ni de APIs exclusivas del navegador: la gestión de la conexión WebSocket con cola de reintento de mensajes pendientes, el estado de sala expuesto como Observables de RxJS, y el reingreso automático a una sala con sesión guardada. Existe como capability separada porque es la lógica de cliente pensada para ser compartida entre la web actual y futuros clientes, como mobile.
 
 ## Requirements
 

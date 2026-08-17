@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+Define la paridad funcional que la app móvil (Expo/React Native) SHALL mantener con la web sobre el mismo backend: creación y unión a sala, votación y revelado, controles de moderador y resumen de sesión. Existe como capability separada porque la persistencia de sesión en mobile es deliberadamente más acotada que en la web — dura solo mientras la app permanece abierta, sin sobrevivir a un cierre.
 
 ## Requirements
 
