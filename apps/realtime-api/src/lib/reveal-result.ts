@@ -1,13 +1,21 @@
-import { RevealResult, VoteDistributionEntry } from 'shared-contracts';
+import { DeckOption, RevealResult, VoteDistributionEntry } from 'shared-contracts';
 
 function toNumeric(value: string, numericValues?: Record<string, number>): number {
   return numericValues?.[value] ?? Number(value);
 }
 
+// La escala para ajustar el promedio: explícita (mazos con siglas, ej. T-Shirt) o implícita
+// (los propios valores del mazo parseados como número, ej. Fibonacci). Todo mazo tiene una.
+function deckScale(deck?: DeckOption): number[] {
+  if (deck?.numericValues) return Object.values(deck.numericValues);
+  return (deck?.values ?? []).map(Number).filter(Number.isFinite);
+}
+
 export function computeRevealResult(
   votes: Record<string, string>,
-  numericValues?: Record<string, number>
+  deck?: DeckOption
 ): RevealResult {
+  const numericValues = deck?.numericValues;
   const values = Object.values(votes);
 
   const counts = new Map<string, number>();
@@ -27,9 +35,9 @@ export function computeRevealResult(
       ? Math.round((parsedValues.reduce((sum, v) => sum + v, 0) / parsedValues.length) * 10) / 10
       : null;
 
-  if (average !== null && numericValues) {
+  const scale = deckScale(deck);
+  if (average !== null && scale.length > 0) {
     const rawAverage = average;
-    const scale = Object.values(numericValues);
     average = scale.reduce((closest, candidate) =>
       Math.abs(candidate - rawAverage) < Math.abs(closest - rawAverage) ? candidate : closest
     );

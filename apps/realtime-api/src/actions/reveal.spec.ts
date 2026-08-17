@@ -87,7 +87,9 @@ describe('handleReveal', () => {
       };
       expect(input.ExpressionAttributeValues[':revealed']).toBe('revealed');
       expect(input.ExpressionAttributeValues[':revealResult']).toMatchObject({
-        average: 6, // (5 + 5 + 8) / 3 = 6
+        // (5 + 5 + 8) / 3 = 6 crudo, pero 6 no es una carta Fibonacci — se ajusta a la más
+        // cercana (5, a distancia 1, contra 8 a distancia 2).
+        average: 5,
         mode: ['5'],
       });
     });

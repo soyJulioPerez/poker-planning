@@ -47,7 +47,9 @@ test('moda empatada no ofrece botón de aceptar, y el promedio sigue disponible'
   await moderatorRoom.reveal();
 
   await expect(moderatorRoom.acceptModeButton()).toHaveCount(0);
-  await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (4)');
+  // (3 + 5) / 2 = 4 crudo, pero 4 no es una carta Fibonacci — empata a distancia 1 de
+  // 3 y de 5, y el desempate existente favorece el valor menor.
+  await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (3)');
 
   await participantContext.close();
 });
