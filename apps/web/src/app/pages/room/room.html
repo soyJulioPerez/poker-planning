@@ -13,11 +13,12 @@
   </div>
 } @else if (room(); as currentRoom) {
   <div class="room">
+    @if (reconnecting()) {
+      <p class="room__reconnecting">Reconectando...</p>
+    }
+
     <header class="room__header">
-      <div>
-        <h1>Sala {{ currentRoom.roomId }}</h1>
-        <p class="room__share">Compartí este link: <code>{{ shareLink }}</code></p>
-      </div>
+      <h1>Sala {{ currentRoom.roomId }}</h1>
       <div class="room__stats">
         <span>Historias estimadas: {{ currentRoom.storiesEstimatedCount }}</span>
         <span>Total: {{ currentRoom.accumulatedScore }} pts</span>
@@ -26,6 +27,8 @@
         }
       </div>
     </header>
+
+    <p class="room__share">Compartí este link: <code>{{ shareLink }}</code></p>
 
     <section class="room__current-story">
       @if (currentRoom.currentStoryTitle) {

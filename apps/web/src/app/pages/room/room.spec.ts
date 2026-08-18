@@ -44,4 +44,43 @@ describe('RoomPage', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
     expect(fakeSocketService.rejoinIfNeededCalls).toEqual(['ABC123']);
   });
+
+  it('si el reingreso automático es rechazado, redirige a home con el código como query param', async () => {
+    const { fakeSocketService, navigateSpy } = await setup('ABC123');
+    fakeSocketService.hasSessionForResult = true;
+
+    const fixture = TestBed.createComponent(RoomPage);
+    fixture.detectChanges();
+    navigateSpy.mockClear();
+
+    fakeSocketService.joinRejectedReason.set('name-taken');
+    fixture.detectChanges();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/'], { queryParams: { room: 'ABC123' } });
+  });
+
+  it('mientras reconecta a mitad de sesión, no reemplaza la sala cargada por el estado de carga', async () => {
+    const { fakeSocketService } = await setup('ABC123');
+    fakeSocketService.hasSessionForResult = true;
+
+    const fixture = TestBed.createComponent(RoomPage);
+    fakeSocketService.room.set({
+      roomId: 'ABC123',
+      deckId: 'fibonacci',
+      iconGroupId: null,
+      moderatorName: 'ana',
+      roundPhase: 'idle',
+      currentStoryTitle: null,
+      participants: [],
+      storiesEstimatedCount: 0,
+      accumulatedScore: 0,
+      revealResult: null,
+      lastResolvedStory: null,
+    });
+    fakeSocketService.connected.set(false);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.reconnecting()).toBe(true);
+    expect(fixture.componentInstance.room()).not.toBeNull();
+  });
 });

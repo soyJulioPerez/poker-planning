@@ -40,8 +40,8 @@ class InMemorySessionStore implements SessionStore {
     return this.session;
   }
 
-  save(roomId: string, name: string): void {
-    this.session = { roomId, name };
+  save(roomId: string, name: string, participantId: string): void {
+    this.session = { roomId, name, participantId };
   }
 
   clear(): void {
@@ -123,7 +123,7 @@ describe('RoomClient', () => {
 
   it('roomClosed limpia la sesion persistida', () => {
     const { client, sockets, sessionStore } = createClient();
-    sessionStore.save('ABC123', 'Julio');
+    sessionStore.save('ABC123', 'Julio', 'participant-1');
     client.connect();
 
     sockets[0].triggerMessage({ type: 'roomClosed', summary: { id: 'ABC123' } });
@@ -133,19 +133,19 @@ describe('RoomClient', () => {
 
   it('reingresa automaticamente cuando hay sesion guardada y no hay room cargado', () => {
     const { client, sockets, sessionStore } = createClient();
-    sessionStore.save('ABC123', 'Julio');
+    sessionStore.save('ABC123', 'Julio', 'participant-1');
 
     client.rejoinIfNeeded('ABC123');
     sockets[0].triggerOpen();
 
     expect(sockets[0].sent).toEqual([
-      JSON.stringify({ action: 'joinRoom', roomId: 'ABC123', name: 'Julio' }),
+      JSON.stringify({ action: 'joinRoom', roomId: 'ABC123', name: 'Julio', participantId: 'participant-1' }),
     ]);
   });
 
   it('no reingresa si ya hay estado de sala cargado', () => {
     const { client, sockets, sessionStore } = createClient();
-    sessionStore.save('ABC123', 'Julio');
+    sessionStore.save('ABC123', 'Julio', 'participant-1');
     client.connect();
     sockets[0].triggerMessage({ type: 'roomState', room: { id: 'ABC123' } });
 
@@ -163,20 +163,20 @@ describe('RoomClient', () => {
     expect(sockets).toHaveLength(0);
   });
 
-  it('saveSession actualiza myName y persiste la sesion', () => {
+  it('saveSession actualiza myName y persiste la sesion con el participantId recibido', () => {
     const { client, sessionStore } = createClient();
 
-    client.saveSession('ABC123', 'Julio');
+    client.saveSession('ABC123', 'Julio', 'participant-1');
 
     let latestName: unknown;
     client.myName$.subscribe((n) => (latestName = n));
     expect(latestName).toBe('Julio');
-    expect(sessionStore.get('ABC123')).toEqual({ roomId: 'ABC123', name: 'Julio' });
+    expect(sessionStore.get('ABC123')).toEqual({ roomId: 'ABC123', name: 'Julio', participantId: 'participant-1' });
   });
 
   it('el reingreso actualiza myName antes de enviar joinRoom', () => {
     const { client, sockets, sessionStore } = createClient();
-    sessionStore.save('ABC123', 'Julio');
+    sessionStore.save('ABC123', 'Julio', 'participant-1');
 
     client.rejoinIfNeeded('ABC123');
 
@@ -185,7 +185,119 @@ describe('RoomClient', () => {
     expect(latestName).toBe('Julio');
     sockets[0].triggerOpen();
     expect(sockets[0].sent).toEqual([
-      JSON.stringify({ action: 'joinRoom', roomId: 'ABC123', name: 'Julio' }),
+      JSON.stringify({ action: 'joinRoom', roomId: 'ABC123', name: 'Julio', participantId: 'participant-1' }),
     ]);
+  });
+
+  describe('generateParticipantId', () => {
+    it('genera un identificador de tipo string distinto en cada llamada', () => {
+      const { client } = createClient();
+
+      const first = client.generateParticipantId();
+      const second = client.generateParticipantId();
+
+      expect(typeof first).toBe('string');
+      expect(first.length).toBeGreaterThan(0);
+      expect(first).not.toBe(second);
+    });
+  });
+
+  describe('reconexión automática tras pérdida de conexión', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('el cierre con sesión activa programa un reintento y reenvía joinRoom al reconectar', () => {
+      const { client, sockets, sessionStore } = createClient();
+      sessionStore.save('ABC123', 'Julio', 'participant-1');
+      jest.useFakeTimers();
+
+      client.rejoinIfNeeded('ABC123');
+      sockets[0].triggerOpen();
+      sockets[0].sent = [];
+
+      sockets[0].triggerClose();
+      jest.advanceTimersByTime(1000);
+
+      expect(sockets).toHaveLength(2);
+      sockets[1].triggerOpen();
+      expect(sockets[1].sent).toEqual([
+        JSON.stringify({ action: 'joinRoom', roomId: 'ABC123', name: 'Julio', participantId: 'participant-1' }),
+      ]);
+    });
+
+    it('el cierre sin sesión activa no programa ningún reintento', () => {
+      const { client, sockets } = createClient();
+      jest.useFakeTimers();
+
+      client.connect();
+      sockets[0].triggerOpen();
+      sockets[0].triggerClose();
+
+      jest.advanceTimersByTime(20000);
+
+      expect(sockets).toHaveLength(1);
+    });
+
+    it('los reintentos consecutivos usan backoff creciente hasta un tope', () => {
+      const { client, sockets, sessionStore } = createClient();
+      sessionStore.save('ABC123', 'Julio', 'participant-1');
+      jest.useFakeTimers();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      client.rejoinIfNeeded('ABC123'); // socket0, nunca llega a abrir
+      sockets[0].triggerClose();
+      jest.advanceTimersByTime(1000); // -> socket1
+
+      sockets[1].triggerClose();
+      jest.advanceTimersByTime(2000); // -> socket2
+
+      sockets[2].triggerClose();
+      jest.advanceTimersByTime(4000); // -> socket3
+
+      const delays = warnSpy.mock.calls
+        .filter(([event]) => event === '[room-client] connection.reconnect_scheduled')
+        .map(([, details]) => (details as { delayMs: number }).delayMs);
+
+      expect(delays).toEqual([1000, 2000, 4000]);
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('logging de desarrollo', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('registra el cierre de conexión y el reintento programado en consola', () => {
+      const { client, sockets, sessionStore } = createClient();
+      sessionStore.save('ABC123', 'Julio', 'participant-1');
+      jest.useFakeTimers();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      client.rejoinIfNeeded('ABC123');
+      sockets[0].triggerOpen();
+      sockets[0].triggerClose();
+
+      expect(warnSpy).toHaveBeenCalledWith('[room-client] connection.closed');
+      expect(warnSpy).toHaveBeenCalledWith('[room-client] connection.reconnect_scheduled', { delayMs: 1000 });
+
+      warnSpy.mockRestore();
+    });
+
+    it('registra el reingreso rechazado', () => {
+      const { client, sockets, sessionStore } = createClient();
+      sessionStore.save('ABC123', 'Julio', 'participant-1');
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      client.rejoinIfNeeded('ABC123');
+      sockets[0].triggerOpen();
+      sockets[0].triggerMessage({ type: 'joinRejected', reason: 'name-taken' });
+
+      expect(warnSpy).toHaveBeenCalledWith('[room-client] rejoin.rejected', { reason: 'name-taken' });
+
+      warnSpy.mockRestore();
+    });
   });
 });

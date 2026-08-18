@@ -22,6 +22,7 @@ export class Home {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private submitTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private pendingParticipantId: string | null = null;
 
   readonly decks = AVAILABLE_DECKS;
   readonly iconGroups = AVAILABLE_ICON_GROUPS;
@@ -60,8 +61,8 @@ export class Home {
     effect(() => {
       const room = this.socketService.room();
       const name = this.socketService.myName();
-      if (room && name) {
-        this.socketService.saveSession(room.roomId, name);
+      if (room && name && this.pendingParticipantId) {
+        this.socketService.saveSession(room.roomId, name, this.pendingParticipantId);
         this.router.navigate(['/room', room.roomId]);
       }
     });
@@ -135,6 +136,7 @@ export class Home {
     }
     this.moderatorIconMissing.set(false);
     this.startSubmitting();
+    this.pendingParticipantId = this.socketService.generateParticipantId();
     this.socketService.myName.set(this.moderatorName.trim());
     this.socketService.connect();
     this.socketService.send({
@@ -142,6 +144,7 @@ export class Home {
       moderatorName: this.moderatorName.trim(),
       deckId: this.deckId,
       moderatorIsVoter: this.moderatorIsVoter,
+      participantId: this.pendingParticipantId,
       ...(this.selectedModeratorIconGroup
         ? { iconGroupId: this.selectedModeratorIconGroup.id, icon: this.moderatorIcon ?? undefined }
         : {}),
@@ -156,12 +159,14 @@ export class Home {
     }
     this.joinIconMissing.set(false);
     this.startSubmitting();
+    this.pendingParticipantId = this.socketService.generateParticipantId();
     this.socketService.myName.set(this.joinName.trim());
     this.socketService.connect();
     this.socketService.send({
       action: 'joinRoom',
       roomId: this.joinRoomId.trim().toUpperCase(),
       name: this.joinName.trim(),
+      participantId: this.pendingParticipantId,
       ...(this.joinIcon ? { icon: this.joinIcon } : {}),
     });
   }

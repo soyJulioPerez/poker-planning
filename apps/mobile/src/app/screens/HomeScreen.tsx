@@ -54,7 +54,11 @@ export function HomeScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (room && myName) {
-      client.saveSession(room.roomId, myName);
+      // A diferencia de apps/web, acá no se manda un participantId en el createRoom/joinRoom
+      // inicial (fuera de alcance para mobile en este change) — se genera uno recién acá, así
+      // que el primer reingreso cae en el chequeo de `connected` de siempre, no en el nuevo
+      // camino determinístico. Deja de ser un problema desde el segundo reingreso en adelante.
+      client.saveSession(room.roomId, myName, client.generateParticipantId());
       navigation.replace('Room', { roomId: room.roomId });
     }
   }, [room, myName, client, navigation]);
