@@ -21,7 +21,14 @@ export async function handleJoinRoom(
   const participants = await getRoomParticipants(request.roomId);
   const existing = participants.find((p) => p.name === request.name);
 
-  if (existing && existing.connected) {
+  // La misma sesión (mismo participantId persistido) siempre puede reingresar, sin importar
+  // qué diga `connected` — evita depender del timing de la limpieza de la conexión anterior.
+  // Sin esa coincidencia (sesión nueva, o participante legacy sin participantId guardado), el
+  // chequeo es exactamente el de siempre: `connected` decide si el nombre está libre.
+  const isSameSession =
+    !!existing && !!existing.participantId && existing.participantId === request.participantId;
+
+  if (existing && !isSameSession && existing.connected) {
     await sendToConnection(apiEndpoint, connectionId, {
       type: 'joinRejected',
       reason: 'name-taken',
@@ -50,6 +57,7 @@ export async function handleJoinRoom(
         connected: true,
         vote: existing?.vote ?? null,
         icon,
+        participantId: request.participantId ?? existing?.participantId ?? null,
         ttl,
       },
     })

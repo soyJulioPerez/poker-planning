@@ -6,7 +6,17 @@
     "projects": ["room-client-runtime", "shared-contracts"],
     "version": {
       "manifestRootsToUpdate": [],
-      "conventionalCommits": true
+      "conventionalCommits": true,
+      "git": {
+        "commit": true,
+        "tag": false
+      }
+    },
+    "changelog": {
+      "git": {
+        "commit": true,
+        "tag": false
+      }
     }
   },
   "namedInputs": {

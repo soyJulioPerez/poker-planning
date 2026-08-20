@@ -51,7 +51,7 @@ export async function handleReveal(
   }
 
   const deck = AVAILABLE_DECKS.find((d) => d.id === meta.deckId);
-  const revealResult = computeRevealResult(votes, deck?.numericValues);
+  const revealResult = computeRevealResult(votes, deck);
 
   await ddb.send(
     new UpdateCommand({

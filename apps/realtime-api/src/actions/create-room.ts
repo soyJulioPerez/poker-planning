@@ -50,6 +50,7 @@ export async function handleCreateRoom(
         connected: true,
         vote: null,
         icon: moderatorIcon,
+        participantId: request.participantId ?? null,
         ttl,
       },
     })
