@@ -13,8 +13,8 @@ export class BrowserSessionStore implements SessionStore {
     return session;
   }
 
-  save(roomId: string, name: string): void {
-    const session: StoredSession = { roomId, name };
+  save(roomId: string, name: string, participantId: string): void {
+    const session: StoredSession = { roomId, name, participantId };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
 

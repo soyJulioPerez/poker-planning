@@ -60,7 +60,7 @@
     "@angular/build": "21.2.7",
     "@angular/cli": "21.2.7",
     "@angular/compiler-cli": "21.2.9",
-    "@angular/language-service": "21.2.9",
+    "@angular/language-service": "22.1.2",
     "@babel/core": "^7.29.7",
     "@eslint/js": "^9.8.0",
     "@expo/cli": "54.0.26",

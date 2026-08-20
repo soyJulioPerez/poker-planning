@@ -1,3 +1,16 @@
+## 1.5.1 (2026-08-18)
+
+### 🩹 Fixes
+
+- reingreso a una sala queda colgado en silencio tras perder la conexion
+- promedio con decimales en Fibonacci y link compartible en 2 líneas
+
+### ❤️ Thank You
+
+- Claude Sonnet 5
+- Julio Pérez
+- Julio Perez Jimenez
+
 ## 1.5.0 (2026-08-16)
 
 ### 🚀 Features

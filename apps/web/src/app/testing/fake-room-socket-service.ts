@@ -34,7 +34,11 @@ export class FakeRoomSocketService {
     this.sendCalls.push(request);
   }
 
-  saveSession(_roomId: string, _name: string): void {
+  generateParticipantId(): string {
+    return 'fake-participant-id';
+  }
+
+  saveSession(_roomId: string, _name: string, _participantId: string): void {
     // no-op: nada en el fake depende de persistir la sesión.
   }
 

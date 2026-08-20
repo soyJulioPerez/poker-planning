@@ -7,6 +7,7 @@ export interface CreateRoomRequest {
   moderatorIsVoter: boolean;
   iconGroupId?: string;
   icon?: string;
+  participantId?: string;
 }
 
 export interface JoinRoomRequest {
@@ -14,6 +15,7 @@ export interface JoinRoomRequest {
   roomId: string;
   name: string;
   icon?: string;
+  participantId?: string;
 }
 
 export interface GetRoomInfoRequest {
