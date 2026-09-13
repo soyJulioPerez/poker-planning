@@ -1,3 +1,15 @@
+## 1.5.2 (2026-09-13)
+
+### 🩹 Fixes
+
+- apaga las alarmas de CloudWatch por defecto en los 3 ambientes
+
+### ❤️ Thank You
+
+- Claude Sonnet 5
+- Julio Pérez
+- Julio Perez Jimenez
+
 ## 1.5.1 (2026-08-18)
 
 ### 🩹 Fixes
