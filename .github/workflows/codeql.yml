@@ -25,10 +25,10 @@ on:
       - develop
       - master
   schedule:
-    # Lunes 04:00 UTC. Corre sobre la rama por defecto del repo, no sobre la
-    # rama donde vive este archivo — empieza a activarse recién cuando este
-    # workflow llegue ahí.
-    - cron: '0 4 * * 1'
+    # Martes 03:00 UTC = lunes 00:00 hora Argentina (UTC-3). Corre sobre la
+    # rama por defecto del repo, no sobre la rama donde vive este archivo —
+    # empieza a activarse recién cuando este workflow llegue ahí.
+    - cron: '0 3 * * 2'
 
 permissions:
   actions: read

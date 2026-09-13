@@ -107,7 +107,9 @@ aws xray batch-get-traces --trace-ids <id1> <id2> ...
 
 ## Alarmas
 
-Cuatro alarmas de CloudWatch por ambiente, todas notificando al mismo topic SNS (`poker-planning-<ambiente>-alerts`), con una suscripción por email (`NotificationEmail`, parámetro de CloudFormation inyectado vía `parameter_overrides` en `infra/samconfig.toml`).
+Apagadas por defecto en los 3 ambientes desde `add-alarms-toggle` (2026-09-13): cada alarma tiene un costo mensual fijo aunque nunca dispare, y hoy ningún ambiente lo justifica. Se activan por ambiente con el parámetro de CloudFormation `AlarmsEnabled=true` en `parameter_overrides` de `infra/samconfig.toml` (default `'false'`) — con el flag apagado, ni el topic SNS ni ninguna de las 4 alarmas existen desplegados en ese ambiente.
+
+Con el flag activo: cuatro alarmas de CloudWatch por ambiente, todas notificando al mismo topic SNS (`poker-planning-<ambiente>-alerts`), con una suscripción por email (`NotificationEmail`, parámetro de CloudFormation inyectado vía `parameter_overrides` en `infra/samconfig.toml`).
 
 | Alarma | Qué mide | Cómo agrega | Umbral |
 |---|---|---|---|
