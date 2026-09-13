@@ -25,7 +25,18 @@ Parameters:
     Description: >
       Destino de las alarmas de CloudWatch. SNS manda un link de confirmacion
       a esta direccion tras el deploy; hasta que se confirma a mano, ninguna
-      notificacion se entrega.
+      notificacion se entrega. Solo se usa cuando AlarmsEnabled es 'true'.
+
+  AlarmsEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Activa el topic SNS y las 4 alarmas de CloudWatch. Apagado por defecto:
+      cada alarma tiene un costo mensual fijo aunque nunca dispare (ver
+      openspec/changes/add-alarms-toggle).
 
 Mappings:
   LogRetention:
@@ -45,6 +56,9 @@ Mappings:
     prod:
       LambdaErrorsPerFiveMin: 1
       IntegrationErrorsPerFiveMin: 1
+
+Conditions:
+  AlarmsEnabled: !Equals [!Ref AlarmsEnabled, 'true']
 
 Globals:
   Function:
@@ -250,11 +264,13 @@ Resources:
   # ya es un stack separado, sin recursos compartidos entre si.
   AlertsTopic:
     Type: AWS::SNS::Topic
+    Condition: AlarmsEnabled
     Properties:
       TopicName: !Sub 'poker-planning-${Environment}-alerts'
 
   AlertsSubscription:
     Type: AWS::SNS::Subscription
+    Condition: AlarmsEnabled
     Properties:
       TopicArn: !Ref AlertsTopic
       Protocol: email
@@ -267,6 +283,7 @@ Resources:
   # promediar percentiles entre funciones no tiene sentido estadistico pero el maximo si.
   LambdaErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub 'poker-planning-${Environment}-lambda-errors'
       AlarmDescription: Errores combinados de connect+disconnect+default por encima del umbral del ambiente.
@@ -317,6 +334,7 @@ Resources:
 
   LambdaThrottlesAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub 'poker-planning-${Environment}-lambda-throttles'
       AlarmDescription: Al menos un throttle en connect, disconnect o default. No varia por ambiente.
@@ -367,6 +385,7 @@ Resources:
 
   LambdaDurationP99Alarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub 'poker-planning-${Environment}-lambda-duration-p99'
       AlarmDescription: La mas lenta de las tres funciones supera 5s de p99. No varia por ambiente (mitad del Timeout de 10s).
@@ -420,6 +439,7 @@ Resources:
   # que si tienen una metrica "5xx" dedicada. Ver add-backend-alarms/design.md.
   ApiGatewayIntegrationErrorAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub 'poker-planning-${Environment}-apigw-integration-errors'
       AlarmDescription: Errores 4XX/5XX devueltos por la integracion del WebSocket API, por encima del umbral del ambiente.
