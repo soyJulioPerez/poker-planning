@@ -52,7 +52,7 @@
     "react-native-web": "~0.21.0",
     "rxjs": "~7.8.0",
     "ws": "^8.21.0",
-    "zone.js": "0.16.2"
+    "zone.js": "0.16.3"
   },
   "devDependencies": {
     "@angular-devkit/core": "21.2.7",
@@ -60,7 +60,7 @@
     "@angular/build": "21.2.7",
     "@angular/cli": "21.2.7",
     "@angular/compiler-cli": "21.2.9",
-    "@angular/language-service": "22.1.2",
+    "@angular/language-service": "22.1.6",
     "@babel/core": "^7.29.7",
     "@eslint/js": "^9.8.0",
     "@expo/cli": "54.0.26",
