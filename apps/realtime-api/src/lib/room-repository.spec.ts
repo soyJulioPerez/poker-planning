@@ -1,5 +1,5 @@
 import { Participant, Room } from 'shared-contracts';
-import { maskRoomForViewer } from './room-repository';
+import { maskRoomForViewer, toParticipant } from './room-repository';
 
 function participante(overrides: Partial<Participant> = {}): Participant {
   return {
@@ -7,6 +7,7 @@ function participante(overrides: Partial<Participant> = {}): Participant {
     isModerator: false,
     isVoter: true,
     connected: true,
+    disconnectedAt: null,
     vote: null,
     icon: null,
     ...overrides,
@@ -104,5 +105,33 @@ describe('maskRoomForViewer', () => {
 
       expect(visto.participants.map((p) => p.vote)).toEqual(['5', '8']);
     });
+  });
+});
+
+// `claim-moderation` decide con este campo si ya pasaron los 60 segundos, y la web lo usa
+// para mostrar "Tomar moderación". Un registro previo al campo no lo tiene y debe llegar
+// como `null`, no como `undefined`, para que el contrato sea el mismo en los dos casos.
+describe('toParticipant', () => {
+  const item = {
+    PK: 'ROOM#ABC123',
+    SK: 'PARTICIPANT#ana',
+    name: 'ana',
+    connectionId: 'conn-ana',
+    isModerator: false,
+    isVoter: true,
+    connected: false,
+    vote: null,
+    icon: null,
+    participantId: null,
+  };
+
+  it('expone el momento de la desconexión', () => {
+    expect(toParticipant({ ...item, disconnectedAt: 1_700_000_000_000 }).disconnectedAt).toBe(
+      1_700_000_000_000
+    );
+  });
+
+  it('deja en null la desconexión de un registro que no la tiene', () => {
+    expect(toParticipant(item).disconnectedAt).toBeNull();
   });
 });

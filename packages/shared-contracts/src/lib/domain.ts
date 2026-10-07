@@ -19,6 +19,8 @@ export interface Participant {
   isModerator: boolean;
   isVoter: boolean;
   connected: boolean;
+  /** Epoch ms de la última desconexión; `null` si está conectado o es un registro previo a este campo. */
+  disconnectedAt: number | null;
   vote: string | null;
   icon: string | null;
 }

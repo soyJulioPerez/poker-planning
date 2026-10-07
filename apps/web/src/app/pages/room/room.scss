@@ -181,3 +181,20 @@
   font-size: 1.2rem;
   font-weight: 700;
 }
+
+.room__moderator-away {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff3cd;
+  color: #664d03;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.room__moderator-away-hint {
+  font-size: 0.8rem;
+}
