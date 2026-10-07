@@ -1,3 +1,15 @@
+## 1.6.0 (2026-10-07)
+
+### 🚀 Features
+
+- permite ceder la moderación y tomarla si el moderador se desconecta
+
+### ❤️ Thank You
+
+- Claude Opus 5.5
+- Julio Pérez
+- Julio Perez Jimenez
+
 ## 1.5.2 (2026-09-13)
 
 ### 🩹 Fixes

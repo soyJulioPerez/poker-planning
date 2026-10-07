@@ -79,6 +79,7 @@ export async function handleCreateRoom(
         isModerator: true,
         isVoter: request.moderatorIsVoter,
         connected: true,
+        disconnectedAt: null,
         vote: null,
         icon: moderatorIcon,
       },

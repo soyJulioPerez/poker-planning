@@ -162,6 +162,55 @@ describe('handleJoinRoom', () => {
 
       expect(altaDeParticipante()).toMatchObject({ connectionId: CONNECTION_ID });
     });
+
+    // El reingreso reescribe el item completo: si arrastrara `disconnectedAt`, un moderador
+    // que ya volvió seguiría pareciendo caído y alguien podría tomarle el rol.
+    it('deja de figurar como desconectado', async () => {
+      escenarioBase({}, [
+        participante('beto', { connected: false, disconnectedAt: 1_700_000_000_000 }),
+      ]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+      });
+
+      expect(altaDeParticipante()).not.toHaveProperty('disconnectedAt');
+    });
+  });
+
+  // La autoridad sobre quién modera es `META.moderatorName`. Si el reingreso copiara el
+  // `isModerator` del item anterior, un moderador que vuelve justo mientras otro le toma el
+  // rol quedaría con el ícono puesto aunque ya no pueda moderar.
+  describe('rol de moderador al reingresar', () => {
+    it('el moderador anterior vuelve como participante común aunque su item diga lo contrario', async () => {
+      escenarioBase({ moderatorName: 'carla' }, [
+        participante('beto', { connected: false, isModerator: true }),
+      ]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+      });
+
+      expect(altaDeParticipante()).toMatchObject({ isModerator: false });
+    });
+
+    it('quien figura como moderador en la sala conserva el rol al recargar', async () => {
+      escenarioBase({ moderatorName: 'beto' }, [
+        participante('beto', { connected: false, isModerator: true }),
+      ]);
+
+      await handleJoinRoom(LOCAL_ENDPOINT, CONNECTION_ID, {
+        action: 'joinRoom',
+        roomId: ROOM_ID,
+        name: 'beto',
+      });
+
+      expect(altaDeParticipante()).toMatchObject({ isModerator: true });
+    });
   });
 
   // La diferencia entre "ese nombre está ocupado" y "sos vos que volvés" es un solo

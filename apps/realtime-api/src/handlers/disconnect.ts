@@ -35,8 +35,10 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         new UpdateCommand({
           TableName: TABLE_NAME,
           Key: participantKey(roomId, name),
-          UpdateExpression: 'SET connected = :false',
-          ExpressionAttributeValues: { ':false': false },
+          // `disconnectedAt` es lo que permite a `claim-moderation` medir cuánto lleva caído el
+          // moderador; el reingreso lo borra porque `join-room` reescribe el item completo.
+          UpdateExpression: 'SET connected = :false, disconnectedAt = :now',
+          ExpressionAttributeValues: { ':false': false, ':now': Date.now() },
         })
       );
 

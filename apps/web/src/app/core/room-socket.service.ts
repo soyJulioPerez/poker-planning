@@ -13,7 +13,9 @@ export class RoomSocketService {
   readonly roomInfo = toSignal(this.client.roomInfo$, { initialValue: null });
   readonly joinRejectedReason = toSignal(this.client.joinRejectedReason$, { initialValue: null });
   readonly roomSummary = toSignal(this.client.roomSummary$, { initialValue: null });
-  readonly errorMessage = toSignal(this.client.errorMessage$, { initialValue: null });
+  // `equal: () => false`: dos rechazos seguidos traen el mismo texto, y sin esto el segundo
+  // no notificaría a nadie (la sala reacciona a cada error, no solo a los distintos).
+  readonly errorMessage = toSignal(this.client.errorMessage$, { initialValue: null, equal: () => false });
   readonly connected = toSignal(this.client.connected$, { initialValue: false });
 
   // Writable (no toSignal): los componentes lo asignan de forma optimista

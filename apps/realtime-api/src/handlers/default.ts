@@ -11,6 +11,8 @@ import { handleResolveStory } from '../actions/resolve-story';
 import { handleNewRound } from '../actions/new-round';
 import { handleNextStory } from '../actions/next-story';
 import { handleSetModeratorIsVoter } from '../actions/set-moderator-is-voter';
+import { handleTransferModeration } from '../actions/transfer-moderation';
+import { handleClaimModeration } from '../actions/claim-moderation';
 import { handleCloseRoom } from '../actions/close-room';
 import { ClientRequest } from 'shared-contracts';
 
@@ -85,6 +87,12 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         break;
       case 'setModeratorIsVoter':
         await handleSetModeratorIsVoter(apiEndpoint, connectionId, request);
+        break;
+      case 'transferModeration':
+        await handleTransferModeration(apiEndpoint, connectionId, request);
+        break;
+      case 'claimModeration':
+        await handleClaimModeration(apiEndpoint, connectionId, request);
         break;
       case 'closeRoom':
         await handleCloseRoom(apiEndpoint, connectionId, request);

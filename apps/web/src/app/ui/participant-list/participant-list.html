@@ -1,5 +1,5 @@
 <ul class="participant-list">
-  @for (participant of participants(); track participant.name) {
+  @for (participant of orderedParticipants(); track participant.name) {
     <li class="participant-list__item" [class.participant-list__item--disconnected]="!participant.connected">
       @if (participant.isModerator) {
         <app-moderator-badge />
@@ -34,6 +34,36 @@
         } @else {
           <span class="participant-list__vote-status">⏳ esperando voto</span>
         }
+      }
+      @if (isModerator() && !participant.isModerator && participant.connected) {
+        <div
+          class="participant-list__menu-wrapper"
+          [class.participant-list__menu-wrapper--open]="openMenuFor() === participant.name"
+        >
+          <button
+            type="button"
+            class="participant-list__menu-btn"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="openMenuFor() === participant.name"
+            [attr.aria-label]="'Acciones para ' + participant.name"
+            title="Acciones"
+            (click)="toggleMenu(participant.name)"
+          >
+            ⋮
+          </button>
+          @if (openMenuFor() === participant.name) {
+            <div class="participant-list__menu" role="menu" [attr.aria-label]="'Acciones para ' + participant.name">
+              <button
+                type="button"
+                role="menuitem"
+                class="participant-list__menu-item"
+                (click)="chooseTransfer(participant.name)"
+              >
+                <span aria-hidden="true">🧙</span> Hacer moderador
+              </button>
+            </div>
+          }
+        </div>
       }
     </li>
   }

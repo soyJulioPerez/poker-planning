@@ -52,7 +52,9 @@ export async function handleJoinRoom(
         ...participantKey(request.roomId, request.name),
         name: request.name,
         connectionId,
-        isModerator: existing?.isModerator ?? false,
+        // Derivado de `META` y no del item previo: la moderación puede haber cambiado de
+        // titular mientras este participante estaba desconectado.
+        isModerator: meta.moderatorName === request.name,
         isVoter: existing?.isVoter ?? true,
         connected: true,
         vote: existing?.vote ?? null,

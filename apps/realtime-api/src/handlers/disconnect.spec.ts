@@ -28,6 +28,24 @@ beforeEach(() => {
   ddbMock.on(DeleteCommand).resolves({});
 });
 
+describe('handler (disconnect) — marca al participante como desconectado', () => {
+  it('guarda cuándo se desconectó, para medir el tiempo antes de poder tomar la moderación', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    ddbMock
+      .on(GetCommand, { TableName: TABLE_NAME, Key: { PK: `ROOM#${ROOM_ID}`, SK: 'META' } })
+      .resolves({});
+
+    await handler(evento(), {} as never, () => undefined);
+
+    const marca = ddbMock.commandCalls(UpdateCommand)[0].args[0].input;
+    expect(marca.Key).toEqual({ PK: `ROOM#${ROOM_ID}`, SK: 'PARTICIPANT#beto' });
+    expect(marca.UpdateExpression).toBe('SET connected = :false, disconnectedAt = :now');
+    expect(marca.ExpressionAttributeValues).toEqual({ ':false': false, ':now': 1_700_000_000_000 });
+
+    jest.restoreAllMocks();
+  });
+});
+
 // Este catch es best-effort a propósito: la limpieza de la conexión no debe depender de
 // que el broadcast final funcione. Lo que este test verifica es la otra mitad de esa
 // decisión — que un fallo ahí deje rastro en vez de desaparecer en silencio.

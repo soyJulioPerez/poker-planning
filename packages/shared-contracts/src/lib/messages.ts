@@ -57,6 +57,17 @@ export interface SetModeratorIsVoterRequest {
   isVoter: boolean;
 }
 
+export interface TransferModerationRequest {
+  action: 'transferModeration';
+  roomId: string;
+  targetName: string;
+}
+
+export interface ClaimModerationRequest {
+  action: 'claimModeration';
+  roomId: string;
+}
+
 export interface CloseRoomRequest {
   action: 'closeRoom';
   roomId: string;
@@ -72,6 +83,8 @@ export type ClientRequest =
   | NewRoundRequest
   | NextStoryRequest
   | SetModeratorIsVoterRequest
+  | TransferModerationRequest
+  | ClaimModerationRequest
   | CloseRoomRequest;
 
 export interface RoomStateMessage {

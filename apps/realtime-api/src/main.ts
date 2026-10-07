@@ -13,6 +13,8 @@ import { handleResolveStory } from './actions/resolve-story';
 import { handleNewRound } from './actions/new-round';
 import { handleNextStory } from './actions/next-story';
 import { handleSetModeratorIsVoter } from './actions/set-moderator-is-voter';
+import { handleTransferModeration } from './actions/transfer-moderation';
+import { handleClaimModeration } from './actions/claim-moderation';
 import { handleCloseRoom } from './actions/close-room';
 import { ClientRequest, ServerMessage } from 'shared-contracts';
 
@@ -80,8 +82,8 @@ async function handleDisconnect(connectionId: string): Promise<void> {
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: participantKey(roomId, name),
-        UpdateExpression: 'SET connected = :false',
-        ExpressionAttributeValues: { ':false': false },
+        UpdateExpression: 'SET connected = :false, disconnectedAt = :now',
+        ExpressionAttributeValues: { ':false': false, ':now': Date.now() },
       })
     );
 
@@ -166,6 +168,12 @@ wss.on('connection', (socket) => {
           break;
         case 'setModeratorIsVoter':
           await handleSetModeratorIsVoter(LOCAL_API_ENDPOINT, connectionId, request);
+          break;
+        case 'transferModeration':
+          await handleTransferModeration(LOCAL_API_ENDPOINT, connectionId, request);
+          break;
+        case 'claimModeration':
+          await handleClaimModeration(LOCAL_API_ENDPOINT, connectionId, request);
           break;
         case 'closeRoom':
           await handleCloseRoom(LOCAL_API_ENDPOINT, connectionId, request);
