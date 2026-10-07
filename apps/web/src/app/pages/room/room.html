@@ -13,6 +13,8 @@
   </div>
 } @else if (room(); as currentRoom) {
   <div class="room">
+    <app-notice [message]="notice()" (dismissed)="notice.set(null)" />
+
     @if (reconnecting()) {
       <p class="room__reconnecting">Reconectando...</p>
     }
@@ -94,7 +96,19 @@
         [isModerator]="isModerator()"
         [canChangeVoterStatus]="currentRoom.roundPhase === 'idle'"
         (moderatorIsVoterChange)="setModeratorIsVoter($event)"
+        (transferModeration)="transferModeration($event)"
       />
+
+      @if (moderatorDisconnected() && !isModerator()) {
+        <div class="room__moderator-away">
+          <span>El moderador está desconectado.</span>
+          @if (canClaimModeration()) {
+            <button type="button" (click)="claimModeration()">Tomar moderación</button>
+          } @else {
+            <span class="room__moderator-away-hint">Si no vuelve en un minuto, vas a poder tomar la moderación.</span>
+          }
+        </div>
+      }
 
       @if (isModerator() && currentRoom.roundPhase !== 'revealed' && currentRoom.currentStoryTitle) {
         <div class="room__reveal-row">

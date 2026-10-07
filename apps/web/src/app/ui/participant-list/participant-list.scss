@@ -102,3 +102,61 @@
     opacity: 0.5;
   }
 }
+
+.participant-list__menu-wrapper {
+  position: relative;
+}
+
+// Discreto a propósito: ceder la moderación es una acción ocasional y no debería competir
+// con el estado del voto, que es lo que se mira en cada ronda.
+.participant-list__menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #999;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: rgba(0, 0, 0, 0.08);
+    color: #333;
+  }
+}
+
+.participant-list__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 10;
+  min-width: 11rem;
+  padding: 0.25rem 0;
+  border-radius: 0.4rem;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.participant-list__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.8rem;
+  border: none;
+  background: transparent;
+  color: #333;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(0, 0, 0, 0.06);
+  }
+}

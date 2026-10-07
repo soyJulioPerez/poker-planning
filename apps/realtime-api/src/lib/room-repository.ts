@@ -25,6 +25,7 @@ interface ParticipantItem {
   isModerator: boolean;
   isVoter: boolean;
   connected: boolean;
+  disconnectedAt?: number;
   vote: string | null;
   icon: string | null;
   participantId: string | null;
@@ -57,6 +58,7 @@ export function toParticipant(item: ParticipantItem): Participant {
     isModerator: item.isModerator,
     isVoter: item.isVoter,
     connected: item.connected,
+    disconnectedAt: item.disconnectedAt ?? null,
     vote: item.vote,
     icon: item.icon ?? null,
   };

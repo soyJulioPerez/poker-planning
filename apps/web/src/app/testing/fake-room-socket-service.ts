@@ -10,7 +10,7 @@ export class FakeRoomSocketService {
   readonly roomInfo = signal<RoomInfoMessage | null>(null);
   readonly joinRejectedReason = signal<'name-taken' | 'room-not-found' | null>(null);
   readonly roomSummary = signal<RoomSummary | null>(null);
-  readonly errorMessage = signal<string | null>(null);
+  readonly errorMessage = signal<string | null>(null, { equal: () => false });
   readonly connected = signal(false);
   readonly myName = signal<string | null>(null);
 

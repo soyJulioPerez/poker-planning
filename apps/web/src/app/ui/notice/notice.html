@@ -1,0 +1,8 @@
+<div class="notice" role="status" aria-live="polite">
+  @if (message(); as text) {
+    <div class="notice__body">
+      <span class="notice__text">{{ text }}</span>
+      <button type="button" class="notice__close" aria-label="Cerrar aviso" (click)="dismissed.emit()">×</button>
+    </div>
+  }
+</div>
