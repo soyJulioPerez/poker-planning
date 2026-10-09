@@ -21,12 +21,20 @@ const deadline = Date.now() + TIMEOUT_MS;
 let lastError = 'sin intentos';
 
 while (Date.now() < deadline) {
+  // Timer propio y no `AbortSignal.timeout`: el de `AbortSignal.timeout` no mantiene vivo
+  // el proceso. Con el contenedor recién arrancado, Docker ya acepta la conexión pero
+  // DynamoDB todavía no contesta, el `fetch` queda colgado sin nada más que esperar, y
+  // Node termina con código 13 ("unsettled top-level await") sin llegar a reintentar.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2000);
   try {
-    await fetch(ENDPOINT, { signal: AbortSignal.timeout(2000) });
+    await fetch(ENDPOINT, { signal: controller.signal });
     process.exit(0);
   } catch (error) {
     lastError = error instanceof Error ? error.message : String(error);
     await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS));
+  } finally {
+    clearTimeout(timer);
   }
 }
 

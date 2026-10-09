@@ -43,9 +43,16 @@
     }
   </ul>
 
-  @if (result().mode.length > 1) {
+  <!-- En una sola línea, el promedio primero: es siempre un único valor, la moda puede
+       ser una lista de empatados. -->
+  @if (average() || result().mode.length > 1) {
     <div class="reveal-panel__stats">
-      <span>Moda: {{ result().mode.join(', ') }}</span>
+      @if (average(); as averageText) {
+        <span class="reveal-panel__average">Promedio: <strong>{{ averageText }}</strong></span>
+      }
+      @if (result().mode.length > 1) {
+        <span>Moda: {{ result().mode.join(', ') }}</span>
+      }
     </div>
   }
 </div>

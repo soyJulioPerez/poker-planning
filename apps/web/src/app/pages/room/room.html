@@ -57,18 +57,17 @@
           [result]="currentRoom.revealResult"
           [isModerator]="isModerator()"
           [numericValues]="deckNumericValues()"
+          [average]="averageText()"
           (resolveVote)="resolveWith($event)"
           (newRound)="newRound()"
         />
 
         @if (isModerator()) {
           <div class="room__resolution">
-            @if (currentRoom.revealResult.average !== null) {
-              <button type="button" (click)="resolveWith(currentRoom.revealResult.average)">
-                Aceptar promedio ({{ valueLabel(currentRoom.revealResult.average) }})
-              </button>
+            @for (bound of averageBounds(); track bound) {
+              <button type="button" (click)="resolveWith(bound)">Aceptar {{ valueLabel(bound) }}</button>
             }
-            @if (modeAsNumber(currentRoom.revealResult.mode); as numericMode) {
+            @if (acceptableMode(); as numericMode) {
               <button type="button" (click)="resolveWith(numericMode)">
                 Aceptar moda ({{ currentRoom.revealResult.mode[0] }})
               </button>

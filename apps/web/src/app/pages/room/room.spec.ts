@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { Participant, Room } from 'shared-contracts';
+import { Participant, RevealResult, Room } from 'shared-contracts';
 import { appRoutes } from '../../app.routes';
 import { RoomSocketService } from '../../core/room-socket.service';
 import { FakeRoomSocketService } from '../../testing/fake-room-socket-service';
@@ -229,5 +229,130 @@ describe('RoomPage — cambio de moderador', () => {
     fixture.detectChanges();
 
     expect(page.notice()).toBeNull();
+  });
+});
+
+/** Sala revelada vista por `quien` (Ana modera), con el mazo y el resultado indicados. */
+async function salaRevelada(deckId: string, revealResult: RevealResult, quien = 'ana') {
+  const { fakeSocketService } = await setup('ABC123');
+  fakeSocketService.hasSessionForResult = true;
+  fakeSocketService.connected.set(true);
+  fakeSocketService.myName.set(quien);
+  fakeSocketService.room.set({
+    ...salaModeradaPor('ana', [participante('ana'), participante('beto')]),
+    deckId,
+    roundPhase: 'revealed',
+    revealResult,
+  });
+
+  const fixture = TestBed.createComponent(RoomPage);
+  fixture.detectChanges();
+  const host = fixture.nativeElement as HTMLElement;
+  return {
+    fakeSocketService,
+    host,
+    promedio: () => host.querySelector('.reveal-panel__average')?.textContent?.replace(/\s+/g, ' ').trim() ?? null,
+    botones: () =>
+      Array.from(host.querySelectorAll<HTMLButtonElement>('.room__resolution button')).map((b) =>
+        b.textContent?.trim()
+      ),
+  };
+}
+
+function resultado(overrides: Partial<RevealResult>): RevealResult {
+  return { votes: {}, distribution: [], average: null, rawAverage: null, averageBounds: [], mode: [], ...overrides };
+}
+
+describe('RoomPage — promedio real', () => {
+  it('muestra el promedio real y ofrece las dos cartas entre las que cae', async () => {
+    const { promedio, botones } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 9.67, averageBounds: [8, 13], mode: ['8', '13'] })
+    );
+
+    expect(promedio()).toBe('Promedio: 9,67');
+    expect(botones()).toEqual(['Aceptar 8', 'Aceptar 13']);
+  });
+
+  it('si el promedio coincide con una carta, sin decimales y con un solo botón', async () => {
+    const { promedio, botones } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 8, averageBounds: [8], mode: ['8', '5'] })
+    );
+
+    expect(promedio()).toBe('Promedio: 8');
+    expect(botones()).toEqual(['Aceptar 8']);
+  });
+
+  it('no repite la moda si ya está entre las cartas vecinas del promedio', async () => {
+    const { botones } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 9.67, averageBounds: [8, 13], mode: ['8'] })
+    );
+
+    expect(botones()).toEqual(['Aceptar 8', 'Aceptar 13']);
+  });
+
+  it('ofrece la moda si no es una de las cartas vecinas del promedio', async () => {
+    // 3, 3, 3, 21 → promedio 7,5 entre 5 y 8; la moda (3) no está entre ellas.
+    const { botones } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 7.5, averageBounds: [5, 8], mode: ['3'] })
+    );
+
+    expect(botones()).toEqual(['Aceptar 5', 'Aceptar 8', 'Aceptar moda (3)']);
+  });
+
+  it('en T-Shirt muestra las tallas entre las que cae el promedio', async () => {
+    const { promedio, botones } = await salaRevelada(
+      'tshirt',
+      resultado({ average: 8, rawAverage: 6.67, averageBounds: [4, 8], mode: ['M', 'L'] })
+    );
+
+    expect(promedio()).toBe('Promedio: entre M y L');
+    expect(botones()).toEqual(['Aceptar M', 'Aceptar L']);
+  });
+
+  it('en T-Shirt, si coincide con una talla, muestra solo esa', async () => {
+    const { promedio } = await salaRevelada(
+      'tshirt',
+      resultado({ average: 4, rawAverage: 4, averageBounds: [4], mode: ['M', 'S'] })
+    );
+
+    expect(promedio()).toBe('Promedio: M');
+  });
+
+  it('quien no modera ve el promedio pero no los botones', async () => {
+    const { promedio, botones } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 9.67, averageBounds: [8, 13] }),
+      'beto'
+    );
+
+    expect(promedio()).toBe('Promedio: 9,67');
+    expect(botones()).toEqual([]);
+  });
+
+  it('elegir una carta vecina resuelve la historia con ese valor', async () => {
+    const { host, fakeSocketService } = await salaRevelada(
+      'fibonacci',
+      resultado({ average: 8, rawAverage: 9.67, averageBounds: [8, 13] })
+    );
+
+    const aceptar13 = Array.from(host.querySelectorAll<HTMLButtonElement>('.room__resolution button')).find(
+      (b) => b.textContent?.trim() === 'Aceptar 13'
+    );
+    aceptar13?.click();
+
+    expect(fakeSocketService.sendCalls).toContainEqual({ action: 'resolveStory', roomId: 'ABC123', finalScore: 13 });
+  });
+
+  // Ronda revelada durante el deploy: el resultado guardado no trae los campos nuevos.
+  it('con un resultado anterior a los campos nuevos, ofrece la carta más cercana y no muestra el promedio', async () => {
+    const legacy = { votes: {}, distribution: [], average: 8, mode: [] } as unknown as RevealResult;
+    const { promedio, botones } = await salaRevelada('fibonacci', legacy);
+
+    expect(promedio()).toBeNull();
+    expect(botones()).toEqual(['Aceptar 8']);
   });
 });

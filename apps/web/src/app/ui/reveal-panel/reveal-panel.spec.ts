@@ -6,6 +6,8 @@ const result: RevealResult = {
   votes: { Ana: '5', Bruno: '8', Carla: '?' },
   distribution: [],
   average: 6.5,
+  rawAverage: 6.5,
+  averageBounds: [5, 8],
   mode: ['5'],
 };
 
@@ -77,5 +79,32 @@ describe('RevealPanel', () => {
 
     const newRound = host.querySelector('button.reveal-panel__new-round');
     expect(newRound?.getAttribute('aria-label')).toBe('Nueva ronda');
+  });
+
+  // Una sola línea, promedio primero: es siempre un único valor y la moda puede ser una
+  // lista de empatados.
+  it('muestra promedio y moda empatada en la misma línea, el promedio primero', async () => {
+    const fixture = TestBed.createComponent(RevealPanel);
+    fixture.componentRef.setInput('result', { ...result, mode: ['13', '8'] });
+    fixture.componentRef.setInput('average', '10,5');
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    const lineas = host.querySelectorAll('.reveal-panel__stats');
+    expect(lineas).toHaveLength(1);
+    const partes = Array.from(lineas[0].children).map((c) => c.textContent?.replace(/\s+/g, ' ').trim());
+    expect(partes).toEqual(['Promedio: 10,5', 'Moda: 13, 8']);
+  });
+
+  it('muestra el promedio aunque la moda no esté empatada', async () => {
+    const fixture = TestBed.createComponent(RevealPanel);
+    fixture.componentRef.setInput('result', { ...result, mode: ['5'] });
+    fixture.componentRef.setInput('average', '6,5');
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('.reveal-panel__stats')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Promedio: 6,5'
+    );
   });
 });

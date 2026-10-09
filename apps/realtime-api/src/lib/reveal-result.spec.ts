@@ -124,6 +124,71 @@ describe('computeRevealResult', () => {
     });
   });
 
+  // El promedio ajustado de arriba hacía parecer que el sistema no sabía calcular (votos
+  // 8, 8 y 13 mostraban "8"). Desde `show-real-average` la web muestra el promedio real y
+  // ofrece las cartas entre las que cae; `average` se mantiene igual para la app mobile.
+  describe('promedio real y cartas vecinas', () => {
+    it('devuelve el promedio real con 2 decimales y las dos cartas que lo rodean', () => {
+      const result = computeRevealResult({ ana: '8', beto: '8', caro: '13' }, FIBONACCI_DECK);
+
+      expect(result.rawAverage).toBe(9.67);
+      expect(result.averageBounds).toEqual([8, 13]);
+    });
+
+    it('no cambia `average`, que sigue siendo la carta más cercana', () => {
+      const { average } = computeRevealResult({ ana: '8', beto: '8', caro: '13' }, FIBONACCI_DECK);
+
+      expect(average).toBe(8);
+    });
+
+    it('ofrece una sola carta cuando el promedio coincide con una', () => {
+      const result = computeRevealResult({ ana: '8', beto: '8', caro: '8' }, FIBONACCI_DECK);
+
+      expect(result.rawAverage).toBe(8);
+      expect(result.averageBounds).toEqual([8]);
+    });
+
+    it('usa la escala explícita: un promedio entre M y L ofrece esas dos tallas', () => {
+      // M=4, L=8, L=8 → 6.67, entre M=4 y L=8
+      const result = computeRevealResult({ ana: 'M', beto: 'L', caro: 'L' }, TSHIRT_DECK);
+
+      expect(result.rawAverage).toBe(6.67);
+      expect(result.averageBounds).toEqual([4, 8]);
+    });
+
+    it('usa la escala explícita: un promedio que coincide con M ofrece solo M', () => {
+      // M=4 y M=4 → 4, que es exactamente M
+      const result = computeRevealResult({ ana: 'M', beto: 'M' }, TSHIRT_DECK);
+
+      expect(result.averageBounds).toEqual([4]);
+    });
+
+    it('calcula las vecinas sobre el promedio ya redondeado, para que coincidan con lo que se ve', () => {
+      // 1 voto de 5 y 999 de 8 → 7.997, que se muestra "8": una sola carta, no [5, 8].
+      const casi: Record<string, string> = { otro: '5' };
+      for (let i = 0; i < 999; i++) casi[`p${i}`] = '8';
+
+      const result = computeRevealResult(casi, FIBONACCI_DECK);
+
+      expect(result.rawAverage).toBe(8);
+      expect(result.averageBounds).toEqual([8]);
+    });
+
+    it('sin votos numéricos no hay promedio ni cartas vecinas', () => {
+      const result = computeRevealResult({ ana: '☕', beto: '?' }, FIBONACCI_DECK);
+
+      expect(result.rawAverage).toBeNull();
+      expect(result.averageBounds).toEqual([]);
+    });
+
+    it('sin mazo no hay escala: devuelve el promedio real pero ninguna carta vecina', () => {
+      const result = computeRevealResult({ ana: '3', beto: '5' });
+
+      expect(result.rawAverage).toBe(4);
+      expect(result.averageBounds).toEqual([]);
+    });
+  });
+
   describe('moda', () => {
     it('devuelve el valor más votado', () => {
       const { mode } = computeRevealResult({ ana: '5', beto: '5', caro: '8' });

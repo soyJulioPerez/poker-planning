@@ -38,7 +38,18 @@ export interface VoteDistributionEntry {
 export interface RevealResult {
   votes: Record<string, string>;
   distribution: VoteDistributionEntry[];
+  /**
+   * Promedio ajustado al valor de la escala más cercano. La web ya no lo muestra (usa
+   * `rawAverage` y `averageBounds`), pero se conserva porque lo usa la app mobile.
+   */
   average: number | null;
+  /** Promedio real de los votos numéricos, redondeado a 2 decimales. */
+  rawAverage: number | null;
+  /**
+   * Valores de la escala que rodean a `rawAverage`: `[inferior, superior]`, o `[valor]` si
+   * coincide con uno. Vacío si no hubo votos numéricos o el mazo no tiene escala.
+   */
+  averageBounds: number[];
   mode: string[];
 }
 

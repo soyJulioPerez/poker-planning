@@ -17,25 +17,29 @@ Guía paso a paso para correr la app completa (frontend Angular + backend WebSoc
 
 ## Paso a paso
 
-### 1. Levantar DynamoDB Local
+### 1. Levantar DynamoDB Local y crear la tabla
 
 ```bash
 npm run dev:db:up
 ```
 
-Esto corre `docker run -d --name dynamodb-local -p 8000:8000 amazon/dynamodb-local:latest`. Si el contenedor ya existe (de una sesión anterior), en vez de esto usar:
+Se puede correr siempre, haya o no un contenedor de una sesión anterior:
 
-```bash
-docker start dynamodb-local
-```
+1. Arranca el contenedor `dynamodb-local` si ya existe (`docker start`), o lo crea si no (`docker run`).
+2. Espera a que DynamoDB atienda de verdad ([wait-for-dynamodb.mjs](../tools/scripts/wait-for-dynamodb.mjs)): el contenedor arranca antes que el proceso Java de adentro.
+3. Crea la tabla con `npm run dev:db:create-table`. Si ya existe, el error se ignora.
 
-### 2. Crear la tabla (solo la primera vez, o si el contenedor se recreó)
+DynamoDB Local corre en memoria: **la tabla se pierde cada vez que el contenedor se detiene** (reinicio de Docker Desktop, de la máquina, etc.). Si la API empieza a responder `ResourceNotFoundException` o `ECONNREFUSED 127.0.0.1:8000`, volver a correr `npm run dev:db:up`.
+
+### 2. Crear la tabla a mano (solo si hace falta)
+
+`dev:db:up` ya la crea. Para recrearla sin tocar el contenedor:
 
 ```bash
 npm run dev:db:create-table
 ```
 
-Internamente corre `aws dynamodb create-table ... --endpoint-url http://localhost:8000 --region us-east-2`.
+Internamente corre `aws dynamodb create-table ... --endpoint-url http://127.0.0.1:8000 --region us-east-2`, con las credenciales `dummy`. DynamoDB Local separa las tablas por access key + región, así que `dev:api` usa esas mismas credenciales: con las reales de `~/.aws` no encontraría la tabla.
 
 **Importante**: la región usada (`us-east-2` en los scripts) debe coincidir con la que devuelve `aws configure get region` en tu máquina — ver la explicación completa de por qué en [sam-local-dynamodb-local.md](sam-local-dynamodb-local.md). Si tu perfil AWS usa otra región, edita `dev:db:create-table` y la variable `AWS_REGION` de `dev:api` en `package.json` para que coincidan.
 
@@ -88,7 +92,7 @@ La app `apps/mobile` (Expo/React Native, agregada en el change `add-mobile-app`)
 
 ### Requisitos
 
-- Backend local corriendo — mismos pasos 1-3 de la sección anterior (`npm run dev:db:up`, `npm run dev:db:create-table` la primera vez, `npm run dev:api`).
+- Backend local corriendo — mismos pasos 1-3 de la sección anterior (`npm run dev:db:up`, `npm run dev:api`).
 - Un celular (Android o iOS) con la app **Expo Go** instalada (Play Store / App Store).
 - El celular y la PC en la **misma red Wi-Fi** (no una red de invitados/aislada — algunos routers domésticos bloquean que los dispositivos se vean entre sí).
 

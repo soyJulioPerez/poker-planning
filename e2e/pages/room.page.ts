@@ -27,10 +27,9 @@ export class RoomPage {
     await this.page.getByRole('button', { name: 'Nueva ronda' }).click();
   }
 
-  async acceptAverage() {
-    await this.page
-      .getByRole('button', { name: /^Aceptar promedio/ })
-      .click();
+  /** Resuelve con una de las cartas vecinas del promedio, por su etiqueta ("8", "M"). */
+  async acceptAverageBound(label: string) {
+    await this.page.getByRole('button', { name: `Aceptar ${label}`, exact: true }).click();
   }
 
   async acceptMode() {
@@ -51,8 +50,13 @@ export class RoomPage {
     return this.page.getByRole('button', { name: value, exact: true });
   }
 
-  acceptAverageButton(): Locator {
-    return this.page.getByRole('button', { name: /^Aceptar promedio/ });
+  /** Los botones de cartas vecinas del promedio (todos los de resolución salvo el de moda). */
+  averageBoundButtons(): Locator {
+    return this.resolutionPanel().getByRole('button', { name: /^Aceptar (?!moda)/ });
+  }
+
+  averageText(): Locator {
+    return this.page.locator('.reveal-panel__average');
   }
 
   acceptModeButton(): Locator {
