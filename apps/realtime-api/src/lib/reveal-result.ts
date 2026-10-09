@@ -11,6 +11,17 @@ function deckScale(deck?: DeckOption): number[] {
   return (deck?.values ?? []).map(Number).filter(Number.isFinite);
 }
 
+// Las cartas que rodean al promedio: la de abajo y la de arriba, o una sola si coincide.
+// Como el promedio cae entre el voto mínimo y el máximo, normalmente hay vecina de cada
+// lado; si faltara alguna (escala vacía, dato inesperado) se devuelve solo la que exista.
+function boundsInScale(value: number, scale: number[]): number[] {
+  const sorted = [...new Set(scale)].sort((a, b) => a - b);
+  if (sorted.includes(value)) return [value];
+  const lower = sorted.filter((v) => v < value).at(-1);
+  const upper = sorted.find((v) => v > value);
+  return [lower, upper].filter((v): v is number => v !== undefined);
+}
+
 export function computeRevealResult(
   votes: Record<string, string>,
   deck?: DeckOption
@@ -30,12 +41,19 @@ export function computeRevealResult(
     .map((value) => toNumeric(value, numericValues))
     .filter((value) => !Number.isNaN(value));
 
-  let average =
+  const exactAverage =
     parsedValues.length > 0
-      ? Math.round((parsedValues.reduce((sum, v) => sum + v, 0) / parsedValues.length) * 10) / 10
+      ? parsedValues.reduce((sum, v) => sum + v, 0) / parsedValues.length
       : null;
 
+  // Lo que muestra la web: el promedio de verdad, y las cartas entre las que cae.
+  const rawAverage = exactAverage === null ? null : Math.round(exactAverage * 100) / 100;
   const scale = deckScale(deck);
+  const averageBounds = rawAverage === null ? [] : boundsInScale(rawAverage, scale);
+
+  // `average` conserva su cálculo de siempre (1 decimal, ajustado a la carta más cercana):
+  // lo sigue usando la app mobile, incluidas las versiones ya instaladas.
+  let average = exactAverage === null ? null : Math.round(exactAverage * 10) / 10;
   if (average !== null && scale.length > 0) {
     const rawAverage = average;
     average = scale.reduce((closest, candidate) =>
@@ -51,5 +69,5 @@ export function computeRevealResult(
       .map(([value]) => value);
   }
 
-  return { votes, distribution, average, mode };
+  return { votes, distribution, average, rawAverage, averageBounds, mode };
 }

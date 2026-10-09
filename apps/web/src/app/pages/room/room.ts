@@ -8,6 +8,9 @@ import { VotingBoard } from '../../ui/voting-board/voting-board';
 import { RevealPanel } from '../../ui/reveal-panel/reveal-panel';
 import { Notice } from '../../ui/notice/notice';
 
+// Coma decimal y sin ceros de más: "9,67", "4,5", "8".
+const averageFormat = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
 @Component({
   selector: 'app-room',
   imports: [ParticipantList, VotingBoard, RevealPanel, Notice, FormsModule],
@@ -133,6 +136,34 @@ export class RoomPage {
   readonly deckDisplayValues = computed(() => this.deck()?.displayValues ?? null);
 
   readonly deckNumericValues = computed(() => this.deck()?.numericValues ?? null);
+
+  // Las cartas entre las que cae el promedio. Un `revealResult` guardado antes de que
+  // existiera `averageBounds` (ronda revelada durante el deploy) usa la carta más cercana.
+  readonly averageBounds = computed(() => {
+    const result = this.room()?.revealResult;
+    if (!result) return [];
+    if (result.averageBounds) return result.averageBounds;
+    return result.average !== null ? [result.average] : [];
+  });
+
+  // Texto del promedio real. En escalas explícitas (T-Shirt) el número interno no le dice
+  // nada al equipo, así que se muestran las tallas entre las que cae.
+  readonly averageText = computed(() => {
+    const result = this.room()?.revealResult;
+    if (result?.rawAverage === undefined || result.rawAverage === null) return null;
+    if (!this.deckNumericValues()) return averageFormat.format(result.rawAverage);
+    const labels = this.averageBounds().map((value) => this.valueLabel(value));
+    return labels.length === 2 ? `entre ${labels[0]} y ${labels[1]}` : (labels[0] ?? null);
+  });
+
+  // La moda como opción de resolución, salvo que ya esté entre las cartas vecinas del
+  // promedio: con votos 8, 8, 13 la moda es 8 y "Aceptar moda (8)" repetiría "Aceptar 8".
+  readonly acceptableMode = computed(() => {
+    const result = this.room()?.revealResult;
+    if (!result) return null;
+    const mode = this.modeAsNumber(result.mode);
+    return mode !== null && !this.averageBounds().includes(mode) ? mode : null;
+  });
 
   readonly voteProgress = computed(() => {
     const room = this.room();
