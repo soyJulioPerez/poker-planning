@@ -38,9 +38,8 @@ Ver la guía paso a paso completa en [docs/local-dev-workflow.md](docs/local-dev
 ```bash
 npm install
 
-# 1. Levantar DynamoDB Local (Docker) y crear la tabla (solo la primera vez)
+# 1. Levantar DynamoDB Local (Docker) y crear la tabla
 npm run dev:db:up
-npm run dev:db:create-table
 
 # 2. Backend: servidor WebSocket local (emula API Gateway + Lambdas)
 npm run dev:api
