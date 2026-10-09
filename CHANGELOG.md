@@ -1,3 +1,19 @@
+## 1.7.0 (2026-10-09)
+
+### 🚀 Features
+
+- muestra el promedio real y ofrece las cartas vecinas al resolver
+
+### 🩹 Fixes
+
+- hace que dev:db:up funcione aunque el contenedor ya exista
+
+### ❤️ Thank You
+
+- Claude Opus 5.5
+- Julio Pérez
+- Julio Perez Jimenez
+
 ## 1.6.0 (2026-10-07)
 
 ### 🚀 Features
