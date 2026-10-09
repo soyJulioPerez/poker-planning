@@ -16,6 +16,7 @@
 
 - [x] 3.4 **(pedido en la verificación manual)** `room.ts`/`room.html`: ocultar "Aceptar moda (X)" cuando X ya es una carta vecina del promedio (`acceptableMode`). Spec, proposal y design actualizados; tests en `room.spec.ts`.
 - [x] 3.5 **(pedido en la verificación manual)** `reveal-panel`: el promedio pasa a la línea de estadísticas del panel (input `average`), antes de la moda empatada, en vez de una línea propia en `room.html`. Tests en `reveal-panel.spec.ts`.
+- [x] 3.6 **(descubierta en el CI del PR)** `e2e/`: los specs y el page object buscaban "Aceptar promedio (X)"; pasan a validar "Promedio: …" y los botones de cartas vecinas. El caso de moda de T-Shirt usa tres votos, porque con dos una moda única coincide con el promedio y su botón se oculta.
 
 ## 4. Verificación
 
