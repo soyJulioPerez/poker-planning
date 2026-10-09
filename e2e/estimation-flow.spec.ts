@@ -37,9 +37,10 @@ test('crear sala, votar, revelar y resolver una historia', async ({
   await expect(moderatorRoom.voteProgressText()).toHaveText('2 de 2 votaron');
 
   await moderatorRoom.reveal();
-  await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (5)');
+  await expect(moderatorRoom.averageText()).toHaveText('Promedio: 5');
+  await expect(moderatorRoom.averageBoundButtons()).toHaveText(['Aceptar 5']);
 
-  await moderatorRoom.acceptAverage();
+  await moderatorRoom.acceptAverageBound('5');
 
   await expect(moderatorRoom.lastResolvedStoryText()).toHaveText(
     'Historia "Historia e2e" resuelta con 5 pts'

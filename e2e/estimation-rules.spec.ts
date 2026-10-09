@@ -21,7 +21,7 @@ test.describe('precondiciones de historia', () => {
   });
 });
 
-test('moda empatada no ofrece botón de aceptar, y el promedio sigue disponible', async ({
+test('moda empatada no ofrece botón de aceptar, y se ofrecen las cartas vecinas del promedio', async ({
   browser,
   homePage: moderatorHome,
   roomPage: moderatorRoom,
@@ -47,9 +47,10 @@ test('moda empatada no ofrece botón de aceptar, y el promedio sigue disponible'
   await moderatorRoom.reveal();
 
   await expect(moderatorRoom.acceptModeButton()).toHaveCount(0);
-  // (3 + 5) / 2 = 4 crudo, pero 4 no es una carta Fibonacci — empata a distancia 1 de
-  // 3 y de 5, y el desempate existente favorece el valor menor.
-  await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (3)');
+  // (3 + 5) / 2 = 4, que no es una carta Fibonacci: se muestra tal cual y se ofrecen las
+  // dos cartas entre las que cae.
+  await expect(moderatorRoom.averageText()).toHaveText('Promedio: 4');
+  await expect(moderatorRoom.averageBoundButtons()).toHaveText(['Aceptar 3', 'Aceptar 5']);
 
   await participantContext.close();
 });
@@ -80,7 +81,7 @@ test('moda no numérica sin escala interna no se puede aceptar; nueva ronda desc
   await moderatorRoom.reveal();
 
   await expect(moderatorRoom.acceptModeButton()).toHaveCount(0);
-  await expect(moderatorRoom.acceptAverageButton()).toHaveCount(0);
+  await expect(moderatorRoom.averageBoundButtons()).toHaveCount(0);
 
   await moderatorRoom.newRound();
 
@@ -135,6 +136,12 @@ test.describe('mazo T-Shirt Sizes', () => {
     const participantPage = await participantContext.newPage();
     const participantHome = new HomePage(participantPage);
     const participantRoom = new RoomPage(participantPage);
+    // Tres votos y no dos: con dos, una moda única coincide siempre con el promedio, y
+    // entonces su botón se oculta porque ya es una de las cartas vecinas.
+    const thirdContext = await browser.newContext();
+    const thirdPage = await thirdContext.newPage();
+    const thirdHome = new HomePage(thirdPage);
+    const thirdRoom = new RoomPage(thirdPage);
 
     await moderatorHome.goto();
     await moderatorHome.createRoom('Moderador E2E', { deckLabel: 'T-Shirt Sizes' });
@@ -144,13 +151,20 @@ test.describe('mazo T-Shirt Sizes', () => {
     await participantHome.joinRoom(roomId, 'Participante E2E');
     await participantPage.waitForURL(/\/room\//, { timeout: navigationTimeout });
 
+    await thirdHome.goto();
+    await thirdHome.joinRoom(roomId, 'Tercero E2E');
+    await thirdPage.waitForURL(/\/room\//, { timeout: navigationTimeout });
+
     await moderatorRoom.setStory('Historia T-Shirt moda');
+    // M=4, M=4, XXL=32 → promedio 13,33, entre L(8) y XL(16); la moda (M) no es vecina.
     await moderatorRoom.vote('M');
     await participantRoom.vote('M');
+    await thirdRoom.vote('XXL');
 
-    await expect(moderatorRoom.voteProgressText()).toHaveText('2 de 2 votaron');
+    await expect(moderatorRoom.voteProgressText()).toHaveText('3 de 3 votaron');
     await moderatorRoom.reveal();
 
+    await expect(moderatorRoom.averageText()).toHaveText('Promedio: entre L y XL');
     await expect(moderatorRoom.acceptModeButton()).toHaveText('Aceptar moda (M)');
     await moderatorRoom.acceptMode();
 
@@ -161,9 +175,10 @@ test.describe('mazo T-Shirt Sizes', () => {
     );
 
     await participantContext.close();
+    await thirdContext.close();
   });
 
-  test('el promedio se redondea a la talla más cercana por distancia lineal', async ({
+  test('el promedio se muestra como las tallas entre las que cae, y se resuelve con una de ellas', async ({
     browser,
     homePage: moderatorHome,
     roomPage: moderatorRoom,
@@ -182,15 +197,16 @@ test.describe('mazo T-Shirt Sizes', () => {
     await participantPage.waitForURL(/\/room\//, { timeout: navigationTimeout });
 
     await moderatorRoom.setStory('Historia T-Shirt promedio');
-    // S=2, L=8 → promedio interno 5 → distancia a M(4)=1, a L(8)=3 → talla más cercana: M
+    // S=2, L=8 → promedio interno 5, entre M(4) y L(8)
     await moderatorRoom.vote('S');
     await participantRoom.vote('L');
 
     await expect(moderatorRoom.voteProgressText()).toHaveText('2 de 2 votaron');
     await moderatorRoom.reveal();
 
-    await expect(moderatorRoom.acceptAverageButton()).toHaveText('Aceptar promedio (M)');
-    await moderatorRoom.acceptAverage();
+    await expect(moderatorRoom.averageText()).toHaveText('Promedio: entre M y L');
+    await expect(moderatorRoom.averageBoundButtons()).toHaveText(['Aceptar M', 'Aceptar L']);
+    await moderatorRoom.acceptAverageBound('M');
 
     // Mismo criterio que en el caso de moda: se muestra la etiqueta de talla, no el número interno.
     await expect(moderatorRoom.lastResolvedStoryText()).toHaveText(

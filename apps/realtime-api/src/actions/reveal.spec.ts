@@ -90,6 +90,9 @@ describe('handleReveal', () => {
         // (5 + 5 + 8) / 3 = 6 crudo, pero 6 no es una carta Fibonacci — se ajusta a la más
         // cercana (5, a distancia 1, contra 8 a distancia 2).
         average: 5,
+        // El promedio real y sus cartas vecinas viajan aparte: la web muestra esto.
+        rawAverage: 6,
+        averageBounds: [5, 8],
         mode: ['5'],
       });
     });
