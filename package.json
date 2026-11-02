@@ -74,7 +74,7 @@
     "@nx/js": "23.0.1",
     "@nx/playwright": "23.0.1",
     "@nx/web": "23.0.1",
-    "@nx/workspace": "23.0.1",
+    "@nx/workspace": "24.0.2",
     "@oxc-project/runtime": "^0.115.0",
     "@playwright/test": "^1.36.0",
     "@schematics/angular": "21.2.7",
